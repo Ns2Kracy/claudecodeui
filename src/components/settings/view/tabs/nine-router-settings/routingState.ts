@@ -1,0 +1,247 @@
+import {
+  emptyRoutingSettingsView,
+  type CreateRoutingApiKeyAccountInput,
+  type RoutingSettingsView,
+  type RoutingUsagePeriod,
+  type RoutingUsageView,
+} from '../../../../../../shared/routing.js';
+
+export type RoutingUiError = {
+  code: string;
+  message: string;
+  status: number;
+  retryable: boolean;
+};
+
+export type RoutingDetailKey =
+  | 'accounts'
+  | 'models'
+  | 'routes'
+  | `usage:${RoutingUsagePeriod}`;
+
+export type RoutingDetailStatus = 'loading' | 'loaded' | 'error';
+
+export type RoutingRequestToken = {
+  epoch: number;
+  sequence: number;
+};
+
+export type RoutingState = {
+  settings: RoutingSettingsView;
+  loading: boolean;
+  error: RoutingUiError | null;
+  activeMutation: string | null;
+  detailStatus: Partial<Record<RoutingDetailKey, RoutingDetailStatus>>;
+  usageByPeriod: Partial<Record<RoutingUsagePeriod, RoutingUsageView>>;
+};
+
+export type RoutingConnectionDraft = {
+  baseUrl: string;
+  adminPassword: string;
+  dataPlaneKey: string;
+};
+
+export type RoutingAccountDraft = CreateRoutingApiKeyAccountInput;
+
+export type RoutingStateAction =
+  | { type: 'loadStarted' }
+  | { type: 'loadSucceeded'; settings: RoutingSettingsView }
+  | { type: 'loadFailed'; error: RoutingUiError }
+  | { type: 'detailsStarted'; keys: RoutingDetailKey[] }
+  | { type: 'detailsSucceeded'; keys: RoutingDetailKey[]; settings: RoutingSettingsView }
+  | { type: 'detailsFailed'; keys: RoutingDetailKey[]; error: RoutingUiError }
+  | { type: 'detailsReset'; keys: RoutingDetailKey[] }
+  | { type: 'detailsCleared' }
+  | { type: 'mutationStarted'; key: string }
+  | { type: 'mutationSucceeded' }
+  | { type: 'mutationFailed'; error: RoutingUiError }
+  | { type: 'clearError' };
+
+export function createInitialRoutingState(): RoutingState {
+  return {
+    settings: emptyRoutingSettingsView(),
+    loading: true,
+    error: null,
+    activeMutation: null,
+    detailStatus: {},
+    usageByPeriod: {},
+  };
+}
+
+/** Coordinates aggregate generations and invalidates all reads after a mutation. */
+export function createRoutingRequestCoordinator() {
+  let epoch = 0;
+  let aggregateSequence = 0;
+
+  return {
+    startAggregate(): RoutingRequestToken {
+      aggregateSequence += 1;
+      return { epoch, sequence: aggregateSequence };
+    },
+    startDetail(): RoutingRequestToken {
+      return { epoch, sequence: 0 };
+    },
+    isCurrentAggregate(token: RoutingRequestToken): boolean {
+      return token.epoch === epoch && token.sequence === aggregateSequence;
+    },
+    isCurrentDetail(token: RoutingRequestToken): boolean {
+      return token.epoch === epoch;
+    },
+    invalidateReads(): void {
+      epoch += 1;
+      aggregateSequence += 1;
+    },
+  };
+}
+
+function statusesFor(
+  current: RoutingState['detailStatus'],
+  keys: RoutingDetailKey[],
+  status: RoutingDetailStatus,
+): RoutingState['detailStatus'] {
+  const next = { ...current };
+  for (const key of keys) {
+    next[key] = status;
+  }
+  return next;
+}
+
+function resetStatuses(
+  current: RoutingState['detailStatus'],
+  keys: RoutingDetailKey[],
+): RoutingState['detailStatus'] {
+  const next = { ...current };
+  for (const key of keys) {
+    delete next[key];
+  }
+  return next;
+}
+
+function mergeSettings(
+  current: RoutingSettingsView,
+  incoming: RoutingSettingsView,
+): RoutingSettingsView {
+  return {
+    ...incoming,
+    accounts: incoming.accounts ?? current.accounts,
+    models: incoming.models ?? current.models,
+    routes: incoming.routes ?? current.routes,
+    usage: incoming.usage ?? current.usage,
+  };
+}
+
+/** Returns true only before a detail request has started or after an explicit reset. */
+export function shouldLoadRoutingDetails(
+  state: RoutingState,
+  keys: RoutingDetailKey[],
+): boolean {
+  return keys.some((key) => state.detailStatus[key] === undefined);
+}
+
+/**
+ * Keeps failed connection input intact for correction, while a successful save
+ * immediately removes both write-only secrets from React state.
+ */
+export function connectionDraftAfterMutation(
+  draft: RoutingConnectionDraft,
+  succeeded: boolean,
+  savedBaseUrl?: string | null,
+): RoutingConnectionDraft {
+  if (!succeeded) {
+    return draft;
+  }
+
+  return {
+    baseUrl: savedBaseUrl ?? draft.baseUrl,
+    adminPassword: '',
+    dataPlaneKey: '',
+  };
+}
+
+/** Clears only the write-only account key after a successful create operation. */
+export function accountDraftAfterMutation(
+  draft: RoutingAccountDraft,
+  succeeded: boolean,
+): RoutingAccountDraft {
+  return succeeded ? { ...draft, apiKey: '' } : draft;
+}
+
+export function routingStateReducer(
+  state: RoutingState,
+  action: RoutingStateAction,
+): RoutingState {
+  switch (action.type) {
+    case 'loadStarted':
+      return { ...state, loading: true, error: null };
+    case 'loadSucceeded':
+      return {
+        ...state,
+        settings: mergeSettings(state.settings, action.settings),
+        loading: false,
+        error: null,
+        usageByPeriod: action.settings.usage
+          ? {
+              ...state.usageByPeriod,
+              [action.settings.usage.period]: action.settings.usage,
+            }
+          : state.usageByPeriod,
+      };
+    case 'loadFailed':
+      return { ...state, loading: false, error: action.error };
+    case 'detailsStarted':
+      return {
+        ...state,
+        error: null,
+        detailStatus: statusesFor(state.detailStatus, action.keys, 'loading'),
+      };
+    case 'detailsSucceeded':
+      return {
+        ...state,
+        settings: mergeSettings(state.settings, action.settings),
+        error: null,
+        detailStatus: statusesFor(state.detailStatus, action.keys, 'loaded'),
+        usageByPeriod: action.settings.usage
+          ? {
+              ...state.usageByPeriod,
+              [action.settings.usage.period]: action.settings.usage,
+            }
+          : state.usageByPeriod,
+      };
+    case 'detailsFailed':
+      return {
+        ...state,
+        error: action.error,
+        detailStatus: statusesFor(state.detailStatus, action.keys, 'error'),
+      };
+    case 'detailsReset':
+      return {
+        ...state,
+        detailStatus: resetStatuses(state.detailStatus, action.keys),
+      };
+    case 'detailsCleared': {
+      const {
+        accounts: _accounts,
+        models: _models,
+        routes: _routes,
+        usage: _usage,
+        ...aggregateSettings
+      } = state.settings;
+      return {
+        ...state,
+        settings: aggregateSettings,
+        detailStatus: {},
+        usageByPeriod: {},
+      };
+    }
+    case 'mutationStarted':
+      return { ...state, activeMutation: action.key, error: null };
+    case 'mutationSucceeded':
+      return { ...state, loading: false, activeMutation: null, error: null };
+    case 'mutationFailed':
+      return { ...state, loading: false, activeMutation: null, error: action.error };
+    case 'clearError':
+      return { ...state, error: null };
+    default:
+      return state;
+  }
+}
