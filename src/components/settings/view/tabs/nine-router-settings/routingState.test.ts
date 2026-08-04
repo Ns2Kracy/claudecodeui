@@ -11,6 +11,7 @@ import {
   createRoutingRequestCoordinator,
   routingStateReducer,
   shouldLoadRoutingDetails,
+  upstreamDetailsState,
 } from './routingState.js';
 
 const safeError = {
@@ -187,6 +188,35 @@ test('detail failures are identified separately so one inline retry state owns t
     key: 'account:create',
   });
   assert.equal(mutationStarted.errorContext, null);
+});
+
+test('route-only loading and failures keep the upstream route editor gated', () => {
+  assert.deepEqual(upstreamDetailsState({ routes: 'loading' }), {
+    loading: true,
+    error: false,
+  });
+  assert.deepEqual(upstreamDetailsState({ routes: 'error' }), {
+    loading: false,
+    error: true,
+  });
+});
+
+test('post-mutation refresh failures keep stale details behind a retryable error gate', () => {
+  const running = routingStateReducer(createInitialRoutingState(), {
+    type: 'mutationStarted',
+    key: 'route:update:route-1',
+  });
+  const failed = routingStateReducer(running, {
+    type: 'mutationRefreshFailed',
+    keys: ['accounts', 'models', 'routes'],
+    error: safeError,
+  });
+
+  assert.equal(failed.activeMutation, null);
+  assert.equal(failed.errorContext, 'details');
+  assert.equal(failed.detailStatus.accounts, 'error');
+  assert.equal(failed.detailStatus.models, 'error');
+  assert.equal(failed.detailStatus.routes, 'error');
 });
 
 test('successful connection mutation clears secrets while failure preserves user input', () => {

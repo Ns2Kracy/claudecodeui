@@ -57,6 +57,7 @@ export type RoutingStateAction =
   | { type: 'mutationStarted'; key: string }
   | { type: 'mutationSucceeded' }
   | { type: 'mutationFailed'; error: RoutingUiError }
+  | { type: 'mutationRefreshFailed'; keys: RoutingDetailKey[]; error: RoutingUiError }
   | { type: 'clearError' };
 
 export function createInitialRoutingState(): RoutingState {
@@ -139,6 +140,20 @@ export function shouldLoadRoutingDetails(
   keys: RoutingDetailKey[],
 ): boolean {
   return keys.some((key) => state.detailStatus[key] === undefined);
+}
+
+export function upstreamDetailsState(
+  detailStatus: RoutingState['detailStatus'],
+): { loading: boolean; error: boolean } {
+  const statuses = [
+    detailStatus.accounts,
+    detailStatus.models,
+    detailStatus.routes,
+  ];
+  return {
+    loading: statuses.includes('loading'),
+    error: statuses.includes('error'),
+  };
 }
 
 /**
@@ -268,6 +283,17 @@ export function routingStateReducer(
         activeMutation: null,
         error: action.error,
         errorContext: 'mutation',
+      };
+    case 'mutationRefreshFailed':
+      return {
+        ...state,
+        loading: false,
+        activeMutation: null,
+        error: action.error,
+        errorContext: action.keys.length > 0 ? 'details' : 'mutation',
+        detailStatus: action.keys.length > 0
+          ? statusesFor(state.detailStatus, action.keys, 'error')
+          : state.detailStatus,
       };
     case 'clearError':
       return { ...state, error: null, errorContext: null };

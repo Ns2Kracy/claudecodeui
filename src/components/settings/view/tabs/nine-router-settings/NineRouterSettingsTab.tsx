@@ -3,9 +3,13 @@ import { AlertTriangle, KeyRound, Loader2, ShieldCheck, WifiOff, Wrench } from '
 import { useTranslation } from 'react-i18next';
 
 import type {
+  CreateRoutingApiKeyAccountInput,
+  CreateRoutingRouteInput,
   RoutingAgent,
   RoutingSettingsView,
+  UpdateRoutingAccountInput,
   UpdateRoutingBindingInput,
+  UpdateRoutingRouteInput,
 } from '../../../../../../shared/routing.js';
 import { Alert, AlertDescription, AlertTitle } from '../../../../../shared/view/ui';
 
@@ -13,15 +17,20 @@ import ConnectionSection from './ConnectionSection.js';
 import ModelSourceSection from './ModelSourceSection.js';
 import {
   connectionDraftAfterCancel,
+  type RoutingAccountDraft,
   type RoutingConnectionDraft,
+  type RoutingErrorContext,
   type RoutingUiError,
+  upstreamDetailsState,
 } from './routingState.js';
+import UpstreamsRoutesSection from './UpstreamsRoutesSection.js';
 import { useNineRouterSettings } from './useNineRouterSettings.js';
 
 export type NineRouterSettingsTabViewProps = {
   settings: RoutingSettingsView;
   loading: boolean;
   error: RoutingUiError | null;
+  errorContext?: RoutingErrorContext | null;
   activeMutation: string | null;
   connectionDraft: RoutingConnectionDraft;
   routesLoading?: boolean;
@@ -33,6 +42,22 @@ export type NineRouterSettingsTabViewProps = {
   onDisconnect: () => void;
   onSetBinding: (provider: RoutingAgent, input: UpdateRoutingBindingInput) => void;
   onRetryRoutes: () => void;
+  accountDraft: RoutingAccountDraft;
+  upstreamDetailsLoading?: boolean;
+  upstreamDetailsError?: boolean;
+  onAccountFieldChange: (
+    field: keyof RoutingAccountDraft,
+    value: string | number | boolean | undefined,
+  ) => void;
+  onExpandUpstreamDetails: () => void;
+  onRetryUpstreamDetails: () => void;
+  onCreateAccount: (input: CreateRoutingApiKeyAccountInput) => Promise<boolean>;
+  onUpdateAccount: (id: string, input: UpdateRoutingAccountInput) => Promise<boolean>;
+  onTestAccount: (id: string) => Promise<boolean>;
+  onDeleteAccount: (id: string) => Promise<boolean>;
+  onCreateRoute: (input: CreateRoutingRouteInput) => Promise<boolean>;
+  onUpdateRoute: (id: string, input: UpdateRoutingRouteInput) => Promise<boolean>;
+  onDeleteRoute: (id: string) => Promise<boolean>;
 };
 
 function errorCode(
@@ -46,6 +71,7 @@ export function NineRouterSettingsTabView({
   settings,
   loading,
   error,
+  errorContext = null,
   activeMutation,
   connectionDraft,
   routesLoading = false,
@@ -57,6 +83,19 @@ export function NineRouterSettingsTabView({
   onDisconnect,
   onSetBinding,
   onRetryRoutes,
+  accountDraft,
+  upstreamDetailsLoading = false,
+  upstreamDetailsError = false,
+  onAccountFieldChange,
+  onExpandUpstreamDetails,
+  onRetryUpstreamDetails,
+  onCreateAccount,
+  onUpdateAccount,
+  onTestAccount,
+  onDeleteAccount,
+  onCreateRoute,
+  onUpdateRoute,
+  onDeleteRoute,
 }: NineRouterSettingsTabViewProps) {
   const { t } = useTranslation('settings');
   const code = errorCode(settings, error).toUpperCase();
@@ -65,9 +104,14 @@ export function NineRouterSettingsTabView({
     || code.includes('AUTH_FAILED');
   const incompatible = code.includes('VERSION') || code.includes('CAPABILITY');
   const offline = settings.connection.status === 'offline';
+  const detailErrorOwnsMessage = errorContext === 'details'
+    && (routesError || upstreamDetailsError);
   const showRouteError = routesError && !unauthorized && !incompatible && !offline;
   const secureStorageUnavailable = !loading && !settings.connection.secureStorageAvailable;
-  const knownStateError = unauthorized || incompatible || offline || routesError;
+  const knownStateError = unauthorized || incompatible || offline || detailErrorOwnsMessage;
+  const boundRouteIds = new Set(Object.values(settings.bindings)
+    .filter((binding) => binding.source === '9router' && binding.routeId)
+    .map((binding) => binding.routeId as string));
 
   return (
     <div className="space-y-8">
@@ -158,6 +202,32 @@ export function NineRouterSettingsTabView({
         onSetBinding={onSetBinding}
         onRetryRoutes={onRetryRoutes}
       />
+
+      <UpstreamsRoutesSection
+        configured={settings.connection.configured}
+        connectionStatus={settings.connection.status}
+        capabilities={settings.connection.capabilities}
+        accountSummary={settings.accountSummary}
+        routeSummary={settings.routeSummary}
+        accounts={settings.accounts ?? []}
+        models={settings.models ?? []}
+        routes={settings.routes ?? []}
+        boundRouteIds={boundRouteIds}
+        loading={upstreamDetailsLoading}
+        detailsError={upstreamDetailsError}
+        activeMutation={activeMutation}
+        accountDraft={accountDraft}
+        onAccountFieldChange={onAccountFieldChange}
+        onExpand={onExpandUpstreamDetails}
+        onRetry={onRetryUpstreamDetails}
+        onCreateAccount={onCreateAccount}
+        onUpdateAccount={onUpdateAccount}
+        onTestAccount={onTestAccount}
+        onDeleteAccount={onDeleteAccount}
+        onCreateRoute={onCreateRoute}
+        onUpdateRoute={onUpdateRoute}
+        onDeleteRoute={onDeleteRoute}
+      />
     </div>
   );
 }
@@ -165,6 +235,7 @@ export function NineRouterSettingsTabView({
 export default function NineRouterSettingsTab() {
   const controller = useNineRouterSettings();
   const { ensureRouteDetails } = controller;
+  const upstreamDetails = upstreamDetailsState(controller.detailStatus);
   const canReadRoutes = controller.settings.connection.configured
     && controller.settings.connection.capabilities.readRoutes;
 
@@ -177,6 +248,7 @@ export default function NineRouterSettingsTab() {
       settings={controller.settings}
       loading={controller.loading}
       error={controller.error}
+      errorContext={controller.errorContext}
       activeMutation={controller.activeMutation}
       connectionDraft={controller.connectionDraft}
       routesLoading={controller.detailStatus.routes === 'loading'}
@@ -190,6 +262,19 @@ export default function NineRouterSettingsTab() {
       onDisconnect={() => { void controller.disconnect(); }}
       onSetBinding={(provider, input) => { void controller.setBinding(provider, input); }}
       onRetryRoutes={() => { void controller.retryRouteDetails(); }}
+      accountDraft={controller.accountDraft}
+      upstreamDetailsLoading={upstreamDetails.loading}
+      upstreamDetailsError={upstreamDetails.error}
+      onAccountFieldChange={controller.setAccountField}
+      onExpandUpstreamDetails={() => { void controller.ensureUpstreamDetails(); }}
+      onRetryUpstreamDetails={() => { void controller.retryUpstreamDetails(); }}
+      onCreateAccount={async (input) => Boolean(await controller.createAccount(input))}
+      onUpdateAccount={async (id, input) => Boolean(await controller.updateAccount(id, input))}
+      onTestAccount={async (id) => Boolean(await controller.testAccount(id))}
+      onDeleteAccount={async (id) => Boolean(await controller.deleteAccount(id))}
+      onCreateRoute={async (input) => Boolean(await controller.createRoute(input))}
+      onUpdateRoute={async (id, input) => Boolean(await controller.updateRoute(id, input))}
+      onDeleteRoute={async (id) => Boolean(await controller.deleteRoute(id))}
     />
   );
 }

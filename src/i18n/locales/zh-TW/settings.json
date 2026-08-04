@@ -563,6 +563,82 @@
       "routeLoadFailed": "無法載入 9Router 路由。",
       "retryRoutes": "重試",
       "noFallback": "不會靜默退回：路由執行失敗時，CloudCLI 會回報失敗，而不會使用原生憑證。"
+    },
+    "management": {
+      "title": "上游帳戶和路由",
+      "description": "管理路由工作階段所使用的 9Router 帳戶和有序模型路由。",
+      "disclosure": "管理上游帳戶和路由",
+      "summary": {
+        "accounts": "{{count}} 個帳戶",
+        "degraded": "{{count}} 個需要處理",
+        "routes": "{{count}} 條路由"
+      },
+      "connectFirst": "請先連線至 9Router，再載入上游帳戶和路由。",
+      "unavailable": "此 9Router 版本未提供受支援的帳戶或路由管理 API。",
+      "loading": "正在載入上游帳戶和路由...",
+      "loadFailed": "無法載入上游帳戶和路由。",
+      "actions": {
+        "retry": "重試",
+        "save": "儲存",
+        "cancel": "取消",
+        "test": "測試",
+        "disable": "停用",
+        "enable": "啟用",
+        "edit": "編輯",
+        "delete": "刪除",
+        "confirmDelete": "確認刪除"
+      },
+      "accounts": {
+        "title": "上游帳戶",
+        "description": "帳戶仍由 9Router 權威管理。CloudCLI 僅顯示安全的狀態欄位。",
+        "add": "新增 API 金鑰",
+        "addTitle": "新增上游帳戶",
+        "apiKeyOnly": "此版本僅支援建立 API 金鑰帳戶。",
+        "provider": "提供者",
+        "selectProvider": "選擇提供者",
+        "name": "名稱",
+        "apiKey": "API 金鑰",
+        "priority": "優先順序",
+        "noProviders": "目前沒有可用於新帳戶的提供者目錄。",
+        "empty": "9Router 未傳回任何上游帳戶。",
+        "disabled": "已停用",
+        "defaultPriority": "預設",
+        "expires": "到期時間",
+        "never": "永不",
+        "replacementKey": "替換 API 金鑰",
+        "keepKey": "留空以保留現有設定",
+        "confirmDelete": "刪除 {{name}}？",
+        "unavailable": "此 9Router 版本無法提供帳戶詳細資料。",
+        "status": {
+          "healthy": "正常",
+          "cooling": "冷卻中",
+          "limited": "受限",
+          "failed": "失敗",
+          "unknown": "未知"
+        }
+      },
+      "routes": {
+        "title": "路由",
+        "description": "依偏好順序排列模型。受支援的代理程式建立新工作階段時，9Router 會套用該路由。",
+        "add": "新增路由",
+        "name": "路由名稱",
+        "nameHelp": "僅可使用字母、數字、底線、句點和連字號。",
+        "orderedModels": "有序模型",
+        "noSelectedModels": "請至少向此路由新增一個模型。",
+        "addModel": "新增模型",
+        "searchModels": "搜尋模型",
+        "noMatchingModels": "沒有可用的相符模型。",
+        "empty": "9Router 未傳回任何路由。",
+        "inUse": "使用中",
+        "modelCount": "{{count}} 個模型",
+        "moveUp": "上移 {{model}}",
+        "moveDown": "下移 {{model}}",
+        "removeModel": "移除 {{model}}",
+        "editLabel": "編輯 {{name}}",
+        "confirmDelete": "刪除 {{name}}？",
+        "boundWarning": "某個代理程式已選擇此路由。請先將該代理程式切換至原生登入或其他路由，以免新工作階段失敗。",
+        "unavailable": "此 9Router 版本無法提供路由詳細資料。"
+      }
     }
   }
 }

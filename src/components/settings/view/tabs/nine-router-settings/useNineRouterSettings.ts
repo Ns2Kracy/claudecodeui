@@ -231,11 +231,15 @@ export function useNineRouterSettings() {
       if (requestCoordinatorRef.current.isCurrentAggregate(token)) {
         applySettings(details, settings);
       }
-      return settings;
+      return true;
     } catch (error) {
       for (const key of keys) detailRequestsRef.current.delete(key);
-      if (keys.length > 0) dispatch({ type: 'detailsReset', keys });
-      throw error;
+      dispatch({
+        type: 'mutationRefreshFailed',
+        keys,
+        error: safeUiError(error),
+      });
+      return false;
     }
   }, [applySettings]);
 
@@ -257,7 +261,7 @@ export function useNineRouterSettings() {
       detailRequestsRef.current.clear();
       requestCoordinatorRef.current.invalidateReads();
       if (interruptedDetails.length > 0) {
-        dispatch({ type: 'detailsReset', keys: interruptedDetails });
+        dispatch({ type: 'detailsStarted', keys: interruptedDetails });
       }
       onOperationSuccess?.(result);
     } catch (error) {
@@ -267,10 +271,9 @@ export function useNineRouterSettings() {
     }
 
     try {
-      await refreshAfterMutation(requiredDetails, resetDetails);
-      dispatch({ type: 'mutationSucceeded' });
-    } catch (error) {
-      dispatch({ type: 'mutationFailed', error: safeUiError(error) });
+      if (await refreshAfterMutation(requiredDetails, resetDetails)) {
+        dispatch({ type: 'mutationSucceeded' });
+      }
     } finally {
       mutationRef.current = null;
     }
@@ -333,7 +336,10 @@ export function useNineRouterSettings() {
 
   const deleteAccount = useCallback((id: string) => runMutation(
     `account:delete:${id}`,
-    () => routingApi.deleteAccount(id),
+    async () => {
+      await routingApi.deleteAccount(id);
+      return true;
+    },
     { accounts: true, models: true, routes: true },
   ), [runMutation]);
 
@@ -351,7 +357,10 @@ export function useNineRouterSettings() {
 
   const deleteRoute = useCallback((id: string) => runMutation(
     `route:delete:${id}`,
-    () => routingApi.deleteRoute(id),
+    async () => {
+      await routingApi.deleteRoute(id);
+      return true;
+    },
     { accounts: true, models: true, routes: true },
   ), [runMutation]);
 

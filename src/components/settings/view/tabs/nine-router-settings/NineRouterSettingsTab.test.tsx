@@ -10,6 +10,7 @@ import { emptyRoutingSettingsView, type RoutingSettingsView } from '../../../../
 import englishSettings from '../../../../../i18n/locales/en/settings.json' with { type: 'json' };
 
 import { NineRouterSettingsTabView } from './NineRouterSettingsTab.js';
+import type { RoutingErrorContext } from './routingState.js';
 
 // npm test compiles TSX with the server's classic JSX transform. Some shared
 // settings components use the browser's automatic transform and need this
@@ -22,6 +23,7 @@ async function renderRoutingView(
     error?: { code: string; message: string; status: number; retryable: boolean } | null;
     secrets?: { adminPassword: string; dataPlaneKey: string };
     routesError?: boolean;
+    errorContext?: RoutingErrorContext | null;
   } = {},
 ): Promise<string> {
   const i18n = createInstance();
@@ -41,6 +43,7 @@ async function renderRoutingView(
       settings,
       loading: false,
       error: options.error ?? null,
+      errorContext: options.errorContext,
       activeMutation: null,
       routesError: options.routesError,
       connectionDraft: {
@@ -55,6 +58,17 @@ async function renderRoutingView(
       onDisconnect: () => {},
       onSetBinding: () => {},
       onRetryRoutes: () => {},
+      accountDraft: { provider: '', name: '', apiKey: '', active: true },
+      onAccountFieldChange: () => {},
+      onExpandUpstreamDetails: () => {},
+      onRetryUpstreamDetails: () => {},
+      onCreateAccount: async () => true,
+      onUpdateAccount: async () => true,
+      onTestAccount: async () => true,
+      onDeleteAccount: async () => true,
+      onCreateRoute: async () => true,
+      onUpdateRoute: async () => true,
+      onDeleteRoute: async () => true,
     }),
   ));
 }
@@ -168,6 +182,7 @@ test('route loading failures are retryable and are not mislabeled as an empty ro
 
   const markup = await renderRoutingView(settings, {
     routesError: true,
+    errorContext: 'details',
     error: {
       code: 'ROUTING_ROUTES_FAILED',
       message: 'Could not load route details',
