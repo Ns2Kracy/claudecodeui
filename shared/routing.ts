@@ -65,6 +65,12 @@ export type RoutingAccountView = {
   expiresAt: string | null;
 };
 
+export type RoutingModelView = {
+  id: string;
+  provider: string;
+  name: string;
+};
+
 export type RoutingRouteView = {
   id: string;
   name: string;
@@ -94,6 +100,7 @@ export type RoutingSettingsView = {
   accountSummary: { total: number; degraded: number };
   routeSummary: { total: number };
   accounts?: RoutingAccountView[];
+  models?: RoutingModelView[];
   routes?: RoutingRouteView[];
   usage?: RoutingUsageView;
   usageAlerts: RoutingUsageAlertView[];
@@ -127,11 +134,13 @@ export type UpdateRoutingAccountInput = {
 export type CreateRoutingRouteInput = {
   name: string;
   models: string[];
+  kind?: string | null;
 };
 
 export type UpdateRoutingRouteInput = {
   name?: string;
   models?: string[];
+  kind?: string | null;
 };
 
 export type UpdateRoutingBindingInput = {
