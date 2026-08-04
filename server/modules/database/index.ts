@@ -9,6 +9,8 @@ export { notificationPreferencesDb } from '@/modules/database/repositories/notif
 // projectsDb: used by Projects, Worktrees, Git, WebSocket, and notification modules to persist and resolve project records.
 export { projectsDb } from '@/modules/database/repositories/projects.db.js';
 export { pushSubscriptionsDb } from '@/modules/database/repositories/push-subscriptions.js';
+// routingDb: used by the routing module to persist encrypted connection metadata and user-scoped settings.
+export { routingDb } from '@/modules/database/repositories/routing.js';
 export { scanStateDb } from '@/modules/database/repositories/scan-state.db.js';
 export { sessionsDb } from '@/modules/database/repositories/sessions.db.js';
 export { userDb } from '@/modules/database/repositories/users.js';
