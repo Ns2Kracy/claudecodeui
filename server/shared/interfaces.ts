@@ -19,6 +19,19 @@ import type {
   UpsertProviderMcpServerInput,
 } from '@/shared/types.js';
 
+import type {
+  CreateRoutingApiKeyAccountInput,
+  CreateRoutingRouteInput,
+  RoutingAccountView,
+  RoutingCapabilities,
+  RoutingModelView,
+  RoutingRouteView,
+  RoutingUsagePeriod,
+  RoutingUsageView,
+  UpdateRoutingAccountInput,
+  UpdateRoutingRouteInput,
+} from '../../shared/routing.js';
+
 //----------------- PROVIDER CONTRACT INTERFACES ------------
 
 /**
@@ -178,4 +191,37 @@ export interface IProviderSessionSynchronizer {
    * Parses and upserts one provider artifact file without running a full scan.
    */
   synchronizeFile(filePath: string): Promise<string | null>;
+}
+
+// ---------------------------
+//----------------- ROUTING CLIENT INTERFACE ------------
+/**
+ * Versioned 9router adapter contract implemented by `NineRouterClient`.
+ *
+ * Routing application/runtime services depend on this interface so tests can
+ * supply deterministic fakes. Every return value is a sanitized CloudCLI DTO;
+ * upstream payloads, dashboard cookies, and secret response fields are absent.
+ */
+export interface IRoutingNineRouterClient {
+  validateConnection(): Promise<{
+    version: string;
+    knownVersion: boolean;
+    capabilities: RoutingCapabilities;
+  }>;
+  listModels(): Promise<RoutingModelView[]>;
+  listAccounts(): Promise<RoutingAccountView[]>;
+  createApiKeyAccount(input: CreateRoutingApiKeyAccountInput): Promise<RoutingAccountView>;
+  updateAccount(id: string, input: UpdateRoutingAccountInput): Promise<RoutingAccountView>;
+  deleteAccount(id: string): Promise<void>;
+  testAccount(id: string): Promise<{
+    healthy: boolean;
+    error: string | null;
+    refreshed: boolean;
+  }>;
+  listRoutes(): Promise<RoutingRouteView[]>;
+  getRoute(id: string): Promise<RoutingRouteView>;
+  createRoute(input: CreateRoutingRouteInput): Promise<RoutingRouteView>;
+  updateRoute(id: string, input: UpdateRoutingRouteInput): Promise<RoutingRouteView>;
+  deleteRoute(id: string): Promise<void>;
+  getUsage(period: RoutingUsagePeriod): Promise<RoutingUsageView>;
 }

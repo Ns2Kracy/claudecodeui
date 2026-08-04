@@ -1,24 +1,18 @@
+import { getConnection } from '@/modules/database/connection.js';
+import type {
+  RoutingBindingPersistenceInput,
+  RoutingConnectionPersistenceInput,
+  RoutingRepository,
+  RoutingStoredAlert,
+  RoutingStoredBinding,
+  RoutingStoredConnection,
+} from '@/shared/types.js';
+
 import type {
   RoutingAgent,
   RoutingCapabilities,
-  RoutingModelSource,
   RoutingUsageAlertPeriod,
 } from '../../../../shared/routing.js';
-
-import { getConnection } from '@/modules/database/connection.js';
-
-type StoredRoutingConnection = {
-  userId: number;
-  baseUrl: string;
-  adminSecretCiphertext: string;
-  dataPlaneKeyCiphertext: string;
-  upstreamVersion: string | null;
-  capabilities: RoutingCapabilities | null;
-  lastCheckedAt: string | null;
-  lastErrorCode: string | null;
-};
-
-type RoutingConnectionWrite = Omit<StoredRoutingConnection, 'userId'>;
 
 type RoutingConnectionRow = {
   user_id: number;
@@ -31,34 +25,12 @@ type RoutingConnectionRow = {
   last_error_code: string | null;
 };
 
-type StoredRoutingBinding = {
-  provider: RoutingAgent;
-  source: RoutingModelSource;
-  routeId: string | null;
-  routeName: string | null;
-};
-
-type RoutingBindingWrite = {
-  source: RoutingModelSource;
-  routeId?: string | null;
-  routeName?: string | null;
-};
-
 type RoutingBindingRow = {
   provider: RoutingAgent;
-  source: RoutingModelSource;
+  source: RoutingStoredBinding['source'];
   route_id: string | null;
   route_name: string | null;
 };
-
-type StoredRoutingAlert = {
-  period: RoutingUsageAlertPeriod;
-  thresholdMicrousd: number;
-  enabled: boolean;
-  lastNotifiedPeriodKey: string | null;
-};
-
-type RoutingAlertWrite = Omit<StoredRoutingAlert, 'lastNotifiedPeriodKey'>;
 
 type RoutingAlertRow = {
   period: RoutingUsageAlertPeriod;
@@ -95,7 +67,7 @@ function normalizeCapabilities(value: string | null): RoutingCapabilities | null
   }
 }
 
-function normalizeConnection(row: RoutingConnectionRow | undefined): StoredRoutingConnection | null {
+function normalizeConnection(row: RoutingConnectionRow | undefined): RoutingStoredConnection | null {
   if (!row) {
     return null;
   }
@@ -112,7 +84,7 @@ function normalizeConnection(row: RoutingConnectionRow | undefined): StoredRouti
   };
 }
 
-function normalizeBinding(row: RoutingBindingRow | undefined): StoredRoutingBinding | null {
+function normalizeBinding(row: RoutingBindingRow | undefined): RoutingStoredBinding | null {
   if (!row) {
     return null;
   }
@@ -125,7 +97,7 @@ function normalizeBinding(row: RoutingBindingRow | undefined): StoredRoutingBind
   };
 }
 
-function normalizeAlert(row: RoutingAlertRow): StoredRoutingAlert {
+function normalizeAlert(row: RoutingAlertRow): RoutingStoredAlert {
   return {
     period: row.period,
     thresholdMicrousd: row.threshold_microusd,
@@ -134,7 +106,7 @@ function normalizeAlert(row: RoutingAlertRow): StoredRoutingAlert {
   };
 }
 
-function normalizedRouteFields(binding: RoutingBindingWrite): {
+function normalizedRouteFields(binding: RoutingBindingPersistenceInput): {
   routeId: string | null;
   routeName: string | null;
 } {
@@ -157,8 +129,8 @@ function assertIntegerMicrousd(value: number): void {
  * Used by the routing application module to persist encrypted connection metadata,
  * sticky provider/session bindings, and advisory usage alert settings per user.
  */
-export const routingDb = {
-  getConnection(userId: number): StoredRoutingConnection | null {
+export const routingDb: RoutingRepository = {
+  getConnection(userId: number): RoutingStoredConnection | null {
     const row = getConnection()
       .prepare(
         `SELECT user_id, base_url, admin_secret_ciphertext, data_plane_key_ciphertext,
@@ -170,7 +142,7 @@ export const routingDb = {
     return normalizeConnection(row);
   },
 
-  upsertConnection(userId: number, connection: RoutingConnectionWrite): void {
+  upsertConnection(userId: number, connection: RoutingConnectionPersistenceInput): void {
     getConnection()
       .prepare(
         `INSERT INTO routing_connections (
@@ -215,7 +187,7 @@ export const routingDb = {
     return rows.map((row) => row.user_id);
   },
 
-  getProviderDefaults(userId: number): StoredRoutingBinding[] {
+  getProviderDefaults(userId: number): RoutingStoredBinding[] {
     const rows = getConnection()
       .prepare(
         `SELECT provider, source, route_id, route_name
@@ -224,10 +196,10 @@ export const routingDb = {
          ORDER BY provider`,
       )
       .all(userId) as RoutingBindingRow[];
-    return rows.map((row) => normalizeBinding(row) as StoredRoutingBinding);
+    return rows.map((row) => normalizeBinding(row) as RoutingStoredBinding);
   },
 
-  getProviderDefault(userId: number, provider: RoutingAgent): StoredRoutingBinding | null {
+  getProviderDefault(userId: number, provider: RoutingAgent): RoutingStoredBinding | null {
     const row = getConnection()
       .prepare(
         `SELECT provider, source, route_id, route_name
@@ -241,7 +213,7 @@ export const routingDb = {
   setProviderDefault(
     userId: number,
     provider: RoutingAgent,
-    binding: RoutingBindingWrite,
+    binding: RoutingBindingPersistenceInput,
   ): void {
     const route = normalizedRouteFields(binding);
     getConnection()
@@ -262,7 +234,7 @@ export const routingDb = {
     userId: number,
     sessionId: string,
     provider: RoutingAgent,
-  ): StoredRoutingBinding {
+  ): RoutingStoredBinding {
     const db = getConnection();
     return db.transaction(() => {
       const current = db
@@ -308,7 +280,7 @@ export const routingDb = {
     })();
   },
 
-  getSessionBinding(userId: number, sessionId: string): StoredRoutingBinding | null {
+  getSessionBinding(userId: number, sessionId: string): RoutingStoredBinding | null {
     const row = getConnection()
       .prepare(
         `SELECT provider, source, route_id, route_name
@@ -330,7 +302,7 @@ export const routingDb = {
       .run(userId, sessionId);
   },
 
-  listAlerts(userId: number): StoredRoutingAlert[] {
+  listAlerts(userId: number): RoutingStoredAlert[] {
     const rows = getConnection()
       .prepare(
         `SELECT period, threshold_microusd, enabled, last_notified_period_key
@@ -342,7 +314,10 @@ export const routingDb = {
     return rows.map(normalizeAlert);
   },
 
-  upsertAlert(userId: number, alert: RoutingAlertWrite): void {
+  upsertAlert(
+    userId: number,
+    alert: Omit<RoutingStoredAlert, 'lastNotifiedPeriodKey'>,
+  ): void {
     assertIntegerMicrousd(alert.thresholdMicrousd);
     getConnection()
       .prepare(

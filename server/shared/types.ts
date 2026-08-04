@@ -1,6 +1,14 @@
 import type { IncomingMessage } from 'node:http';
 import type { Readable } from 'node:stream';
 
+import type {
+  RoutingAgent,
+  RoutingCapabilities,
+  RoutingModelSource,
+  RoutingUsageAlertPeriod,
+  RoutingUsagePeriod,
+} from '../../shared/routing.js';
+
 //----------------- HTTP RESPONSE SHAPES ------------
 /**
  * Canonical success envelope used by backend APIs that return a structured payload.
@@ -67,6 +75,135 @@ export type AuthenticatedWebSocketRequest = IncomingMessage & {
  * a specific LLM integration.
  */
 export type LLMProvider = 'claude' | 'codex' | 'cursor' | 'opencode';
+
+// ---------------------------
+//----------------- ROUTING MODULE CONTRACTS ------------
+/**
+ * Server-owned model-source configuration passed to one provider runtime run.
+ *
+ * Native mode intentionally carries no router fields so existing provider
+ * authentication and environment behavior remain unchanged. Router mode holds
+ * only the data-plane values required by the selected process or SDK instance;
+ * dashboard credentials and cookies must never enter this contract.
+ */
+export type RuntimeRoutingConfiguration =
+  | { source: 'native' }
+  | {
+      source: '9router';
+      baseUrl: string;
+      openAiBaseUrl: string;
+      apiKey: string;
+      routeId: string;
+      routeName: string;
+    };
+
+/**
+ * Encrypted routing connection metadata returned by the database repository.
+ *
+ * Ciphertext values may be opened only by routing services for the owning user.
+ * They are persistence records and must never be returned from HTTP routes.
+ */
+export type RoutingStoredConnection = {
+  userId: number;
+  baseUrl: string;
+  adminSecretCiphertext: string;
+  dataPlaneKeyCiphertext: string;
+  upstreamVersion: string | null;
+  capabilities: RoutingCapabilities | null;
+  lastCheckedAt: string | null;
+  lastErrorCode: string | null;
+};
+
+/**
+ * Connection fields accepted by the database repository after remote
+ * validation and encryption have succeeded.
+ */
+export type RoutingConnectionPersistenceInput = Omit<RoutingStoredConnection, 'userId'>;
+
+/**
+ * Provider-default or sticky session model-source record stored by CloudCLI.
+ * Route IDs are authoritative while route names are display-only snapshots.
+ */
+export type RoutingStoredBinding = {
+  provider: RoutingAgent;
+  source: RoutingModelSource;
+  routeId: string | null;
+  routeName: string | null;
+};
+
+/**
+ * Binding fields accepted by the repository. Native writes clear route fields;
+ * routing services validate 9router IDs before persistence.
+ */
+export type RoutingBindingPersistenceInput = {
+  source: RoutingModelSource;
+  routeId?: string | null;
+  routeName?: string | null;
+};
+
+/**
+ * Advisory usage threshold record stored per user and period. Monetary values
+ * are integer micro-USD so comparisons never depend on floating-point money.
+ */
+export type RoutingStoredAlert = {
+  period: RoutingUsageAlertPeriod;
+  thresholdMicrousd: number;
+  enabled: boolean;
+  lastNotifiedPeriodKey: string | null;
+};
+
+/**
+ * Complete persistence boundary consumed by routing application/runtime
+ * services and implemented by the database module's `routingDb` repository.
+ */
+export type RoutingRepository = {
+  getConnection(userId: number): RoutingStoredConnection | null;
+  upsertConnection(userId: number, connection: RoutingConnectionPersistenceInput): void;
+  deleteConnectionAndSettings(userId: number): void;
+  listConnectionUserIds(): number[];
+  getProviderDefaults(userId: number): RoutingStoredBinding[];
+  getProviderDefault(userId: number, provider: RoutingAgent): RoutingStoredBinding | null;
+  setProviderDefault(
+    userId: number,
+    provider: RoutingAgent,
+    binding: RoutingBindingPersistenceInput,
+  ): void;
+  snapshotSessionBinding(
+    userId: number,
+    sessionId: string,
+    provider: RoutingAgent,
+  ): RoutingStoredBinding;
+  getSessionBinding(userId: number, sessionId: string): RoutingStoredBinding | null;
+  deleteSessionBinding(userId: number, sessionId: string): void;
+  listAlerts(userId: number): RoutingStoredAlert[];
+  upsertAlert(
+    userId: number,
+    alert: Omit<RoutingStoredAlert, 'lastNotifiedPeriodKey'>,
+  ): void;
+  markAlertNotified(userId: number, period: RoutingUsageAlertPeriod, periodKey: string): void;
+};
+
+/**
+ * Decrypted credentials supplied only while constructing an in-memory
+ * NineRouterClient. Callers must not log, persist, or serialize this value.
+ */
+export type RoutingClientCredentials = {
+  baseUrl: string;
+  adminPassword: string;
+  dataPlaneKey: string;
+};
+
+/**
+ * Optional detail expansions accepted by the aggregate routing settings read.
+ * Summary counts remain available without these flags; large account, model,
+ * route, and usage arrays are included only when explicitly requested.
+ */
+export type RoutingSettingsDetails = {
+  accounts?: boolean;
+  models?: boolean;
+  routes?: boolean;
+  usage?: RoutingUsagePeriod;
+};
 
 /**
  * One selectable model row in a provider model catalog.

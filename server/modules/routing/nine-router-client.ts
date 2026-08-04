@@ -1,3 +1,4 @@
+import type { IRoutingNineRouterClient } from '@/shared/interfaces.js';
 import { AppError } from '@/shared/utils.js';
 
 import type {
@@ -297,7 +298,7 @@ function sanitizedRouteUpdate(input: UpdateRoutingRouteInput): Record<string, un
  * management and data-plane APIs. It owns in-memory dashboard cookies, version
  * gates, response validation, safe DTO mapping, and GET-only auth refresh.
  */
-export class NineRouterClient {
+export class NineRouterClient implements IRoutingNineRouterClient {
   private readonly baseUrl: string;
   private readonly adminPassword: string;
   private readonly dataPlaneKey: string;
