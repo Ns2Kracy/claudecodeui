@@ -168,6 +168,25 @@ test('mutation state disables only the active operation and stores safe errors',
   });
   assert.equal(failed.activeMutation, null);
   assert.deepEqual(failed.error, safeError);
+  assert.equal(failed.errorContext, 'mutation');
+});
+
+test('detail failures are identified separately so one inline retry state owns the error', () => {
+  const failed = routingStateReducer(createInitialRoutingState(), {
+    type: 'detailsFailed',
+    keys: ['accounts', 'models'],
+    error: safeError,
+  });
+
+  assert.equal(failed.errorContext, 'details');
+  assert.equal(failed.detailStatus.accounts, 'error');
+  assert.equal(failed.detailStatus.models, 'error');
+
+  const mutationStarted = routingStateReducer(failed, {
+    type: 'mutationStarted',
+    key: 'account:create',
+  });
+  assert.equal(mutationStarted.errorContext, null);
 });
 
 test('successful connection mutation clears secrets while failure preserves user input', () => {

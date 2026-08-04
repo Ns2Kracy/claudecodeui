@@ -20,6 +20,7 @@ export type RoutingDetailKey =
   | `usage:${RoutingUsagePeriod}`;
 
 export type RoutingDetailStatus = 'loading' | 'loaded' | 'error';
+export type RoutingErrorContext = 'load' | 'details' | 'mutation';
 
 export type RoutingRequestToken = {
   epoch: number;
@@ -30,6 +31,7 @@ export type RoutingState = {
   settings: RoutingSettingsView;
   loading: boolean;
   error: RoutingUiError | null;
+  errorContext: RoutingErrorContext | null;
   activeMutation: string | null;
   detailStatus: Partial<Record<RoutingDetailKey, RoutingDetailStatus>>;
   usageByPeriod: Partial<Record<RoutingUsagePeriod, RoutingUsageView>>;
@@ -62,6 +64,7 @@ export function createInitialRoutingState(): RoutingState {
     settings: emptyRoutingSettingsView(),
     loading: true,
     error: null,
+    errorContext: null,
     activeMutation: null,
     detailStatus: {},
     usageByPeriod: {},
@@ -183,13 +186,14 @@ export function routingStateReducer(
 ): RoutingState {
   switch (action.type) {
     case 'loadStarted':
-      return { ...state, loading: true, error: null };
+      return { ...state, loading: true, error: null, errorContext: null };
     case 'loadSucceeded':
       return {
         ...state,
         settings: mergeSettings(state.settings, action.settings),
         loading: false,
         error: null,
+        errorContext: null,
         usageByPeriod: action.settings.usage
           ? {
               ...state.usageByPeriod,
@@ -198,11 +202,12 @@ export function routingStateReducer(
           : state.usageByPeriod,
       };
     case 'loadFailed':
-      return { ...state, loading: false, error: action.error };
+      return { ...state, loading: false, error: action.error, errorContext: 'load' };
     case 'detailsStarted':
       return {
         ...state,
         error: null,
+        errorContext: null,
         detailStatus: statusesFor(state.detailStatus, action.keys, 'loading'),
       };
     case 'detailsSucceeded':
@@ -210,6 +215,7 @@ export function routingStateReducer(
         ...state,
         settings: mergeSettings(state.settings, action.settings),
         error: null,
+        errorContext: null,
         detailStatus: statusesFor(state.detailStatus, action.keys, 'loaded'),
         usageByPeriod: action.settings.usage
           ? {
@@ -222,6 +228,7 @@ export function routingStateReducer(
       return {
         ...state,
         error: action.error,
+        errorContext: 'details',
         detailStatus: statusesFor(state.detailStatus, action.keys, 'error'),
       };
     case 'detailsReset':
@@ -245,13 +252,25 @@ export function routingStateReducer(
       };
     }
     case 'mutationStarted':
-      return { ...state, activeMutation: action.key, error: null };
+      return { ...state, activeMutation: action.key, error: null, errorContext: null };
     case 'mutationSucceeded':
-      return { ...state, loading: false, activeMutation: null, error: null };
+      return {
+        ...state,
+        loading: false,
+        activeMutation: null,
+        error: null,
+        errorContext: null,
+      };
     case 'mutationFailed':
-      return { ...state, loading: false, activeMutation: null, error: action.error };
+      return {
+        ...state,
+        loading: false,
+        activeMutation: null,
+        error: action.error,
+        errorContext: 'mutation',
+      };
     case 'clearError':
-      return { ...state, error: null };
+      return { ...state, error: null, errorContext: null };
     default:
       return state;
   }
