@@ -736,6 +736,60 @@
         "boundWarning": "This route is selected by an agent. Switch that agent to Native login or another route to avoid failed sessions.",
         "unavailable": "Route details are unavailable for this 9Router version."
       }
+    },
+    "usage": {
+      "title": "Usage & limits",
+      "description": "Review 9Router usage estimates and configure optional advisory thresholds.",
+      "dashboard": {
+        "title": "Usage estimate",
+        "estimate": "Values are reported by 9Router and may differ from provider billing."
+      },
+      "connectFirst": "Connect 9Router to view usage and configure advisory limits.",
+      "unavailable": "This 9Router version does not expose compatible usage data.",
+      "periodLabel": "Usage period",
+      "periods": {
+        "today": "Today",
+        "7d": "7 days",
+        "30d": "30 days"
+      },
+      "actions": {
+        "refresh": "Refresh",
+        "retry": "Retry",
+        "save": "Save",
+        "saving": "Saving..."
+      },
+      "loading": "Loading 9Router usage...",
+      "loadFailed": "Could not load 9Router usage.",
+      "empty": "No usage recorded for this period.",
+      "stale": "9Router returned a cached snapshot. Advisory alerts are paused until fresh usage is available.",
+      "metrics": {
+        "requests": "Requests",
+        "promptTokens": "Prompt tokens",
+        "completionTokens": "Completion tokens",
+        "estimatedCost": "Estimated cost"
+      },
+      "providers": {
+        "title": "Provider distribution",
+        "basis": {
+          "cost": "By estimated cost",
+          "requests": "By requests"
+        },
+        "requests": "{{formattedCount}} requests",
+        "share": "{{provider}} usage share",
+        "empty": "No provider distribution is available for this period."
+      },
+      "alerts": {
+        "title": "Advisory alerts",
+        "description": "Notify through your existing notification channels after fresh usage reaches a threshold.",
+        "periods": {
+          "daily": "Daily threshold",
+          "30d": "Rolling 30-day threshold"
+        },
+        "thresholdHelp": "Enter a non-negative USD amount with up to six decimal places.",
+        "invalidThreshold": "Enter a non-negative USD amount with no more than six decimal places.",
+        "toggle": "Enable {{period}}",
+        "advisory": "Advisory only. 9Router remains the billing authority, and CloudCLI does not block requests or enforce spend limits."
+      }
     }
   }
 }

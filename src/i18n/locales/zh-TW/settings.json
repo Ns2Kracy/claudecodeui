@@ -639,6 +639,60 @@
         "boundWarning": "某個代理程式已選擇此路由。請先將該代理程式切換至原生登入或其他路由，以免新工作階段失敗。",
         "unavailable": "此 9Router 版本無法提供路由詳細資料。"
       }
+    },
+    "usage": {
+      "title": "用量與限額",
+      "description": "查看 9Router 用量估算，並設定可選的提醒門檻。",
+      "dashboard": {
+        "title": "用量估算",
+        "estimate": "資料由 9Router 提供，可能與上游服務商帳單不同。"
+      },
+      "connectFirst": "連線 9Router 後即可查看用量並設定提醒限額。",
+      "unavailable": "此 9Router 版本未提供相容的用量資料。",
+      "periodLabel": "用量週期",
+      "periods": {
+        "today": "今天",
+        "7d": "7 天",
+        "30d": "30 天"
+      },
+      "actions": {
+        "refresh": "重新整理",
+        "retry": "重試",
+        "save": "儲存",
+        "saving": "儲存中…"
+      },
+      "loading": "正在載入 9Router 用量…",
+      "loadFailed": "無法載入 9Router 用量。",
+      "empty": "此週期沒有用量紀錄。",
+      "stale": "9Router 傳回了快取快照。取得最新用量前，提醒將暫停。",
+      "metrics": {
+        "requests": "請求數",
+        "promptTokens": "提示詞元",
+        "completionTokens": "補全詞元",
+        "estimatedCost": "預估費用"
+      },
+      "providers": {
+        "title": "服務商分布",
+        "basis": {
+          "cost": "按預估費用",
+          "requests": "按請求數"
+        },
+        "requests": "{{formattedCount}} 次請求",
+        "share": "{{provider}} 用量占比",
+        "empty": "此週期沒有服務商分布資料。"
+      },
+      "alerts": {
+        "title": "提醒門檻",
+        "description": "最新用量達到門檻後，透過你現有的通知管道傳送提醒。",
+        "periods": {
+          "daily": "每日門檻",
+          "30d": "滾動 30 天門檻"
+        },
+        "thresholdHelp": "請輸入非負美元金額，最多六位小數。",
+        "invalidThreshold": "請輸入非負美元金額，且小數位不超過六位。",
+        "toggle": "啟用{{period}}",
+        "advisory": "僅作提醒。9Router 仍是計費依據，CloudCLI 不會阻擋請求或強制執行支出上限。"
+      }
     }
   }
 }

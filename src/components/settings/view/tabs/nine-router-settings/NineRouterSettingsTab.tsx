@@ -7,9 +7,13 @@ import type {
   CreateRoutingRouteInput,
   RoutingAgent,
   RoutingSettingsView,
+  RoutingUsageAlertPeriod,
+  RoutingUsagePeriod,
+  RoutingUsageView,
   UpdateRoutingAccountInput,
   UpdateRoutingBindingInput,
   UpdateRoutingRouteInput,
+  UpdateRoutingUsageAlertInput,
 } from '../../../../../../shared/routing.js';
 import { Alert, AlertDescription, AlertTitle } from '../../../../../shared/view/ui';
 
@@ -24,6 +28,7 @@ import {
   upstreamDetailsState,
 } from './routingState.js';
 import UpstreamsRoutesSection from './UpstreamsRoutesSection.js';
+import UsageLimitsSection from './UsageLimitsSection.js';
 import { useNineRouterSettings } from './useNineRouterSettings.js';
 
 export type NineRouterSettingsTabViewProps = {
@@ -58,6 +63,16 @@ export type NineRouterSettingsTabViewProps = {
   onCreateRoute: (input: CreateRoutingRouteInput) => Promise<boolean>;
   onUpdateRoute: (id: string, input: UpdateRoutingRouteInput) => Promise<boolean>;
   onDeleteRoute: (id: string) => Promise<boolean>;
+  usage: RoutingUsageView | null;
+  usagePeriod: RoutingUsagePeriod;
+  usageLoading?: boolean;
+  usageError?: boolean;
+  onUsagePeriodChange: (period: RoutingUsagePeriod) => void;
+  onRetryUsage: () => void;
+  onSetUsageAlert: (
+    period: RoutingUsageAlertPeriod,
+    input: UpdateRoutingUsageAlertInput,
+  ) => Promise<boolean>;
 };
 
 function errorCode(
@@ -96,6 +111,13 @@ export function NineRouterSettingsTabView({
   onCreateRoute,
   onUpdateRoute,
   onDeleteRoute,
+  usage,
+  usagePeriod,
+  usageLoading = false,
+  usageError = false,
+  onUsagePeriodChange,
+  onRetryUsage,
+  onSetUsageAlert,
 }: NineRouterSettingsTabViewProps) {
   const { t } = useTranslation('settings');
   const code = errorCode(settings, error).toUpperCase();
@@ -105,7 +127,7 @@ export function NineRouterSettingsTabView({
   const incompatible = code.includes('VERSION') || code.includes('CAPABILITY');
   const offline = settings.connection.status === 'offline';
   const detailErrorOwnsMessage = errorContext === 'details'
-    && (routesError || upstreamDetailsError);
+    && (routesError || upstreamDetailsError || usageError);
   const showRouteError = routesError && !unauthorized && !incompatible && !offline;
   const secureStorageUnavailable = !loading && !settings.connection.secureStorageAvailable;
   const knownStateError = unauthorized || incompatible || offline || detailErrorOwnsMessage;
@@ -228,20 +250,41 @@ export function NineRouterSettingsTabView({
         onUpdateRoute={onUpdateRoute}
         onDeleteRoute={onDeleteRoute}
       />
+
+      <UsageLimitsSection
+        configured={settings.connection.configured}
+        canReadUsage={settings.connection.capabilities.readUsage}
+        usage={usage}
+        usagePeriod={usagePeriod}
+        usageAlerts={settings.usageAlerts}
+        loading={usageLoading}
+        detailsError={usageError}
+        activeMutation={activeMutation}
+        onPeriodChange={onUsagePeriodChange}
+        onRetry={onRetryUsage}
+        onSetAlert={onSetUsageAlert}
+      />
     </div>
   );
 }
 
 export default function NineRouterSettingsTab() {
   const controller = useNineRouterSettings();
-  const { ensureRouteDetails } = controller;
+  const { ensureRouteDetails, ensureUsage, usagePeriod } = controller;
   const upstreamDetails = upstreamDetailsState(controller.detailStatus);
   const canReadRoutes = controller.settings.connection.configured
     && controller.settings.connection.capabilities.readRoutes;
+  const canReadUsage = controller.settings.connection.configured
+    && controller.settings.connection.capabilities.readUsage;
+  const usageDetailKey = `usage:${usagePeriod}` as const;
 
   useEffect(() => {
     if (canReadRoutes) void ensureRouteDetails();
   }, [canReadRoutes, ensureRouteDetails]);
+
+  useEffect(() => {
+    if (canReadUsage) void ensureUsage(usagePeriod);
+  }, [canReadUsage, ensureUsage, usagePeriod]);
 
   return (
     <NineRouterSettingsTabView
@@ -275,6 +318,15 @@ export default function NineRouterSettingsTab() {
       onCreateRoute={async (input) => Boolean(await controller.createRoute(input))}
       onUpdateRoute={async (id, input) => Boolean(await controller.updateRoute(id, input))}
       onDeleteRoute={async (id) => Boolean(await controller.deleteRoute(id))}
+      usage={controller.usage}
+      usagePeriod={usagePeriod}
+      usageLoading={controller.detailStatus[usageDetailKey] === 'loading'}
+      usageError={controller.detailStatus[usageDetailKey] === 'error'}
+      onUsagePeriodChange={(period) => { void controller.setUsagePeriod(period); }}
+      onRetryUsage={() => { void controller.retryUsage(usagePeriod); }}
+      onSetUsageAlert={async (period, input) => Boolean(
+        await controller.setUsageAlert(period, input),
+      )}
     />
   );
 }

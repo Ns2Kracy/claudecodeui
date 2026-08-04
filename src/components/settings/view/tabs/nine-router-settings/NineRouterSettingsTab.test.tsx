@@ -69,6 +69,11 @@ async function renderRoutingView(
       onCreateRoute: async () => true,
       onUpdateRoute: async () => true,
       onDeleteRoute: async () => true,
+      usage: null,
+      usagePeriod: 'today',
+      onUsagePeriodChange: () => {},
+      onRetryUsage: () => {},
+      onSetUsageAlert: async () => true,
     }),
   ));
 }
@@ -128,6 +133,8 @@ test('connected state never renders secrets and keeps agents separate from model
   assert.match(markup, /Codex/);
   assert.match(markup, /OpenCode/);
   assert.match(markup, /Cursor is native-only/);
+  assert.match(markup, /Usage &amp; limits/);
+  assert.match(markup, /Advisory alerts/);
   assert.equal(markup.includes('role="tablist"'), false);
 });
 

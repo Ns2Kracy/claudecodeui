@@ -726,6 +726,60 @@
         "boundWarning": "某个智能体已选择此路由。请先将该智能体切换到原生登录或其他路由，以免新会话失败。",
         "unavailable": "此 9Router 版本无法提供路由详情。"
       }
+    },
+    "usage": {
+      "title": "用量与限额",
+      "description": "查看 9Router 用量估算，并配置可选的提醒阈值。",
+      "dashboard": {
+        "title": "用量估算",
+        "estimate": "数据由 9Router 提供，可能与上游服务商账单存在差异。"
+      },
+      "connectFirst": "连接 9Router 后即可查看用量并配置提醒限额。",
+      "unavailable": "此 9Router 版本未提供兼容的用量数据。",
+      "periodLabel": "用量周期",
+      "periods": {
+        "today": "今天",
+        "7d": "7 天",
+        "30d": "30 天"
+      },
+      "actions": {
+        "refresh": "刷新",
+        "retry": "重试",
+        "save": "保存",
+        "saving": "保存中…"
+      },
+      "loading": "正在加载 9Router 用量…",
+      "loadFailed": "无法加载 9Router 用量。",
+      "empty": "此周期暂无用量记录。",
+      "stale": "9Router 返回了缓存快照。获得最新用量前，提醒将暂停。",
+      "metrics": {
+        "requests": "请求数",
+        "promptTokens": "提示词元",
+        "completionTokens": "补全词元",
+        "estimatedCost": "预估费用"
+      },
+      "providers": {
+        "title": "服务商分布",
+        "basis": {
+          "cost": "按预估费用",
+          "requests": "按请求数"
+        },
+        "requests": "{{formattedCount}} 次请求",
+        "share": "{{provider}} 用量占比",
+        "empty": "此周期暂无服务商分布数据。"
+      },
+      "alerts": {
+        "title": "提醒阈值",
+        "description": "最新用量达到阈值后，通过你现有的通知渠道发送提醒。",
+        "periods": {
+          "daily": "每日阈值",
+          "30d": "滚动 30 天阈值"
+        },
+        "thresholdHelp": "请输入非负美元金额，最多六位小数。",
+        "invalidThreshold": "请输入非负美元金额，且小数位不超过六位。",
+        "toggle": "启用{{period}}",
+        "advisory": "仅作提醒。9Router 仍是计费依据，CloudCLI 不会阻止请求或强制执行支出上限。"
+      }
     }
   }
 }
