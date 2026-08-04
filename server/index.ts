@@ -15,6 +15,7 @@ import {
     initializeSessionsWatcher,
     providerRuntimeService,
 } from '@/modules/providers/index.js';
+import { routingRoutes } from '@/modules/routing/index.js';
 import { createWebSocketServer } from '@/modules/websocket/index.js';
 
 import { getConnectableHost } from '../shared/networkHosts.js';
@@ -172,6 +173,9 @@ app.use('/api/commands', authenticateToken, commandsRoutes);
 
 // Settings API Routes (protected)
 app.use('/api/settings', authenticateToken, settingsRoutes);
+
+// Optional 9router model-source API (protected)
+app.use('/api/routing', authenticateToken, routingRoutes);
 
 app.use('/api/system', authenticateToken, systemRoutes);
 

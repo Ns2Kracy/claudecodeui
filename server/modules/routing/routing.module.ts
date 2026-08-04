@@ -1,9 +1,8 @@
-import { Router } from 'express';
-
 import { routingDb } from '@/modules/database/index.js';
 
 import { NineRouterClient } from './nine-router-client.js';
 import { requestNineRouterJson } from './nine-router-http.js';
+import { createRoutingRouter } from './routing.routes.js';
 import { createRoutingRuntimeService } from './routing-runtime.service.js';
 import { createRoutingSecretStore } from './routing-secret-store.js';
 import { createRoutingService } from './routing.service.js';
@@ -35,8 +34,8 @@ export const routingRuntimeService = createRoutingRuntimeService({
   clientFactory,
 });
 
-/** Used by the server composition root; Task 8 replaces this empty router with protected routes. */
-export const routingRoutes = Router();
+/** Used by the server composition root to mount the protected routing API. */
+export const routingRoutes = createRoutingRouter(routingService);
 
 /** Used by server startup; Task 14 supplies the explicit advisory-usage monitor lifecycle. */
 export function startRoutingUsageMonitor(): void {}
