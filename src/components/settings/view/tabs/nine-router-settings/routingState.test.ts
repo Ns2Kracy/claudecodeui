@@ -6,6 +6,7 @@ import { emptyRoutingSettingsView } from '../../../../../../shared/routing.js';
 import {
   accountDraftAfterMutation,
   connectionDraftAfterMutation,
+  connectionDraftAfterCancel,
   createInitialRoutingState,
   createRoutingRequestCoordinator,
   routingStateReducer,
@@ -193,5 +194,13 @@ test('successful connection mutation clears secrets while failure preserves user
   assert.deepEqual(accountDraftAfterMutation(accountDraft, true), {
     ...accountDraft,
     apiKey: '',
+  });
+});
+
+test('canceling a connection edit restores the persisted endpoint and clears secrets', () => {
+  assert.deepEqual(connectionDraftAfterCancel('https://saved-router.example'), {
+    baseUrl: 'https://saved-router.example',
+    adminPassword: '',
+    dataPlaneKey: '',
   });
 });

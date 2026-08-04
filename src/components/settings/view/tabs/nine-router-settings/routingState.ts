@@ -158,6 +158,17 @@ export function connectionDraftAfterMutation(
   };
 }
 
+/** Discards an abandoned endpoint edit and removes all write-only input. */
+export function connectionDraftAfterCancel(
+  savedBaseUrl?: string | null,
+): RoutingConnectionDraft {
+  return {
+    baseUrl: savedBaseUrl ?? '',
+    adminPassword: '',
+    dataPlaneKey: '',
+  };
+}
+
 /** Clears only the write-only account key after a successful create operation. */
 export function accountDraftAfterMutation(
   draft: RoutingAccountDraft,

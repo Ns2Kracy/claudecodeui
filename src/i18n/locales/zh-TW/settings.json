@@ -94,7 +94,8 @@
     "computer": "電腦使用",
     "notifications": "通知",
     "plugins": "外掛",
-    "about": "關於"
+    "about": "關於",
+    "routing": "9Router"
   },
   "notifications": {
     "title": "通知",
@@ -481,5 +482,87 @@
     "installAriaLabel": "外掛 git 儲存庫 URL",
     "tab": "分頁",
     "runningStatus": "執行中"
+  },
+  "nineRouter": {
+    "title": "9Router",
+    "description": "可選擇透過您自己的 9Router 服務執行新的 Claude、Codex 和 OpenCode 工作階段。",
+    "loading": "正在載入 9Router 設定...",
+    "preservation": {
+      "title": "原生代理程式存取保持不變",
+      "nativeLogin": "原生 OAuth、訂閱、API 金鑰和 CLI 憑證仍然可用且不會改變。中斷 9Router 不會登出任何代理程式。",
+      "usageAdvisory": "用量提醒僅供參考。路由失敗會明確顯示，絕不會靜默退回原生憑證。"
+    },
+    "alerts": {
+      "secureStorage": {
+        "title": "安全儲存空間無法使用",
+        "description": "請先在伺服器設定有效的 CLOUDCLI_ROUTING_SECRET_KEY，再儲存唯寫的 9Router 憑證。"
+      },
+      "offline": {
+        "title": "9Router 已離線",
+        "description": "CloudCLI 無法連線至設定的端點。原生代理程式登入仍然可用。"
+      },
+      "unauthorized": {
+        "title": "9Router 憑證遭到拒絕",
+        "description": "請檢查管理員密碼和資料平面 API 金鑰。現有原生代理程式憑證未被更改。"
+      },
+      "incompatible": {
+        "title": "此 9Router 版本的相容性有限",
+        "description": "僅啟用此版本明確回報的功能。CloudCLI 不會猜測不受支援的管理 API。"
+      },
+      "operation": {
+        "title": "9Router 操作失敗"
+      }
+    },
+    "connection": {
+      "title": "連線",
+      "description": "所有瀏覽器請求都保留在 CloudCLI 同源服務中，由伺服器連線至已核准的 9Router 來源。",
+      "endpoint": "端點",
+      "endpointHelp": "遠端位址必須使用 HTTPS。回送 HTTP 需要伺服器部署明確啟用。",
+      "adminPassword": "管理員密碼",
+      "dataPlaneKey": "資料平面 API 金鑰",
+      "configured": "已設定",
+      "keepConfigured": "留空以保留現有設定",
+      "writeOnlyHelp": "憑證為唯寫。儲存的值由伺服器加密，絕不會傳回此頁面。",
+      "version": "版本",
+      "lastChecked": "上次檢查",
+      "unknown": "未知",
+      "never": "從未",
+      "status": {
+        "disconnected": "未連線",
+        "checking": "檢查中",
+        "connected": "已連線",
+        "degraded": "部分可用",
+        "offline": "離線"
+      },
+      "actions": {
+        "connect": "測試並連線",
+        "connecting": "正在測試並連線...",
+        "test": "測試",
+        "edit": "編輯",
+        "cancelEdit": "取消編輯",
+        "save": "儲存連線",
+        "disconnect": "中斷連線"
+      }
+    },
+    "modelSource": {
+      "title": "模型來源",
+      "description": "為新工作階段選擇預設來源。現有工作階段保留建立時記錄的來源。",
+      "agents": {
+        "claude": "Claude",
+        "codex": "Codex",
+        "cursor": "Cursor",
+        "opencode": "OpenCode"
+      },
+      "native": "原生登入",
+      "router": "9Router",
+      "route": "路由",
+      "nativePreserved": "原生登入保持已設定狀態，可隨時重新選擇。",
+      "cursorUnsupported": "此版本的 Cursor 僅支援原生執行，其登入和執行階段保持不變。",
+      "loadingRoutes": "正在載入可用路由...",
+      "noRoutes": "請先在 9Router 中建立路由，再將其選為模型來源。",
+      "routeLoadFailed": "無法載入 9Router 路由。",
+      "retryRoutes": "重試",
+      "noFallback": "不會靜默退回：路由執行失敗時，CloudCLI 會回報失敗，而不會使用原生憑證。"
+    }
   }
 }

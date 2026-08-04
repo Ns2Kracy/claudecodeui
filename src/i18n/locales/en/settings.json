@@ -112,7 +112,8 @@
     "browser": "Browser",
     "notifications": "Notifications",
     "plugins": "Plugins",
-    "about": "About"
+    "about": "About",
+    "routing": "9Router"
   },
   "notifications": {
     "title": "Notifications",
@@ -574,5 +575,87 @@
     "installAriaLabel": "Plugin git repository URL",
     "tab": "tab",
     "runningStatus": "running"
+  },
+  "nineRouter": {
+    "title": "9Router",
+    "description": "Optionally route new Claude, Codex, and OpenCode sessions through your own 9Router service.",
+    "loading": "Loading 9Router settings...",
+    "preservation": {
+      "title": "Native agent access stays intact",
+      "nativeLogin": "Native OAuth, subscriptions, API keys, and CLI credentials remain available and unchanged. Disconnecting 9Router never signs an agent out.",
+      "usageAdvisory": "Usage alerts are advisory only. Routed failures are shown explicitly and never fall back silently to native credentials."
+    },
+    "alerts": {
+      "secureStorage": {
+        "title": "Secure storage is unavailable",
+        "description": "Set a valid CLOUDCLI_ROUTING_SECRET_KEY on the server before saving write-only 9Router credentials."
+      },
+      "offline": {
+        "title": "9Router is offline",
+        "description": "CloudCLI could not reach the configured endpoint. Native agent login remains available."
+      },
+      "unauthorized": {
+        "title": "9Router credentials were rejected",
+        "description": "Check the admin password and data-plane API key. Existing native agent credentials were not changed."
+      },
+      "incompatible": {
+        "title": "This 9Router version has limited compatibility",
+        "description": "Only capabilities reported by this version are enabled. CloudCLI does not guess unsupported management APIs."
+      },
+      "operation": {
+        "title": "9Router operation failed"
+      }
+    },
+    "connection": {
+      "title": "Connection",
+      "description": "All browser requests stay on CloudCLI. The server connects to the approved 9Router origin.",
+      "endpoint": "Endpoint",
+      "endpointHelp": "Use a remote HTTPS origin. Loopback HTTP requires an explicit server deployment opt-in.",
+      "adminPassword": "Admin password",
+      "dataPlaneKey": "Data-plane API key",
+      "configured": "Configured",
+      "keepConfigured": "Leave blank to keep configured",
+      "writeOnlyHelp": "Credentials are write-only. Saved values are encrypted by the server and are never returned to this page.",
+      "version": "Version",
+      "lastChecked": "Last checked",
+      "unknown": "Unknown",
+      "never": "Never",
+      "status": {
+        "disconnected": "Disconnected",
+        "checking": "Checking",
+        "connected": "Connected",
+        "degraded": "Degraded",
+        "offline": "Offline"
+      },
+      "actions": {
+        "connect": "Test and connect",
+        "connecting": "Testing and connecting...",
+        "test": "Test",
+        "edit": "Edit",
+        "cancelEdit": "Cancel edit",
+        "save": "Save connection",
+        "disconnect": "Disconnect"
+      }
+    },
+    "modelSource": {
+      "title": "Model source",
+      "description": "Choose the default source for new sessions. Existing sessions keep the source captured when they were created.",
+      "agents": {
+        "claude": "Claude",
+        "codex": "Codex",
+        "cursor": "Cursor",
+        "opencode": "OpenCode"
+      },
+      "native": "Native login",
+      "router": "9Router",
+      "route": "Route",
+      "nativePreserved": "Native login remains configured and can be selected at any time.",
+      "cursorUnsupported": "Cursor is native-only in this release. Its login and runtime are unchanged.",
+      "loadingRoutes": "Loading available routes...",
+      "noRoutes": "Create a route in 9Router before selecting it as a model source.",
+      "routeLoadFailed": "Could not load 9Router routes.",
+      "retryRoutes": "Retry",
+      "noFallback": "No silent fallback: if a routed run fails, CloudCLI reports the failure instead of using native credentials."
+    }
   }
 }

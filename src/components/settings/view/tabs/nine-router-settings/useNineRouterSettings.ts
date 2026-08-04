@@ -183,6 +183,11 @@ export function useNineRouterSettings() {
     { accounts: true, models: true, routes: true },
   ), [ensureDetails]);
 
+  const ensureRouteDetails = useCallback(() => ensureDetails(
+    ['routes'],
+    { routes: true },
+  ), [ensureDetails]);
+
   const ensureUsage = useCallback((period: RoutingUsagePeriod) => {
     setUsagePeriod(period);
     return ensureDetails([`usage:${period}`], { usage: period });
@@ -200,6 +205,11 @@ export function useNineRouterSettings() {
   const retryUpstreamDetails = useCallback(() => retryDetails(
     UPSTREAM_DETAIL_KEYS,
     { accounts: true, models: true, routes: true },
+  ), [retryDetails]);
+
+  const retryRouteDetails = useCallback(() => retryDetails(
+    ['routes'],
+    { routes: true },
   ), [retryDetails]);
 
   const retryUsage = useCallback((period: RoutingUsagePeriod) => retryDetails(
@@ -383,8 +393,10 @@ export function useNineRouterSettings() {
     setUsagePeriod: ensureUsage,
     loadSettings,
     ensureUpstreamDetails,
+    ensureRouteDetails,
     ensureUsage,
     retryUpstreamDetails,
+    retryRouteDetails,
     retryUsage,
     connect,
     validateConnection,
