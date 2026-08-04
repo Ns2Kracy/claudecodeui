@@ -588,7 +588,7 @@
     "alerts": {
       "secureStorage": {
         "title": "Secure storage is unavailable",
-        "description": "Set a valid CLOUDCLI_ROUTING_SECRET_KEY on the server before saving write-only 9Router credentials."
+        "description": "Set a valid ROUTING_SECRET_KEY on the server before saving write-only 9Router credentials."
       },
       "offline": {
         "title": "9Router is offline",

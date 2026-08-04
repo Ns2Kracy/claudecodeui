@@ -1,8 +1,8 @@
 /**
  * Auto-connect 9router from environment variables at server startup.
  *
- * When CLOUDCLI_ROUTING_BASE_URL, CLOUDCLI_ROUTING_ADMIN_PASSWORD, and
- * CLOUDCLI_ROUTING_DATA_PLANE_KEY are all set (together with the secret
+ * When ROUTING_BASE_URL, ROUTING_ADMIN_PASSWORD, and
+ * ROUTING_DATA_PLANE_KEY are all set (together with the secret
  * key), this module validates the connection against the upstream and
  * persists encrypted credentials for every existing user who does not
  * already have a 9router connection.
@@ -29,9 +29,9 @@ function readOptionalEnv(name: string): string | undefined {
 /** True when the deployment has supplied all four required env vars for provisioning. */
 export function hasAutoConnectEnv(): boolean {
   return Boolean(
-    readOptionalEnv('CLOUDCLI_ROUTING_BASE_URL')
-      && readOptionalEnv('CLOUDCLI_ROUTING_ADMIN_PASSWORD')
-      && readOptionalEnv('CLOUDCLI_ROUTING_DATA_PLANE_KEY'),
+    readOptionalEnv('ROUTING_BASE_URL')
+      && readOptionalEnv('ROUTING_ADMIN_PASSWORD')
+      && readOptionalEnv('ROUTING_DATA_PLANE_KEY'),
   );
 }
 
@@ -44,9 +44,9 @@ export function hasAutoConnectEnv(): boolean {
  * remaining users are still attempted.
  */
 export async function tryAutoConnect(dependencies: AutoConnectDependencies): Promise<void> {
-  const baseUrl = readOptionalEnv('CLOUDCLI_ROUTING_BASE_URL');
-  const adminPassword = readOptionalEnv('CLOUDCLI_ROUTING_ADMIN_PASSWORD');
-  const dataPlaneKey = readOptionalEnv('CLOUDCLI_ROUTING_DATA_PLANE_KEY');
+  const baseUrl = readOptionalEnv('ROUTING_BASE_URL');
+  const adminPassword = readOptionalEnv('ROUTING_ADMIN_PASSWORD');
+  const dataPlaneKey = readOptionalEnv('ROUTING_DATA_PLANE_KEY');
 
   if (!baseUrl || !adminPassword || !dataPlaneKey) {
     return;

@@ -88,8 +88,8 @@ test('permits loopback HTTP only with explicit deployment configuration', async 
 });
 
 test('reads loopback HTTP opt-in from the server environment', async () => {
-  const previous = process.env.CLOUDCLI_ROUTING_ALLOW_LOOPBACK_HTTP;
-  process.env.CLOUDCLI_ROUTING_ALLOW_LOOPBACK_HTTP = 'true';
+  const previous = process.env.ROUTING_ALLOW_LOOPBACK_HTTP;
+  process.env.ROUTING_ALLOW_LOOPBACK_HTTP = 'true';
   try {
     const target = await validateRoutingTarget('http://localhost:4096', {
       lookup: lookupAnswers({ address: '::1', family: 6 }),
@@ -97,9 +97,9 @@ test('reads loopback HTTP opt-in from the server environment', async () => {
     assert.equal(target.loopback, true);
   } finally {
     if (previous === undefined) {
-      delete process.env.CLOUDCLI_ROUTING_ALLOW_LOOPBACK_HTTP;
+      delete process.env.ROUTING_ALLOW_LOOPBACK_HTTP;
     } else {
-      process.env.CLOUDCLI_ROUTING_ALLOW_LOOPBACK_HTTP = previous;
+      process.env.ROUTING_ALLOW_LOOPBACK_HTTP = previous;
     }
   }
 });

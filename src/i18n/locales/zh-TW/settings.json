@@ -495,7 +495,7 @@
     "alerts": {
       "secureStorage": {
         "title": "安全儲存空間無法使用",
-        "description": "請先在伺服器設定有效的 CLOUDCLI_ROUTING_SECRET_KEY，再儲存唯寫的 9Router 憑證。"
+        "description": "請先在伺服器設定有效的 ROUTING_SECRET_KEY，再儲存唯寫的 9Router 憑證。"
       },
       "offline": {
         "title": "9Router 已離線",

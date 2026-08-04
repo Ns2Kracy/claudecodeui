@@ -58,15 +58,15 @@ function deriveKeyFromPassphrase(passphrase: string): Buffer {
 /**
  * Resolves the master key from environment variables. The lookup order is:
  *
- * 1. `CLOUDCLI_ROUTING_SECRET_KEY_FILE` — path to a file containing the key material
- * 2. `CLOUDCLI_ROUTING_SECRET_KEY` — the key material directly
+ * 1. `ROUTING_SECRET_KEY_FILE` — path to a file containing the key material
+ * 2. `ROUTING_SECRET_KEY` — the key material directly
  *
  * In both cases the material is interpreted as:
  * - A canonical 32-byte base64 key (existing exact-match behaviour), or
  * - A passphrase that is derived into a 32-byte key with PBKDF2.
  */
 export function resolveMasterKey(): Buffer | null {
-  const filePath = process.env.CLOUDCLI_ROUTING_SECRET_KEY_FILE?.trim();
+  const filePath = process.env.ROUTING_SECRET_KEY_FILE?.trim();
   let rawValue: string | undefined;
 
   if (filePath) {
@@ -79,7 +79,7 @@ export function resolveMasterKey(): Buffer | null {
   }
 
   if (!rawValue) {
-    rawValue = process.env.CLOUDCLI_ROUTING_SECRET_KEY?.trim();
+    rawValue = process.env.ROUTING_SECRET_KEY?.trim();
   }
 
   if (!rawValue) {

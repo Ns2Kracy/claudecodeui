@@ -44,74 +44,74 @@ test('accepts a passphrase and derives a stable 32-byte key via PBKDF2', () => {
 });
 
 test('resolveMasterKey parses base64 keys from the environment', () => {
-  const previousKey = process.env.CLOUDCLI_ROUTING_SECRET_KEY;
-  const previousFile = process.env.CLOUDCLI_ROUTING_SECRET_KEY_FILE;
+  const previousKey = process.env.ROUTING_SECRET_KEY;
+  const previousFile = process.env.ROUTING_SECRET_KEY_FILE;
   try {
-    process.env.CLOUDCLI_ROUTING_SECRET_KEY = validBase64Key;
-    delete process.env.CLOUDCLI_ROUTING_SECRET_KEY_FILE;
+    process.env.ROUTING_SECRET_KEY = validBase64Key;
+    delete process.env.ROUTING_SECRET_KEY_FILE;
     const key = resolveMasterKey();
     assert.ok(key);
     assert.equal(key.length, 32);
     assert.deepEqual(key, Buffer.from(validBase64Key, 'base64'));
   } finally {
-    if (previousKey === undefined) delete process.env.CLOUDCLI_ROUTING_SECRET_KEY;
-    else process.env.CLOUDCLI_ROUTING_SECRET_KEY = previousKey;
-    if (previousFile === undefined) delete process.env.CLOUDCLI_ROUTING_SECRET_KEY_FILE;
-    else process.env.CLOUDCLI_ROUTING_SECRET_KEY_FILE = previousFile;
+    if (previousKey === undefined) delete process.env.ROUTING_SECRET_KEY;
+    else process.env.ROUTING_SECRET_KEY = previousKey;
+    if (previousFile === undefined) delete process.env.ROUTING_SECRET_KEY_FILE;
+    else process.env.ROUTING_SECRET_KEY_FILE = previousFile;
   }
 });
 
 test('resolveMasterKey derives a passphrase when the value is not valid base64', () => {
-  const previousKey = process.env.CLOUDCLI_ROUTING_SECRET_KEY;
-  const previousFile = process.env.CLOUDCLI_ROUTING_SECRET_KEY_FILE;
+  const previousKey = process.env.ROUTING_SECRET_KEY;
+  const previousFile = process.env.ROUTING_SECRET_KEY_FILE;
   try {
-    process.env.CLOUDCLI_ROUTING_SECRET_KEY = 'my-deployment-passphrase';
-    delete process.env.CLOUDCLI_ROUTING_SECRET_KEY_FILE;
+    process.env.ROUTING_SECRET_KEY = 'my-deployment-passphrase';
+    delete process.env.ROUTING_SECRET_KEY_FILE;
     const key = resolveMasterKey();
     assert.ok(key);
     assert.equal(key.length, 32);
     assert.deepEqual(key, derivedKey);
   } finally {
-    if (previousKey === undefined) delete process.env.CLOUDCLI_ROUTING_SECRET_KEY;
-    else process.env.CLOUDCLI_ROUTING_SECRET_KEY = previousKey;
-    if (previousFile === undefined) delete process.env.CLOUDCLI_ROUTING_SECRET_KEY_FILE;
-    else process.env.CLOUDCLI_ROUTING_SECRET_KEY_FILE = previousFile;
+    if (previousKey === undefined) delete process.env.ROUTING_SECRET_KEY;
+    else process.env.ROUTING_SECRET_KEY = previousKey;
+    if (previousFile === undefined) delete process.env.ROUTING_SECRET_KEY_FILE;
+    else process.env.ROUTING_SECRET_KEY_FILE = previousFile;
   }
 });
 
 test('resolveMasterKey prefers _FILE over the inline env var', () => {
-  const previousKey = process.env.CLOUDCLI_ROUTING_SECRET_KEY;
-  const previousFile = process.env.CLOUDCLI_ROUTING_SECRET_KEY_FILE;
+  const previousKey = process.env.ROUTING_SECRET_KEY;
+  const previousFile = process.env.ROUTING_SECRET_KEY_FILE;
   const dir = mkdtempSync(join(tmpdir(), 'routing-key-test-'));
   const filePath = join(dir, 'secret-key');
   try {
     writeFileSync(filePath, 'my-deployment-passphrase\n', 'utf8');
-    process.env.CLOUDCLI_ROUTING_SECRET_KEY_FILE = filePath;
-    process.env.CLOUDCLI_ROUTING_SECRET_KEY = 'different-ignored-value';
+    process.env.ROUTING_SECRET_KEY_FILE = filePath;
+    process.env.ROUTING_SECRET_KEY = 'different-ignored-value';
     const key = resolveMasterKey();
     assert.ok(key);
     assert.deepEqual(key, derivedKey);
   } finally {
     rmSync(dir, { recursive: true, force: true });
-    if (previousKey === undefined) delete process.env.CLOUDCLI_ROUTING_SECRET_KEY;
-    else process.env.CLOUDCLI_ROUTING_SECRET_KEY = previousKey;
-    if (previousFile === undefined) delete process.env.CLOUDCLI_ROUTING_SECRET_KEY_FILE;
-    else process.env.CLOUDCLI_ROUTING_SECRET_KEY_FILE = previousFile;
+    if (previousKey === undefined) delete process.env.ROUTING_SECRET_KEY;
+    else process.env.ROUTING_SECRET_KEY = previousKey;
+    if (previousFile === undefined) delete process.env.ROUTING_SECRET_KEY_FILE;
+    else process.env.ROUTING_SECRET_KEY_FILE = previousFile;
   }
 });
 
 test('resolveMasterKey returns null when neither env var is set', () => {
-  const previousKey = process.env.CLOUDCLI_ROUTING_SECRET_KEY;
-  const previousFile = process.env.CLOUDCLI_ROUTING_SECRET_KEY_FILE;
+  const previousKey = process.env.ROUTING_SECRET_KEY;
+  const previousFile = process.env.ROUTING_SECRET_KEY_FILE;
   try {
-    delete process.env.CLOUDCLI_ROUTING_SECRET_KEY;
-    delete process.env.CLOUDCLI_ROUTING_SECRET_KEY_FILE;
+    delete process.env.ROUTING_SECRET_KEY;
+    delete process.env.ROUTING_SECRET_KEY_FILE;
     assert.equal(resolveMasterKey(), null);
   } finally {
-    if (previousKey === undefined) delete process.env.CLOUDCLI_ROUTING_SECRET_KEY;
-    else process.env.CLOUDCLI_ROUTING_SECRET_KEY = previousKey;
-    if (previousFile === undefined) delete process.env.CLOUDCLI_ROUTING_SECRET_KEY_FILE;
-    else process.env.CLOUDCLI_ROUTING_SECRET_KEY_FILE = previousFile;
+    if (previousKey === undefined) delete process.env.ROUTING_SECRET_KEY;
+    else process.env.ROUTING_SECRET_KEY = previousKey;
+    if (previousFile === undefined) delete process.env.ROUTING_SECRET_KEY_FILE;
+    else process.env.ROUTING_SECRET_KEY_FILE = previousFile;
   }
 });
 

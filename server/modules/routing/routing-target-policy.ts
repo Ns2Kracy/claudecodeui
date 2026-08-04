@@ -252,14 +252,14 @@ export async function validateRoutingTarget(
 ): Promise<ValidatedRoutingTarget> {
   const parsed = parseBaseUrl(baseUrl);
   const allowedHostValues =
-    options.allowedHosts ?? environmentList('CLOUDCLI_ROUTING_ALLOWED_HOSTS');
+    options.allowedHosts ?? environmentList('ROUTING_ALLOWED_HOSTS');
   const allowedCidrValues =
-    options.allowedCidrs ?? environmentList('CLOUDCLI_ROUTING_ALLOWED_CIDRS');
+    options.allowedCidrs ?? environmentList('ROUTING_ALLOWED_CIDRS');
   const allowedHosts = new Set(allowedHostValues.map(normalizeAllowedHost));
   const allowedCidrs = allowedCidrValues.map(parseCidr);
   const allowLoopbackHttp =
     options.allowLoopbackHttp ??
-    configuredBoolean(process.env.CLOUDCLI_ROUTING_ALLOW_LOOPBACK_HTTP);
+    configuredBoolean(process.env.ROUTING_ALLOW_LOOPBACK_HTTP);
 
   let answers: RoutingLookupAnswer[];
   try {

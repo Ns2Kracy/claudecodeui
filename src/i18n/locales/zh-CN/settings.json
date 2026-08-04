@@ -582,7 +582,7 @@
     "alerts": {
       "secureStorage": {
         "title": "安全存储不可用",
-        "description": "请先在服务器设置有效的 CLOUDCLI_ROUTING_SECRET_KEY，再保存只写的 9Router 凭据。"
+        "description": "请先在服务器设置有效的 ROUTING_SECRET_KEY，再保存只写的 9Router 凭据。"
       },
       "offline": {
         "title": "9Router 已离线",
