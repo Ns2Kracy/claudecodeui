@@ -441,6 +441,8 @@ export type ProviderRuntimePermissionGateway = {
  * adapters from importing services that resolve back through providerRegistry.
  */
 export type ProviderRuntimeContext = {
+  /** Server-resolved model source for this run; never derived from browser-supplied user identity. */
+  routing: RuntimeRoutingConfiguration;
   resolveProviderSessionId(sessionId: string | null | undefined): string | null;
   resolveResumeModel(
     sessionId: string | undefined,

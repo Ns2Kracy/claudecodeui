@@ -1,6 +1,7 @@
 import { providerRegistry } from '@/modules/providers/provider.registry.js';
 import { providerModelsService } from '@/modules/providers/services/provider-models.service.js';
 import { sessionsService } from '@/modules/providers/services/sessions.service.js';
+import { routingRuntimeService } from '@/modules/routing/index.js';
 import type { IProvider } from '@/shared/interfaces.js';
 import type {
   AnyRecord,
@@ -9,6 +10,7 @@ import type {
   ProviderRunFunction,
   ProviderRuntimeContext,
   ProviderRuntimeWriter,
+  RuntimeRoutingConfiguration,
 } from '@/shared/types.js';
 
 type ProviderRuntimeServiceDependencies = {
@@ -21,6 +23,11 @@ type ProviderRuntimeServiceDependencies = {
     requestedModel?: string | null,
   ): Promise<string | undefined>;
   getProviderModels: typeof providerModelsService.getProviderModels;
+  resolveRoutingForRun(
+    userId: number,
+    sessionId: string,
+    provider: LLMProvider,
+  ): Promise<RuntimeRoutingConfiguration>;
 };
 
 const defaultDependencies: ProviderRuntimeServiceDependencies = {
@@ -30,7 +37,19 @@ const defaultDependencies: ProviderRuntimeServiceDependencies = {
   resolveResumeModel: (provider, sessionId, requestedModel) =>
     providerModelsService.resolveResumeModel(provider, sessionId, requestedModel),
   getProviderModels: (provider, options) => providerModelsService.getProviderModels(provider, options),
+  resolveRoutingForRun: (userId, sessionId, provider) =>
+    routingRuntimeService.resolveForRun(userId, sessionId, provider),
 };
+
+function writerUserId(writer: ProviderRuntimeWriter): number | null {
+  const value = Number(writer.userId);
+  return Number.isSafeInteger(value) && value > 0 ? value : null;
+}
+
+function appSessionId(options: AnyRecord): string | null {
+  const value = typeof options.sessionId === 'string' ? options.sessionId.trim() : '';
+  return value || null;
+}
 
 /**
  * Creates the application-facing provider runtime dispatcher.
@@ -46,7 +65,9 @@ export function createProviderRuntimeService(
 
   const createRuntimeContext = (
     provider: IProvider,
+    routing: RuntimeRoutingConfiguration,
   ): ProviderRuntimeContext => ({
+    routing,
     resolveProviderSessionId: dependencies.resolveProviderSessionId,
     resolveResumeModel: (sessionId, requestedModel) =>
       dependencies.resolveResumeModel(provider.id, sessionId, requestedModel),
@@ -63,14 +84,24 @@ export function createProviderRuntimeService(
     },
   });
 
-  const run = (
+  const run = async (
     providerName: LLMProvider,
     command: string,
     options: AnyRecord,
     writer: ProviderRuntimeWriter,
   ): Promise<unknown> => {
     const provider = dependencies.resolveProvider(providerName);
-    return provider.runtime.run(command, options, writer, createRuntimeContext(provider));
+    const userId = writerUserId(writer);
+    const sessionId = appSessionId(options);
+    const routing = userId && sessionId
+      ? await dependencies.resolveRoutingForRun(userId, sessionId, providerName)
+      : { source: 'native' as const };
+    return provider.runtime.run(
+      command,
+      options,
+      writer,
+      createRuntimeContext(provider, routing),
+    );
   };
 
   return {
