@@ -212,6 +212,40 @@ test('typed account, route, binding, and alert mutations reach the service', asy
   ]);
 });
 
+test('route mutations reject names outside the inspected 9router character contract', async () => {
+  let createCalls = 0;
+  let updateCalls = 0;
+  const service = createFakeService({
+    createRoute: async () => {
+      createCalls += 1;
+      return { id: 'route-1', name: 'valid', kind: null, models: [] };
+    },
+    updateRoute: async () => {
+      updateCalls += 1;
+      return { id: 'route-1', name: 'valid', kind: null, models: [] };
+    },
+  });
+
+  await withRoutingServer(service, async (baseUrl) => {
+    const headers = jsonHeaders({ origin: baseUrl });
+    const createResponse = await fetch(`${baseUrl}/api/routing/routes`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ name: 'contains space', models: ['openai/gpt-5'] }),
+    });
+    const updateResponse = await fetch(`${baseUrl}/api/routing/routes/route-1`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({ name: 'slash/name' }),
+    });
+    assert.equal(createResponse.status, 400);
+    assert.equal(updateResponse.status, 400);
+  });
+
+  assert.equal(createCalls, 0);
+  assert.equal(updateCalls, 0);
+});
+
 test('rejects cross-origin mutations and accepts same-origin or non-browser requests', async () => {
   let disconnectCalls = 0;
   const service = createFakeService({

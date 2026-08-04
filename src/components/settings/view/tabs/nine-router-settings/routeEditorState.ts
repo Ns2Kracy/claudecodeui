@@ -1,7 +1,7 @@
-export const ROUTE_NAME_PATTERN = /^[a-zA-Z0-9_.-]+$/;
+import { ROUTING_ROUTE_NAME_PATTERN } from '../../../../../../shared/routing.js';
 
 export function isValidRouteName(name: string): boolean {
-  return name.length <= 256 && ROUTE_NAME_PATTERN.test(name);
+  return name.length <= 256 && ROUTING_ROUTE_NAME_PATTERN.test(name);
 }
 
 export function addRouteTarget(targets: string[], target: string): string[] {

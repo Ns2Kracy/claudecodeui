@@ -14,7 +14,7 @@ import type {
   UpdateRoutingRouteInput,
   UpdateRoutingUsageAlertInput,
 } from '../../../shared/routing.js';
-import { ROUTING_AGENTS } from '../../../shared/routing.js';
+import { ROUTING_AGENTS, ROUTING_ROUTE_NAME_PATTERN } from '../../../shared/routing.js';
 
 import {
   createRoutingMutationGuard,
@@ -166,10 +166,18 @@ function stringArray(value: unknown, fieldName: string): string[] {
   return value.map((item) => requiredString(item, fieldName, 1024));
 }
 
+function routeName(value: unknown): string {
+  const name = requiredString(value, 'name', 256);
+  if (!ROUTING_ROUTE_NAME_PATTERN.test(name)) {
+    throw invalidRequest('name contains unsupported characters');
+  }
+  return name;
+}
+
 function routeCreateInput(request: Request): CreateRoutingRouteInput {
   const body = bodyRecord(request);
   const input: CreateRoutingRouteInput = {
-    name: requiredString(body.name, 'name', 256),
+    name: routeName(body.name),
     models: stringArray(body.models, 'models'),
   };
   const kind = optionalNullableString(body.kind, 'kind', 128);
@@ -180,7 +188,7 @@ function routeCreateInput(request: Request): CreateRoutingRouteInput {
 function routeUpdateInput(request: Request): UpdateRoutingRouteInput {
   const body = bodyRecord(request);
   const input: UpdateRoutingRouteInput = {};
-  const name = optionalNonEmptyString(body.name, 'name', 256);
+  const name = body.name === undefined ? undefined : routeName(body.name);
   const kind = optionalNullableString(body.kind, 'kind', 128);
   if (name !== undefined) input.name = name;
   if (body.models !== undefined) input.models = stringArray(body.models, 'models');
