@@ -17,8 +17,10 @@ import {
 } from '@/modules/providers/index.js';
 import {
     routingRoutes,
+    routingService,
     startRoutingUsageMonitor,
     stopRoutingUsageMonitor,
+    tryAutoConnect,
 } from '@/modules/routing/index.js';
 import { createWebSocketServer } from '@/modules/websocket/index.js';
 
@@ -341,6 +343,15 @@ async function startServer() {
 
         // Start optional 9router advisory usage checks only after persistence is ready.
         startRoutingUsageMonitor();
+
+        // Auto-connect 9router from environment variables when all four
+        // provisioning env vars are set (zero-touch container deployment).
+        tryAutoConnect({ routingService }).catch((error: unknown) => {
+          console.warn(
+            '[Routing] Auto-connect attempt failed — %s',
+            (error as Error).message ?? String(error),
+          );
+        });
 
         // Check if running in production mode (dist folder exists)
         const distIndexPath = path.join(APP_ROOT, 'dist', 'index.html');

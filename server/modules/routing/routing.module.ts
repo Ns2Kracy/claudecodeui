@@ -7,6 +7,7 @@ import { createRoutingRouter } from './routing.routes.js';
 import { createRoutingRuntimeService } from './routing-runtime.service.js';
 import { createRoutingSecretStore } from './routing-secret-store.js';
 import { createRoutingService } from './routing.service.js';
+import { tryAutoConnect } from './routing-auto-connect.js';
 import { validateRoutingTarget } from './routing-target-policy.js';
 import { createRoutingUsageMonitor } from './routing-usage-monitor.js';
 
@@ -85,3 +86,5 @@ export function startRoutingUsageMonitor(): void {
 export function stopRoutingUsageMonitor(): void {
   usageMonitor.stop();
 }
+
+export { tryAutoConnect };

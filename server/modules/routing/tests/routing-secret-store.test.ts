@@ -1,11 +1,17 @@
 import assert from 'node:assert/strict';
+import { pbkdf2Sync } from 'node:crypto';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 
 import { AppError } from '@/shared/utils.js';
 
-import { createRoutingSecretStore } from '../routing-secret-store.js';
+import { createRoutingSecretStore, resolveMasterKey } from '../routing-secret-store.js';
 
-const validKey = Buffer.alloc(32, 7).toString('base64');
+const validBase64Key = Buffer.alloc(32, 7).toString('base64');
+const passphraseSalt = Buffer.from('cloudcli-routing-master-key-v1', 'utf8');
+const derivedKey = pbkdf2Sync('my-deployment-passphrase', passphraseSalt, 100_000, 32, 'sha256');
 
 function assertAppError(
   run: () => unknown,
@@ -15,26 +21,102 @@ function assertAppError(
 ): void {
   assert.throws(run, (error: unknown) => {
     assert.ok(error instanceof AppError);
-    assert.equal(error.code, code);
-    assert.equal(error.statusCode, statusCode);
+    assert.equal((error as AppError).code, code);
+    assert.equal((error as AppError).statusCode, statusCode);
     if (forbiddenText) {
-      assert.equal(error.message.includes(forbiddenText), false);
+      assert.equal((error as AppError).message.includes(forbiddenText), false);
     }
     return true;
   });
 }
 
-test('requires an exact 32-byte canonical base64 master key', () => {
-  assert.equal(createRoutingSecretStore(validKey).available, true);
-  assert.equal(createRoutingSecretStore(undefined).available, false);
-  assert.equal(createRoutingSecretStore('').available, false);
-  assert.equal(createRoutingSecretStore('not-base64').available, false);
-  assert.equal(createRoutingSecretStore(Buffer.alloc(31).toString('base64')).available, false);
-  assert.equal(createRoutingSecretStore(Buffer.alloc(33).toString('base64')).available, false);
+test('accepts an exact 32-byte canonical base64 master key', () => {
+  assert.equal(createRoutingSecretStore(Buffer.from(validBase64Key, 'base64')).available, true);
+  assert.equal(createRoutingSecretStore(null).available, false);
+});
+
+test('accepts a passphrase and derives a stable 32-byte key via PBKDF2', () => {
+  const store = createRoutingSecretStore(derivedKey);
+  assert.equal(store.available, true);
+
+  const sealed = store.seal(1, 'admin-password', 'secret-from-passphrase');
+  assert.equal(store.open(1, 'admin-password', sealed), 'secret-from-passphrase');
+});
+
+test('resolveMasterKey parses base64 keys from the environment', () => {
+  const previousKey = process.env.CLOUDCLI_ROUTING_SECRET_KEY;
+  const previousFile = process.env.CLOUDCLI_ROUTING_SECRET_KEY_FILE;
+  try {
+    process.env.CLOUDCLI_ROUTING_SECRET_KEY = validBase64Key;
+    delete process.env.CLOUDCLI_ROUTING_SECRET_KEY_FILE;
+    const key = resolveMasterKey();
+    assert.ok(key);
+    assert.equal(key.length, 32);
+    assert.deepEqual(key, Buffer.from(validBase64Key, 'base64'));
+  } finally {
+    if (previousKey === undefined) delete process.env.CLOUDCLI_ROUTING_SECRET_KEY;
+    else process.env.CLOUDCLI_ROUTING_SECRET_KEY = previousKey;
+    if (previousFile === undefined) delete process.env.CLOUDCLI_ROUTING_SECRET_KEY_FILE;
+    else process.env.CLOUDCLI_ROUTING_SECRET_KEY_FILE = previousFile;
+  }
+});
+
+test('resolveMasterKey derives a passphrase when the value is not valid base64', () => {
+  const previousKey = process.env.CLOUDCLI_ROUTING_SECRET_KEY;
+  const previousFile = process.env.CLOUDCLI_ROUTING_SECRET_KEY_FILE;
+  try {
+    process.env.CLOUDCLI_ROUTING_SECRET_KEY = 'my-deployment-passphrase';
+    delete process.env.CLOUDCLI_ROUTING_SECRET_KEY_FILE;
+    const key = resolveMasterKey();
+    assert.ok(key);
+    assert.equal(key.length, 32);
+    assert.deepEqual(key, derivedKey);
+  } finally {
+    if (previousKey === undefined) delete process.env.CLOUDCLI_ROUTING_SECRET_KEY;
+    else process.env.CLOUDCLI_ROUTING_SECRET_KEY = previousKey;
+    if (previousFile === undefined) delete process.env.CLOUDCLI_ROUTING_SECRET_KEY_FILE;
+    else process.env.CLOUDCLI_ROUTING_SECRET_KEY_FILE = previousFile;
+  }
+});
+
+test('resolveMasterKey prefers _FILE over the inline env var', () => {
+  const previousKey = process.env.CLOUDCLI_ROUTING_SECRET_KEY;
+  const previousFile = process.env.CLOUDCLI_ROUTING_SECRET_KEY_FILE;
+  const dir = mkdtempSync(join(tmpdir(), 'routing-key-test-'));
+  const filePath = join(dir, 'secret-key');
+  try {
+    writeFileSync(filePath, 'my-deployment-passphrase\n', 'utf8');
+    process.env.CLOUDCLI_ROUTING_SECRET_KEY_FILE = filePath;
+    process.env.CLOUDCLI_ROUTING_SECRET_KEY = 'different-ignored-value';
+    const key = resolveMasterKey();
+    assert.ok(key);
+    assert.deepEqual(key, derivedKey);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+    if (previousKey === undefined) delete process.env.CLOUDCLI_ROUTING_SECRET_KEY;
+    else process.env.CLOUDCLI_ROUTING_SECRET_KEY = previousKey;
+    if (previousFile === undefined) delete process.env.CLOUDCLI_ROUTING_SECRET_KEY_FILE;
+    else process.env.CLOUDCLI_ROUTING_SECRET_KEY_FILE = previousFile;
+  }
+});
+
+test('resolveMasterKey returns null when neither env var is set', () => {
+  const previousKey = process.env.CLOUDCLI_ROUTING_SECRET_KEY;
+  const previousFile = process.env.CLOUDCLI_ROUTING_SECRET_KEY_FILE;
+  try {
+    delete process.env.CLOUDCLI_ROUTING_SECRET_KEY;
+    delete process.env.CLOUDCLI_ROUTING_SECRET_KEY_FILE;
+    assert.equal(resolveMasterKey(), null);
+  } finally {
+    if (previousKey === undefined) delete process.env.CLOUDCLI_ROUTING_SECRET_KEY;
+    else process.env.CLOUDCLI_ROUTING_SECRET_KEY = previousKey;
+    if (previousFile === undefined) delete process.env.CLOUDCLI_ROUTING_SECRET_KEY_FILE;
+    else process.env.CLOUDCLI_ROUTING_SECRET_KEY_FILE = previousFile;
+  }
 });
 
 test('unavailable secure storage fails closed without exposing plaintext', () => {
-  const store = createRoutingSecretStore(undefined);
+  const store = createRoutingSecretStore(null);
   const plaintext = 'never-log-this-secret';
 
   assertAppError(
@@ -52,7 +134,7 @@ test('unavailable secure storage fails closed without exposing plaintext', () =>
 });
 
 test('AES-GCM uses a fresh IV and restores plaintext for matching AAD', () => {
-  const store = createRoutingSecretStore(validKey);
+  const store = createRoutingSecretStore(Buffer.from(validBase64Key, 'base64'));
   const first = store.seal(7, 'data-plane-key', 'sk-secret');
   const second = store.seal(7, 'data-plane-key', 'sk-secret');
 
@@ -63,7 +145,7 @@ test('AES-GCM uses a fresh IV and restores plaintext for matching AAD', () => {
 });
 
 test('matching user and purpose are required to decrypt an envelope', () => {
-  const store = createRoutingSecretStore(validKey);
+  const store = createRoutingSecretStore(Buffer.from(validBase64Key, 'base64'));
   const sealed = store.seal(7, 'data-plane-key', 'sk-cross-boundary');
 
   assertAppError(
@@ -81,7 +163,7 @@ test('matching user and purpose are required to decrypt an envelope', () => {
 });
 
 test('tampered and malformed envelopes fail with a safe typed error', () => {
-  const store = createRoutingSecretStore(validKey);
+  const store = createRoutingSecretStore(Buffer.from(validBase64Key, 'base64'));
   const plaintext = 'sk-tamper-secret';
   const sealed = store.seal(7, 'data-plane-key', plaintext);
   const parts = sealed.split('.');
