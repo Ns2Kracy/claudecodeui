@@ -15,7 +15,11 @@ import {
     initializeSessionsWatcher,
     providerRuntimeService,
 } from '@/modules/providers/index.js';
-import { routingRoutes } from '@/modules/routing/index.js';
+import {
+    routingRoutes,
+    startRoutingUsageMonitor,
+    stopRoutingUsageMonitor,
+} from '@/modules/routing/index.js';
 import { createWebSocketServer } from '@/modules/websocket/index.js';
 
 import { getConnectableHost } from '../shared/networkHosts.js';
@@ -335,6 +339,9 @@ async function startServer() {
         // Configure Web Push (VAPID keys)
         configureWebPush();
 
+        // Start optional 9router advisory usage checks only after persistence is ready.
+        startRoutingUsageMonitor();
+
         // Check if running in production mode (dist folder exists)
         const distIndexPath = path.join(APP_ROOT, 'dist', 'index.html');
         const isProduction = fs.existsSync(distIndexPath);
@@ -377,6 +384,7 @@ async function startServer() {
         await closeSessionsWatcher();
         // Clean up plugin processes on shutdown
         const shutdownRuntimeServices = async () => {
+            stopRoutingUsageMonitor();
             try {
                 await browserUseService.stopAllSessions();
             } catch (err) {

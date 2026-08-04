@@ -36,7 +36,9 @@ const settingsService = createSettingsService({
       provider: 'system', kind: 'info', code: 'push.enabled',
       meta: { message: 'Push notifications are now enabled!' }, severity: 'info',
     }),
-    notifyUser: (userId, event) => notifyUserIfEnabled({ userId, event }),
+    notifyUser: (userId, event) => {
+      notifyUserIfEnabled({ userId, event });
+    },
   },
   pushSubscriptions: {
     save: (userId, endpoint, p256dh, auth) =>

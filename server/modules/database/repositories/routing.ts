@@ -325,6 +325,12 @@ export const routingDb: RoutingRepository = {
            user_id, period, threshold_microusd, enabled
          ) VALUES (?, ?, ?, ?)
          ON CONFLICT(user_id, period) DO UPDATE SET
+           last_notified_period_key = CASE
+             WHEN routing_usage_alerts.threshold_microusd <> excluded.threshold_microusd
+               OR routing_usage_alerts.enabled <> excluded.enabled
+             THEN NULL
+             ELSE routing_usage_alerts.last_notified_period_key
+           END,
            threshold_microusd = excluded.threshold_microusd,
            enabled = excluded.enabled,
            updated_at = CURRENT_TIMESTAMP`,

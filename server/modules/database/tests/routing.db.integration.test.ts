@@ -201,5 +201,23 @@ test('usage alert thresholds are non-negative integer micro-USD values', async (
         lastNotifiedPeriodKey: null,
       },
     ]);
+
+    routingDb.markAlertNotified(userId, 'daily', 'daily:2026-08-04');
+    routingDb.upsertAlert(userId, {
+      period: 'daily',
+      thresholdMicrousd: 1_500_000,
+      enabled: true,
+    });
+    assert.equal(
+      routingDb.listAlerts(userId)[0].lastNotifiedPeriodKey,
+      'daily:2026-08-04',
+    );
+
+    routingDb.upsertAlert(userId, {
+      period: 'daily',
+      thresholdMicrousd: 2_000_000,
+      enabled: true,
+    });
+    assert.equal(routingDb.listAlerts(userId)[0].lastNotifiedPeriodKey, null);
   });
 });
