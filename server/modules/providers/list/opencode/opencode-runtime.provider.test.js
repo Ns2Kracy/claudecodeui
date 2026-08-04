@@ -12,6 +12,7 @@ import { OpenCodeSessionsProvider } from './opencode-sessions.provider.js';
 
 const sessionsProvider = new OpenCodeSessionsProvider();
 const runtimeContext = {
+  routing: { source: 'native' },
   resolveProviderSessionId: (sessionId) => sessionId || null,
   resolveResumeModel: async (_sessionId, requestedModel) => requestedModel || undefined,
   getProviderModels: async () => ({ OPTIONS: [], DEFAULT: '' }),
@@ -30,6 +31,7 @@ if (capturePath) {
   require('node:fs').writeFileSync(capturePath, JSON.stringify({
     args: process.argv.slice(2),
     permissionEnv: process.env.OPENCODE_PERMISSION ?? null,
+    routeConfig: process.env.OPENCODE_CONFIG_CONTENT ?? null,
   }));
 }
 
@@ -62,6 +64,7 @@ test('spawnOpenCode emits session_created before normalized live messages for ne
   const previousPath = process.env[pathKey];
   const previousPathExt = process.env[pathExtKey];
   const previousArgsCapture = process.env.OPENCODE_ARGS_CAPTURE;
+  const previousRouteConfig = process.env.OPENCODE_CONFIG_CONTENT;
   const messages = [];
   const writer = {
     userId: null,
@@ -78,6 +81,7 @@ test('spawnOpenCode emits session_created before normalized live messages for ne
     await createFakeOpenCodeExecutable(tempRoot);
     process.env[pathKey] = `${tempRoot}${path.delimiter}${previousPath || ''}`;
     process.env.OPENCODE_ARGS_CAPTURE = argsCapturePath;
+    delete process.env.OPENCODE_CONFIG_CONTENT;
     if (process.platform === 'win32') {
       process.env[pathExtKey] = previousPathExt?.toUpperCase().includes('.CMD')
         ? previousPathExt
@@ -111,6 +115,7 @@ test('spawnOpenCode emits session_created before normalized live messages for ne
     assert.equal(launchedArgs.includes('--auto'), false);
     assert.equal(launchedArgs.includes('--agent'), false);
     assert.equal(capture.permissionEnv, null);
+    assert.equal(capture.routeConfig, null);
 
     const attachmentOnlyCapturePath = path.join(tempRoot, 'opencode-attachment-only.json');
     process.env.OPENCODE_ARGS_CAPTURE = attachmentOnlyCapturePath;
@@ -131,6 +136,45 @@ test('spawnOpenCode emits session_created before normalized live messages for ne
     const attachmentPrompt = attachmentOnlyCapture.args[attachmentOnlyCapture.args.length - 1];
     assert.match(attachmentPrompt, /<files_input>/);
     assert.match(attachmentPrompt, /brief\.pdf/);
+
+    const routedCapturePath = path.join(tempRoot, 'opencode-routed.json');
+    process.env.OPENCODE_ARGS_CAPTURE = routedCapturePath;
+    await opencodeRuntime.run(
+      'Use the selected route',
+      { cwd: tempRoot, model: 'native-opencode-model' },
+      writer,
+      {
+        ...runtimeContext,
+        routing: {
+          source: '9router',
+          baseUrl: 'https://router.example',
+          openAiBaseUrl: 'https://router.example/v1',
+          apiKey: 'router-runtime-key',
+          routeId: 'route-1',
+          routeName: 'quality-first',
+        },
+      },
+    );
+    const routedCapture = JSON.parse(await readFile(routedCapturePath, 'utf8'));
+    const modelFlagIndex = routedCapture.args.indexOf('--model');
+    assert.notEqual(modelFlagIndex, -1);
+    assert.equal(routedCapture.args[modelFlagIndex + 1], 'cloudcli-9router/quality-first');
+    assert.deepEqual(JSON.parse(routedCapture.routeConfig), {
+      provider: {
+        'cloudcli-9router': {
+          npm: '@ai-sdk/openai-compatible',
+          name: '9Router',
+          options: {
+            baseURL: 'https://router.example/v1',
+            apiKey: 'router-runtime-key',
+          },
+          models: {
+            'quality-first': { name: 'quality-first' },
+          },
+        },
+      },
+      model: 'cloudcli-9router/quality-first',
+    });
   } finally {
     if (previousPath === undefined) {
       delete process.env[pathKey];
@@ -148,6 +192,12 @@ test('spawnOpenCode emits session_created before normalized live messages for ne
       delete process.env.OPENCODE_ARGS_CAPTURE;
     } else {
       process.env.OPENCODE_ARGS_CAPTURE = previousArgsCapture;
+    }
+
+    if (previousRouteConfig === undefined) {
+      delete process.env.OPENCODE_CONFIG_CONTENT;
+    } else {
+      process.env.OPENCODE_CONFIG_CONTENT = previousRouteConfig;
     }
 
     await rm(tempRoot, { recursive: true, force: true });

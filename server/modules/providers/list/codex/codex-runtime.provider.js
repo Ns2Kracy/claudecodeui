@@ -21,6 +21,7 @@ import {
   normalizeImageDescriptors
 } from '@/shared/image-attachments.js';
 import { notifyRunFailed, notifyRunStopped } from '@/modules/notifications/index.js';
+import { buildCodexRouteOptions } from '@/modules/providers/shared/routing/runtime-routing-options.js';
 import { createCompleteMessage, createNormalizedMessage } from '@/shared/utils.js';
 
 const activeCodexSessions = new Map();
@@ -218,6 +219,20 @@ function mapPermissionModeToCodexOptions(permissionMode) {
 }
 
 /**
+ * Constructs the SDK client for one resolved model source. Runtime tests inject
+ * a fake constructor to assert native calls stay argument-free.
+ */
+export function createCodexClientForRouting(routing, CodexConstructor = Codex) {
+  const routeOptions = buildCodexRouteOptions(routing);
+  return {
+    client: routeOptions.client
+      ? new CodexConstructor(routeOptions.client)
+      : new CodexConstructor(),
+    model: routeOptions.model,
+  };
+}
+
+/**
  * Execute a Codex query with streaming
  * @param {string} command - The prompt to send
  * @param {object} options - Options including cwd, sessionId, model, permissionMode
@@ -244,12 +259,6 @@ export async function queryCodex(command, options = {}, ws, context) {
 
   const workingDirectory = cwd || projectPath || process.cwd();
   const { sandboxMode, approvalPolicy } = mapPermissionModeToCodexOptions(permissionMode);
-  const catalog = await context.getProviderModels();
-  const selectedModel = catalog.OPTIONS.find((option) => option.value === resolvedModel) || null;
-  const allowedEfforts = selectedModel?.effort?.values?.map((value) => value.value) || [];
-  const resolvedEffort = typeof effort === 'string' && effort !== 'default' && allowedEfforts.includes(effort)
-    ? effort
-    : undefined;
 
   let codex;
   let thread;
@@ -264,14 +273,24 @@ export async function queryCodex(command, options = {}, ws, context) {
   const sessionKey = () => sessionId || capturedSessionId || null;
 
   try {
-    codex = new Codex();
+    const routedClient = createCodexClientForRouting(context.routing);
+    codex = routedClient.client;
+    const effectiveModel = routedClient.model || resolvedModel;
+    const catalog = await context.getProviderModels();
+    const selectedModel = catalog.OPTIONS.find((option) => option.value === effectiveModel) || null;
+    const allowedEfforts = selectedModel?.effort?.values?.map((value) => value.value) || [];
+    const resolvedEffort = typeof effort === 'string'
+      && effort !== 'default'
+      && allowedEfforts.includes(effort)
+      ? effort
+      : undefined;
 
     const threadOptions = {
       workingDirectory,
       skipGitRepoCheck: true,
       sandboxMode,
       approvalPolicy,
-      model: resolvedModel,
+      model: effectiveModel,
       modelReasoningEffort: resolvedEffort,
     };
 

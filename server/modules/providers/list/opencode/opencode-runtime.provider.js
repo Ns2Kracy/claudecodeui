@@ -9,6 +9,7 @@ import {
   normalizeAttachmentDescriptors
 } from '@/shared/image-attachments.js';
 import { notifyRunFailed, notifyRunStopped } from '@/modules/notifications/index.js';
+import { buildOpenCodeRouteOptions } from '@/modules/providers/shared/routing/runtime-routing-options.js';
 import { createCompleteMessage, createNormalizedMessage, flattenPromptForWindowsShell, getOpenCodeDatabasePath } from '@/shared/utils.js';
 
 // cross-spawn resolves .cmd shims/PATHEXT on Windows and delegates to
@@ -248,6 +249,8 @@ async function spawnOpenCode(command, options = {}, ws, context) {
     };
 
     void context.resolveResumeModel(sessionId, model).then(async (resolvedModel) => {
+      const routeOptions = buildOpenCodeRouteOptions(context.routing);
+      const effectiveModel = routeOptions?.model || resolvedModel;
       let effortModels = null;
       try {
         effortModels = await context.getProviderModels();
@@ -255,7 +258,7 @@ async function spawnOpenCode(command, options = {}, ws, context) {
         console.warn('[OpenCode] Unable to load provider models for effort validation:', error);
       }
 
-      const resolvedEffort = resolveOpenCodeEffort(resolvedModel, effort, effortModels);
+      const resolvedEffort = resolveOpenCodeEffort(effectiveModel, effort, effortModels);
       const args = ['run', '--format', 'json'];
       // OpenCode's `run` command owns workspace selection through `--dir`.
       // Relying on the child-process cwd alone is not enough on Linux, where
@@ -264,8 +267,8 @@ async function spawnOpenCode(command, options = {}, ws, context) {
       if (providerSessionId) {
         args.push('--session', providerSessionId);
       }
-      if (resolvedModel) {
-        args.push('--model', resolvedModel);
+      if (effectiveModel) {
+        args.push('--model', effectiveModel);
       }
       if (resolvedEffort) {
         args.push('--variant', resolvedEffort);
@@ -290,7 +293,7 @@ async function spawnOpenCode(command, options = {}, ws, context) {
       opencodeProcess = spawnFunction('opencode', args, {
         cwd: workingDir,
         stdio: ['pipe', 'pipe', 'pipe'],
-        env: { ...process.env, ...permissionOptions.env },
+        env: { ...process.env, ...permissionOptions.env, ...(routeOptions?.env || {}) },
       });
 
       activeOpenCodeProcesses.set(processKey, opencodeProcess);

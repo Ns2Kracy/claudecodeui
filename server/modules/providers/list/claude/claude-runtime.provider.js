@@ -25,6 +25,7 @@ import {
   normalizeImageDescriptors
 } from '@/shared/image-attachments.js';
 import { CLAUDE_FALLBACK_MODELS } from '@/modules/providers/list/claude/claude-models.provider.js';
+import { buildClaudeRouteOptions } from '@/modules/providers/shared/routing/runtime-routing-options.js';
 import { resolveClaudeCodeExecutablePath } from '@/shared/claude-cli-path.js';
 import {
   createNotificationEvent,
@@ -158,14 +159,20 @@ function matchesToolPermission(entry, toolName, input) {
   return false;
 }
 
-function mapCliOptionsToSDK(options = {}) {
+/** Runtime option tests consume this mapper to verify per-run route env precedence. */
+export function mapCliOptionsToSDK(options = {}) {
   const { providerSessionId, cwd, toolsSettings, permissionMode, effort } = options;
+  const routeOptions = buildClaudeRouteOptions(options.routing);
 
   const sdkOptions = {};
 
   // Forward all host env vars (e.g. ANTHROPIC_BASE_URL) to the subprocess.
   // Since SDK 0.2.113, options.env replaces process.env instead of overlaying it.
   sdkOptions.env = { ...process.env };
+  Object.assign(sdkOptions.env, routeOptions.env || {});
+  for (const name of routeOptions.unsetEnv || []) {
+    delete sdkOptions.env[name];
+  }
 
   // Resolve the executable eagerly on Windows because the SDK uses raw child_process.spawn,
   // which does not reliably follow npm's shell wrappers like cross-spawn does.
@@ -209,7 +216,7 @@ function mapCliOptionsToSDK(options = {}) {
 
   sdkOptions.disallowedTools = settings.disallowedTools || [];
 
-  sdkOptions.model = options.model || CLAUDE_FALLBACK_MODELS.DEFAULT;
+  sdkOptions.model = routeOptions.model || options.model || CLAUDE_FALLBACK_MODELS.DEFAULT;
 
   const resolvedEffort = resolveClaudeEffort(
     sdkOptions.model,
@@ -497,6 +504,7 @@ async function queryClaudeSDK(command, options = {}, ws, context) {
       providerSessionId,
       model: resolvedModel || options.model,
       effortModels,
+      routing: context.routing,
     });
 
     const mcpServers = await loadMcpConfig(options.cwd);
