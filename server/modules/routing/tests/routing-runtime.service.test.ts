@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import { AppError } from '@/shared/utils.js';
 
+import type { NineRouterSidecarStatus } from '../nine-router-sidecar.service.js';
 import { createRoutingRuntimeService } from '../routing-runtime.service.js';
 
 function createHarness() {
@@ -44,7 +45,7 @@ function createHarness() {
     markAlertNotified: () => undefined,
   };
   const runtime = {
-    getStatus: () => ({ state: 'ready' as const, origin: 'http://127.0.0.1:20128', version: '0.5.45', lastError: null }),
+    getStatus: (): NineRouterSidecarStatus => ({ state: 'ready' as const, origin: 'http://127.0.0.1:20128', version: '0.5.45', lastError: null }),
     getInternalCredentials: () => {
       state.credentialReads += 1;
       return { jwtSecret: 'jwt', initialPassword: 'embedded-admin', apiKeySecret: 'hmac-secret', dataPlaneKey: 'embedded-runtime-key', machineIdSalt: 'salt', dataDir: '/db/9router' };
@@ -72,6 +73,39 @@ function createHarness() {
 
   return { state, repository, runtime, client, service };
 }
+
+test('namespaced selected model resolves sidecar credentials without legacy bindings', async () => {
+  const harness = createHarness();
+  harness.state.sessionBinding = null;
+
+  assert.deepEqual(await harness.service.resolveForModel('9router:anthropic/claude-sonnet-4'), {
+    source: '9router',
+    baseUrl: 'http://127.0.0.1:20128/api',
+    openAiBaseUrl: 'http://127.0.0.1:20128/api/v1',
+    apiKey: 'embedded-runtime-key',
+    routeName: 'anthropic/claude-sonnet-4',
+    model: 'anthropic/claude-sonnet-4',
+  });
+  assert.equal(harness.state.credentialReads, 1);
+  assert.equal(harness.state.clientFactoryCalls, 0);
+  assert.deepEqual(harness.state.routeCalls, []);
+});
+
+test('selected model routing fails safely when sidecar is unavailable', async () => {
+  const harness = createHarness();
+  harness.runtime.getStatus = () => ({
+    state: 'unavailable' as const,
+    origin: 'http://127.0.0.1:20128',
+    version: null,
+    lastError: { code: 'ROUTING_SIDECAR_UNAVAILABLE', message: 'down', retryable: true },
+  });
+
+  await assert.rejects(
+    () => harness.service.resolveForModel('9router:openai/gpt-5'),
+    (error: unknown) => error instanceof AppError && error.code === 'ROUTING_RUNTIME_UNAVAILABLE',
+  );
+  assert.equal(harness.state.credentialReads, 0);
+});
 
 test('snapshots provider defaults through the user-scoped repository', async () => {
   const harness = createHarness();

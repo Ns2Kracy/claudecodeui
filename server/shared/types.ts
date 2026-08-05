@@ -92,8 +92,9 @@ export type RuntimeRoutingConfiguration =
       baseUrl: string;
       openAiBaseUrl: string;
       apiKey: string;
-      routeId: string;
+      routeId?: string;
       routeName: string;
+      model?: string;
     };
 
 /**

@@ -46,21 +46,44 @@ function safeRuntimeError(error: unknown): AppError {
  * unavailable instead of falling back to native execution.
  */
 export function createRoutingRuntimeService(dependencies: RoutingRuntimeServiceDependencies) {
-  function runtimeClient(): { client: Pick<IRoutingNineRouterClient, 'getRoute'>; credentials: RoutingClientCredentials } {
+  function runtimeCredentials(): RoutingClientCredentials {
     const status = dependencies.runtime.getStatus();
     if (status.state !== 'ready') throw runtimeUnavailable();
     const internal = dependencies.runtime.getInternalCredentials();
-    const credentials = {
+    return {
       baseUrl: status.origin ?? 'http://127.0.0.1:20128',
       adminPassword: internal.initialPassword,
       dataPlaneKey: internal.dataPlaneKey,
     };
+  }
+
+  function runtimeClient(): { client: Pick<IRoutingNineRouterClient, 'getRoute'>; credentials: RoutingClientCredentials } {
+    const credentials = runtimeCredentials();
     return { client: dependencies.clientFactory(credentials), credentials };
   }
 
   return {
     async snapshotSessionBinding(userId: number, sessionId: string, provider: RoutingAgent): Promise<void> {
       dependencies.repository.snapshotSessionBinding(userId, sessionId, provider);
+    },
+
+    async resolveForModel(model: string): Promise<RuntimeRoutingConfiguration> {
+      const officialModelId = model.startsWith('9router:') ? model.slice('9router:'.length).trim() : '';
+      if (!officialModelId) return { source: 'native' };
+
+      try {
+        const credentials = runtimeCredentials();
+        return {
+          source: '9router',
+          baseUrl: `${credentials.baseUrl}/api`,
+          openAiBaseUrl: `${credentials.baseUrl}/api/v1`,
+          apiKey: credentials.dataPlaneKey,
+          routeName: officialModelId,
+          model: officialModelId,
+        };
+      } catch (error) {
+        throw safeRuntimeError(error);
+      }
     },
 
     async resolveForRun(userId: number, sessionId: string, provider: RoutingAgent): Promise<RuntimeRoutingConfiguration> {

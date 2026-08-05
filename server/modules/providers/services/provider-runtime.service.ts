@@ -28,6 +28,7 @@ type ProviderRuntimeServiceDependencies = {
     sessionId: string,
     provider: LLMProvider,
   ): Promise<RuntimeRoutingConfiguration>;
+  resolveRoutingForModel(model: string): Promise<RuntimeRoutingConfiguration>;
 };
 
 const defaultDependencies: ProviderRuntimeServiceDependencies = {
@@ -39,6 +40,7 @@ const defaultDependencies: ProviderRuntimeServiceDependencies = {
   getProviderModels: (provider, options) => providerModelsService.getProviderModels(provider, options),
   resolveRoutingForRun: (userId, sessionId, provider) =>
     routingRuntimeService.resolveForRun(userId, sessionId, provider),
+  resolveRoutingForModel: (model) => routingRuntimeService.resolveForModel(model),
 };
 
 function writerUserId(writer: ProviderRuntimeWriter): number | null {
@@ -93,9 +95,12 @@ export function createProviderRuntimeService(
     const provider = dependencies.resolveProvider(providerName);
     const userId = writerUserId(writer);
     const sessionId = appSessionId(options);
-    const routing = userId && sessionId
-      ? await dependencies.resolveRoutingForRun(userId, sessionId, providerName)
-      : { source: 'native' as const };
+    const requestedModel = typeof options.model === 'string' ? options.model : '';
+    const routing = requestedModel.startsWith('9router:')
+      ? await dependencies.resolveRoutingForModel(requestedModel)
+      : userId && sessionId
+        ? await dependencies.resolveRoutingForRun(userId, sessionId, providerName)
+        : { source: 'native' as const };
     return provider.runtime.run(
       command,
       options,

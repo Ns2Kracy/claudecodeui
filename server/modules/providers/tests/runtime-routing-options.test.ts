@@ -11,8 +11,8 @@ import type { RuntimeRoutingConfiguration } from '@/shared/types.js';
 
 const routed: RuntimeRoutingConfiguration = {
   source: '9router',
-  baseUrl: 'https://router.example',
-  openAiBaseUrl: 'https://router.example/v1',
+  baseUrl: 'https://router.example/api',
+  openAiBaseUrl: 'https://router.example/api/v1',
   apiKey: 'router-runtime-key',
   routeId: 'route-1',
   routeName: 'quality-first',
@@ -31,7 +31,7 @@ test('Claude routing sets only the per-run endpoint, token, and route model', ()
   assert.deepEqual(buildClaudeRouteOptions(routed), {
     model: 'quality-first',
     env: {
-      ANTHROPIC_BASE_URL: 'https://router.example',
+      ANTHROPIC_BASE_URL: 'https://router.example/api',
       ANTHROPIC_AUTH_TOKEN: 'router-runtime-key',
     },
     unsetEnv: ['ANTHROPIC_API_KEY'],
@@ -54,7 +54,7 @@ test('Claude SDK mapping applies routed env after native env and removes the nat
       routing: routed,
     });
     assert.equal(routedOptions.model, 'quality-first');
-    assert.equal(routedOptions.env.ANTHROPIC_BASE_URL, 'https://router.example');
+    assert.equal(routedOptions.env.ANTHROPIC_BASE_URL, 'https://router.example/api');
     assert.equal(routedOptions.env.ANTHROPIC_AUTH_TOKEN, 'router-runtime-key');
     assert.equal('ANTHROPIC_API_KEY' in routedOptions.env, false);
   } finally {
@@ -70,7 +70,7 @@ test('Codex routing creates an isolated client configuration and route model', (
   const options = buildCodexRouteOptions(routed);
 
   assert.equal(options.model, 'quality-first');
-  assert.equal(options.client?.baseUrl, 'https://router.example/v1');
+  assert.equal(options.client?.baseUrl, 'https://router.example/api/v1');
   assert.equal(options.client?.apiKey, 'router-runtime-key');
   assert.notEqual(options.client?.env, process.env);
   assert.equal(options.client?.env.PATH, process.env.PATH);
@@ -90,7 +90,7 @@ test('OpenCode routing produces an isolated OpenAI-compatible inline configurati
         npm: '@ai-sdk/openai-compatible',
         name: '9Router',
         options: {
-          baseURL: 'https://router.example/v1',
+          baseURL: 'https://router.example/api/v1',
           apiKey: 'router-runtime-key',
         },
         models: {
