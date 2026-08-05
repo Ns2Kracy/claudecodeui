@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { AlertTriangle, KeyRound, Loader2, ShieldCheck, WifiOff, Wrench } from 'lucide-react';
+import { AlertTriangle, Loader2, RotateCw, ShieldCheck, Wrench } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import type {
@@ -15,14 +15,11 @@ import type {
   UpdateRoutingRouteInput,
   UpdateRoutingUsageAlertInput,
 } from '../../../../../../shared/routing.js';
-import { Alert, AlertDescription, AlertTitle } from '../../../../../shared/view/ui';
+import { Alert, AlertDescription, AlertTitle, Button } from '../../../../../shared/view/ui';
 
-import ConnectionSection from './ConnectionSection.js';
 import ModelSourceSection from './ModelSourceSection.js';
 import {
-  connectionDraftAfterCancel,
   type RoutingAccountDraft,
-  type RoutingConnectionDraft,
   type RoutingErrorContext,
   type RoutingUiError,
   upstreamDetailsState,
@@ -37,14 +34,9 @@ export type NineRouterSettingsTabViewProps = {
   error: RoutingUiError | null;
   errorContext?: RoutingErrorContext | null;
   activeMutation: string | null;
-  connectionDraft: RoutingConnectionDraft;
   routesLoading?: boolean;
   routesError?: boolean;
-  onConnectionFieldChange: (field: keyof RoutingConnectionDraft, value: string) => void;
-  onCancelConnectionEdit: () => void;
-  onConnect: () => Promise<boolean>;
-  onValidateConnection: () => void;
-  onDisconnect: () => void;
+  onRestartRuntime: () => void;
   onSetBinding: (provider: RoutingAgent, input: UpdateRoutingBindingInput) => void;
   onRetryRoutes: () => void;
   accountDraft: RoutingAccountDraft;
@@ -79,7 +71,7 @@ function errorCode(
   settings: RoutingSettingsView,
   error: RoutingUiError | null,
 ): string {
-  return error?.code || settings.connection.lastError?.code || '';
+  return error?.code || settings.runtime.lastError?.code || '';
 }
 
 export function NineRouterSettingsTabView({
@@ -88,14 +80,9 @@ export function NineRouterSettingsTabView({
   error,
   errorContext = null,
   activeMutation,
-  connectionDraft,
   routesLoading = false,
   routesError = false,
-  onConnectionFieldChange,
-  onCancelConnectionEdit,
-  onConnect,
-  onValidateConnection,
-  onDisconnect,
+  onRestartRuntime,
   onSetBinding,
   onRetryRoutes,
   accountDraft,
@@ -125,12 +112,12 @@ export function NineRouterSettingsTabView({
     || code.includes('INVALID_CREDENTIAL')
     || code.includes('AUTH_FAILED');
   const incompatible = code.includes('VERSION') || code.includes('CAPABILITY');
-  const offline = settings.connection.status === 'offline';
+  const runtimeUnavailable = settings.runtime.status === 'unavailable';
   const detailErrorOwnsMessage = errorContext === 'details'
     && (routesError || upstreamDetailsError || usageError);
-  const showRouteError = routesError && !unauthorized && !incompatible && !offline;
-  const secureStorageUnavailable = !loading && !settings.connection.secureStorageAvailable;
-  const knownStateError = unauthorized || incompatible || offline || detailErrorOwnsMessage;
+  const showRouteError = routesError && !unauthorized && !incompatible && !runtimeUnavailable;
+  const runtimeReady = settings.runtime.status === 'ready' || settings.runtime.status === 'degraded';
+  const knownStateError = unauthorized || incompatible || runtimeUnavailable || detailErrorOwnsMessage;
   const boundRouteIds = new Set(Object.values(settings.bindings)
     .filter((binding) => binding.source === '9router' && binding.routeId)
     .map((binding) => binding.routeId as string));
@@ -162,25 +149,40 @@ export function NineRouterSettingsTabView({
         </div>
       )}
 
-      {secureStorageUnavailable && (
-        <Alert variant="destructive">
-          <KeyRound className="h-4 w-4" />
-          <AlertTitle>{t('nineRouter.alerts.secureStorage.title')}</AlertTitle>
-          <AlertDescription>{t('nineRouter.alerts.secureStorage.description')}</AlertDescription>
-        </Alert>
-      )}
+      <Alert className="border-border bg-muted/40">
+        <ShieldCheck className="h-4 w-4" />
+        <AlertTitle>{t('nineRouter.runtime.title')}</AlertTitle>
+        <AlertDescription>
+          <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
+              <p>{t(`nineRouter.runtime.status.${settings.runtime.status}`)}</p>
+              <p className="text-xs text-muted-foreground">
+                {t('nineRouter.runtime.version')}: {settings.runtime.version ?? t('nineRouter.runtime.unknown')}
+              </p>
+              {settings.runtime.lastError && <p>{settings.runtime.lastError.message}</p>}
+            </div>
+            {runtimeUnavailable && (
+              <Button type="button" size="sm" variant="outline" disabled={activeMutation === 'runtime:restart'} onClick={onRestartRuntime}>
+                {activeMutation === 'runtime:restart' && <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" />}
+                <RotateCw className="h-3.5 w-3.5" />
+                {t('nineRouter.runtime.restart')}
+              </Button>
+            )}
+          </div>
+        </AlertDescription>
+      </Alert>
 
-      {offline && (
+      {runtimeUnavailable && (
         <Alert variant="destructive">
-          <WifiOff className="h-4 w-4" />
-          <AlertTitle>{t('nineRouter.alerts.offline.title')}</AlertTitle>
-          <AlertDescription>{t('nineRouter.alerts.offline.description')}</AlertDescription>
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>{t('nineRouter.alerts.runtimeUnavailable.title')}</AlertTitle>
+          <AlertDescription>{t('nineRouter.alerts.runtimeUnavailable.description')}</AlertDescription>
         </Alert>
       )}
 
       {unauthorized && (
         <Alert variant="destructive">
-          <KeyRound className="h-4 w-4" />
+          <AlertTriangle className="h-4 w-4" />
           <AlertTitle>{t('nineRouter.alerts.unauthorized.title')}</AlertTitle>
           <AlertDescription>{t('nineRouter.alerts.unauthorized.description')}</AlertDescription>
         </Alert>
@@ -202,20 +204,11 @@ export function NineRouterSettingsTabView({
         </Alert>
       )}
 
-      <ConnectionSection
-        connection={settings.connection}
-        draft={connectionDraft}
-        activeMutation={activeMutation}
-        onFieldChange={onConnectionFieldChange}
-        onCancelEdit={onCancelConnectionEdit}
-        onConnect={onConnect}
-        onValidate={onValidateConnection}
-        onDisconnect={onDisconnect}
-      />
+
 
       <ModelSourceSection
-        configured={settings.connection.configured}
-        capabilities={settings.connection.capabilities}
+        configured={runtimeReady}
+        capabilities={settings.runtime.capabilities}
         bindings={settings.bindings}
         routes={settings.routes ?? []}
         routesLoading={routesLoading}
@@ -226,9 +219,9 @@ export function NineRouterSettingsTabView({
       />
 
       <UpstreamsRoutesSection
-        configured={settings.connection.configured}
-        connectionStatus={settings.connection.status}
-        capabilities={settings.connection.capabilities}
+        configured={runtimeReady}
+        connectionStatus={runtimeReady ? 'connected' : 'offline'}
+        capabilities={settings.runtime.capabilities}
         accountSummary={settings.accountSummary}
         routeSummary={settings.routeSummary}
         accounts={settings.accounts ?? []}
@@ -252,8 +245,8 @@ export function NineRouterSettingsTabView({
       />
 
       <UsageLimitsSection
-        configured={settings.connection.configured}
-        canReadUsage={settings.connection.capabilities.readUsage}
+        configured={runtimeReady}
+        canReadUsage={settings.runtime.capabilities.readUsage}
         usage={usage}
         usagePeriod={usagePeriod}
         usageAlerts={settings.usageAlerts}
@@ -272,10 +265,10 @@ export default function NineRouterSettingsTab() {
   const controller = useNineRouterSettings();
   const { ensureRouteDetails, ensureUsage, usagePeriod } = controller;
   const upstreamDetails = upstreamDetailsState(controller.detailStatus);
-  const canReadRoutes = controller.settings.connection.configured
-    && controller.settings.connection.capabilities.readRoutes;
-  const canReadUsage = controller.settings.connection.configured
-    && controller.settings.connection.capabilities.readUsage;
+  const canReadRoutes = (controller.settings.runtime.status === 'ready' || controller.settings.runtime.status === 'degraded')
+    && controller.settings.runtime.capabilities.readRoutes;
+  const canReadUsage = (controller.settings.runtime.status === 'ready' || controller.settings.runtime.status === 'degraded')
+    && controller.settings.runtime.capabilities.readUsage;
   const usageDetailKey = `usage:${usagePeriod}` as const;
 
   useEffect(() => {
@@ -293,16 +286,9 @@ export default function NineRouterSettingsTab() {
       error={controller.error}
       errorContext={controller.errorContext}
       activeMutation={controller.activeMutation}
-      connectionDraft={controller.connectionDraft}
       routesLoading={controller.detailStatus.routes === 'loading'}
       routesError={controller.detailStatus.routes === 'error'}
-      onConnectionFieldChange={controller.setConnectionField}
-      onCancelConnectionEdit={() => controller.setConnectionDraft(connectionDraftAfterCancel(
-        controller.settings.connection.baseUrl,
-      ))}
-      onConnect={async () => Boolean(await controller.connect())}
-      onValidateConnection={() => { void controller.validateConnection(); }}
-      onDisconnect={() => { void controller.disconnect(); }}
+      onRestartRuntime={() => { void controller.restartRuntime(); }}
       onSetBinding={(provider, input) => { void controller.setBinding(provider, input); }}
       onRetryRoutes={() => { void controller.retryRouteDetails(); }}
       accountDraft={controller.accountDraft}

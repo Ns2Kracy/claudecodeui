@@ -21,7 +21,6 @@ async function renderRoutingView(
   settings: RoutingSettingsView,
   options: {
     error?: { code: string; message: string; status: number; retryable: boolean } | null;
-    secrets?: { adminPassword: string; dataPlaneKey: string };
     routesError?: boolean;
     errorContext?: RoutingErrorContext | null;
   } = {},
@@ -46,16 +45,7 @@ async function renderRoutingView(
       errorContext: options.errorContext,
       activeMutation: null,
       routesError: options.routesError,
-      connectionDraft: {
-        baseUrl: settings.connection.baseUrl ?? '',
-        adminPassword: options.secrets?.adminPassword ?? '',
-        dataPlaneKey: options.secrets?.dataPlaneKey ?? '',
-      },
-      onConnectionFieldChange: () => {},
-      onCancelConnectionEdit: () => {},
-      onConnect: async () => true,
-      onValidateConnection: () => {},
-      onDisconnect: () => {},
+      onRestartRuntime: () => {},
       onSetBinding: () => {},
       onRetryRoutes: () => {},
       accountDraft: { provider: '', name: '', apiKey: '', active: true },
@@ -78,31 +68,27 @@ async function renderRoutingView(
   ));
 }
 
-test('unconfigured state renders write-only connection fields and one connect action', async () => {
+test('first render shows built-in runtime status and no connection controls', async () => {
   const settings = emptyRoutingSettingsView();
-  settings.connection.secureStorageAvailable = true;
   const markup = await renderRoutingView(settings);
 
-  assert.match(markup, />Endpoint</);
-  assert.match(markup, />Admin password</);
-  assert.match(markup, />Data-plane API key</);
-  assert.match(markup, />Test and connect</);
-  assert.equal((markup.match(/type="password"/g) ?? []).length, 2);
-  assert.match(markup, /HTTPS/);
-  assert.match(markup, /write-only/i);
+  assert.match(markup, /Built-in 9Router runtime/);
+  assert.match(markup, /Unavailable/);
+  assert.match(markup, />Restart runtime</);
+  assert.equal(markup.includes('Endpoint'), false);
+  assert.equal(markup.includes('Admin password'), false);
+  assert.equal(markup.includes('Data-plane API key'), false);
+  assert.equal(markup.includes('Test and connect'), false);
+  assert.equal(markup.includes('Disconnect'), false);
+  assert.equal(markup.includes('write-only'), false);
 });
 
-test('connected state never renders secrets and keeps agents separate from model source', async () => {
+test('ready runtime enables route and usage sections and keeps native login messaging', async () => {
   const settings = emptyRoutingSettingsView();
-  settings.connection = {
-    ...settings.connection,
-    configured: true,
-    baseUrl: 'https://router.example',
-    status: 'connected',
+  settings.runtime = {
+    ...settings.runtime,
+    status: 'ready',
     version: '0.5.45',
-    hasAdminCredential: true,
-    hasDataPlaneKey: true,
-    secureStorageAvailable: true,
     capabilities: {
       readAccounts: true,
       writeApiKeyAccounts: true,
@@ -121,9 +107,7 @@ test('connected state never renders secrets and keeps agents separate from model
     provider: 'claude', source: '9router', routeId: 'route-1', routeName: 'quality-first', supported: true,
   };
 
-  const markup = await renderRoutingView(settings, {
-    secrets: { adminPassword: 'never-render-admin', dataPlaneKey: 'never-render-key' },
-  });
+  const markup = await renderRoutingView(settings);
 
   assert.equal(markup.includes('never-render-admin'), false);
   assert.equal(markup.includes('never-render-key'), false);
@@ -138,53 +122,43 @@ test('connected state never renders secrets and keeps agents separate from model
   assert.equal(markup.includes('role="tablist"'), false);
 });
 
-test('renders secure-storage, offline, unauthorized, and incompatible states inline', async () => {
-  const secureStorage = emptyRoutingSettingsView();
-  secureStorage.connection.secureStorageAvailable = false;
-
-  const offline = emptyRoutingSettingsView();
-  offline.connection = {
-    ...offline.connection,
-    configured: true,
-    secureStorageAvailable: true,
-    status: 'offline',
-    lastError: { code: 'ROUTING_OFFLINE', message: 'Offline', retryable: true },
+test('renders unavailable, unauthorized, and incompatible runtime states inline', async () => {
+  const unavailable = emptyRoutingSettingsView();
+  unavailable.runtime = {
+    ...unavailable.runtime,
+    status: 'unavailable',
+    lastError: { code: 'ROUTING_RUNTIME_UNAVAILABLE', message: 'Runtime failed', retryable: true },
   };
 
   const unauthorized = emptyRoutingSettingsView();
-  unauthorized.connection.secureStorageAvailable = true;
+  unauthorized.runtime.status = 'ready';
   const incompatible = emptyRoutingSettingsView();
-  incompatible.connection = {
-    ...incompatible.connection,
-    configured: true,
-    secureStorageAvailable: true,
+  incompatible.runtime = {
+    ...incompatible.runtime,
     status: 'degraded',
     version: '99.0.0',
     lastError: { code: 'ROUTING_VERSION_UNSUPPORTED', message: 'Unsupported', retryable: false },
   };
 
   const markup = [
-    await renderRoutingView(secureStorage),
-    await renderRoutingView(offline),
+    await renderRoutingView(unavailable),
     await renderRoutingView(unauthorized, {
       error: { code: 'ROUTING_UNAUTHORIZED', message: 'Unauthorized', status: 401, retryable: false },
     }),
     await renderRoutingView(incompatible),
   ].join('\n');
 
-  assert.match(markup, /Secure storage is unavailable/);
-  assert.match(markup, /9Router is offline/);
+  assert.match(markup, /Built-in 9Router runtime is unavailable/);
   assert.match(markup, /9Router credentials were rejected/);
   assert.match(markup, /This 9Router version has limited compatibility/);
 });
 
 test('route loading failures are retryable and are not mislabeled as an empty route list', async () => {
   const settings = emptyRoutingSettingsView();
-  settings.connection = {
-    ...settings.connection,
-    configured: true,
-    secureStorageAvailable: true,
-    capabilities: { ...settings.connection.capabilities, readRoutes: true },
+  settings.runtime = {
+    ...settings.runtime,
+    status: 'ready',
+    capabilities: { ...settings.runtime.capabilities, readRoutes: true },
   };
 
   const markup = await renderRoutingView(settings, {

@@ -6,7 +6,7 @@ import {
   type RoutingAgent,
   type RoutingBindingView,
   type RoutingCapabilities,
-  type RoutingConnectionView,
+  type RoutingRuntimeView,
   type RoutingModelView,
   type RoutingRouteView,
   type RoutingSettingsView,
@@ -16,10 +16,8 @@ import {
   type RoutingUsageView,
   type UpdateRoutingAccountInput,
   type UpdateRoutingBindingInput,
-  type UpdateRoutingConnectionInput,
   type UpdateRoutingRouteInput,
   type UpdateRoutingUsageAlertInput,
-  type ValidateRoutingConnectionInput,
 } from '../../../../../../shared/routing.js';
 
 type RoutingFetch = (
@@ -126,7 +124,7 @@ function parseCapabilities(value: unknown, status?: number): RoutingCapabilities
   return { ...capabilities, cursorRuntime: false };
 }
 
-function parseSafeError(value: unknown, status?: number): RoutingConnectionView['lastError'] {
+function parseSafeError(value: unknown, status?: number): RoutingRuntimeView['lastError'] {
   if (value === null) return null;
   const item = record(value, status);
   return {
@@ -136,16 +134,12 @@ function parseSafeError(value: unknown, status?: number): RoutingConnectionView[
   };
 }
 
-function parseConnection(value: unknown, status?: number): RoutingConnectionView {
+function parseRuntime(value: unknown, status?: number): RoutingRuntimeView {
   const item = record(value, status);
   return {
-    configured: requiredBoolean(item.configured, status),
-    baseUrl: nullableString(item.baseUrl, status),
-    status: oneOf(item.status, ['disconnected', 'checking', 'connected', 'degraded', 'offline'], status),
+    mode: oneOf(item.mode, ['embedded'], status),
+    status: oneOf(item.status, ['starting', 'ready', 'degraded', 'unavailable'], status),
     version: nullableString(item.version, status),
-    hasAdminCredential: requiredBoolean(item.hasAdminCredential, status),
-    hasDataPlaneKey: requiredBoolean(item.hasDataPlaneKey, status),
-    secureStorageAvailable: requiredBoolean(item.secureStorageAvailable, status),
     lastCheckedAt: nullableString(item.lastCheckedAt, status),
     lastError: parseSafeError(item.lastError, status),
     capabilities: parseCapabilities(item.capabilities, status),
@@ -238,7 +232,7 @@ function parseSettings(value: unknown, status?: number): RoutingSettingsView {
   const accountSummary = record(item.accountSummary, status);
   const routeSummary = record(item.routeSummary, status);
   const settings: RoutingSettingsView = {
-    connection: parseConnection(item.connection, status),
+    runtime: parseRuntime(item.runtime, status),
     bindings,
     accountSummary: {
       total: requiredNumber(accountSummary.total, status),
@@ -277,11 +271,6 @@ function parseDeleted(value: unknown, status?: number): { deleted: true } {
   return { deleted: true };
 }
 
-function parseDisconnected(value: unknown, status?: number): { disconnected: true } {
-  const item = record(value, status);
-  if (item.disconnected !== true) invalidResponse(status);
-  return { disconnected: true };
-}
 
 function safeEnvelopeError(payload: unknown, status: number): RoutingApiError | null {
   if (!isRecord(payload) || payload.success !== false || !isRecord(payload.error)) {
@@ -369,14 +358,8 @@ export function createRoutingApiClient(fetcher: RoutingFetch) {
     getSettings(details: RoutingSettingsDetails = {}) {
       return request(detailQuery(details), parseSettings);
     },
-    connect(input: UpdateRoutingConnectionInput) {
-      return request('/connection', parseConnection, jsonRequest('PUT', input));
-    },
-    validateConnection(input: ValidateRoutingConnectionInput) {
-      return request('/connection/validations', parseConnection, jsonRequest('POST', input));
-    },
-    disconnect() {
-      return request('/connection', parseDisconnected, jsonRequest('DELETE'));
+    restartRuntime() {
+      return request('/runtime/restart', parseRuntime, jsonRequest('POST'));
     },
     createAccount(input: CreateRoutingApiKeyAccountInput) {
       return request('/accounts', parseAccount, jsonRequest('POST', input));

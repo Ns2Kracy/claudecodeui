@@ -37,11 +37,6 @@ export type RoutingState = {
   usageByPeriod: Partial<Record<RoutingUsagePeriod, RoutingUsageView>>;
 };
 
-export type RoutingConnectionDraft = {
-  baseUrl: string;
-  adminPassword: string;
-  dataPlaneKey: string;
-};
 
 export type RoutingAccountDraft = CreateRoutingApiKeyAccountInput;
 
@@ -156,36 +151,7 @@ export function upstreamDetailsState(
   };
 }
 
-/**
- * Keeps failed connection input intact for correction, while a successful save
- * immediately removes both write-only secrets from React state.
- */
-export function connectionDraftAfterMutation(
-  draft: RoutingConnectionDraft,
-  succeeded: boolean,
-  savedBaseUrl?: string | null,
-): RoutingConnectionDraft {
-  if (!succeeded) {
-    return draft;
-  }
 
-  return {
-    baseUrl: savedBaseUrl ?? draft.baseUrl,
-    adminPassword: '',
-    dataPlaneKey: '',
-  };
-}
-
-/** Discards an abandoned endpoint edit and removes all write-only input. */
-export function connectionDraftAfterCancel(
-  savedBaseUrl?: string | null,
-): RoutingConnectionDraft {
-  return {
-    baseUrl: savedBaseUrl ?? '',
-    adminPassword: '',
-    dataPlaneKey: '',
-  };
-}
 
 /** Clears only the write-only account key after a successful create operation. */
 export function accountDraftAfterMutation(

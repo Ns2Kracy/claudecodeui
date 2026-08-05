@@ -4,9 +4,6 @@ import test from 'node:test';
 import { emptyRoutingSettingsView } from '../../../../../../shared/routing.js';
 
 import {
-  accountDraftAfterMutation,
-  connectionDraftAfterMutation,
-  connectionDraftAfterCancel,
   createInitialRoutingState,
   createRoutingRequestCoordinator,
   routingStateReducer,
@@ -219,37 +216,3 @@ test('post-mutation refresh failures keep stale details behind a retryable error
   assert.equal(failed.detailStatus.routes, 'error');
 });
 
-test('successful connection mutation clears secrets while failure preserves user input', () => {
-  const draft = {
-    baseUrl: 'https://router.example',
-    adminPassword: 'admin-secret',
-    dataPlaneKey: 'data-plane-secret',
-  };
-
-  assert.equal(connectionDraftAfterMutation(draft, false), draft);
-  assert.deepEqual(connectionDraftAfterMutation(draft, true, 'https://router.example'), {
-    baseUrl: 'https://router.example',
-    adminPassword: '',
-    dataPlaneKey: '',
-  });
-
-  const accountDraft = {
-    provider: 'anthropic',
-    name: 'Primary',
-    apiKey: 'account-secret',
-    active: true,
-  };
-  assert.equal(accountDraftAfterMutation(accountDraft, false), accountDraft);
-  assert.deepEqual(accountDraftAfterMutation(accountDraft, true), {
-    ...accountDraft,
-    apiKey: '',
-  });
-});
-
-test('canceling a connection edit restores the persisted endpoint and clears secrets', () => {
-  assert.deepEqual(connectionDraftAfterCancel('https://saved-router.example'), {
-    baseUrl: 'https://saved-router.example',
-    adminPassword: '',
-    dataPlaneKey: '',
-  });
-});

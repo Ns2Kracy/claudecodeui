@@ -90,33 +90,19 @@ test('builds allowlisted detail queries and encodes dynamic resource ids once', 
   assert.equal(requests[1]?.init?.method, 'DELETE');
 });
 
-test('serializes connection secrets only into the request body and parses a secret-free view', async () => {
-  let requestBody = '';
-  const connection = {
-    ...emptyRoutingSettingsView().connection,
-    configured: true,
-    baseUrl: 'https://router.example',
-    status: 'connected' as const,
-    hasAdminCredential: true,
-    hasDataPlaneKey: true,
-    adminPassword: 'echoed-admin-secret',
-    dataPlaneKey: 'echoed-data-plane-secret',
+test('restarts the embedded runtime without sending connection secrets', async () => {
+  const requests: Array<{ url: string; init?: RequestInit }> = [];
+  const runtime = {
+    ...emptyRoutingSettingsView().runtime,
+    status: 'starting' as const,
   };
-  const api = createRoutingApiClient(async (_url, init) => {
-    requestBody = String(init?.body ?? '');
-    return jsonResponse({ success: true, data: connection });
+  const api = createRoutingApiClient(async (url, init) => {
+    requests.push({ url: String(url), init });
+    return jsonResponse({ success: true, data: runtime });
   });
 
-  const result = await api.connect({
-    baseUrl: 'https://router.example',
-    adminPassword: 'admin-secret',
-    dataPlaneKey: 'data-plane-secret',
-  });
-
-  assert.match(requestBody, /admin-secret/);
-  assert.match(requestBody, /data-plane-secret/);
-  assert.equal(JSON.stringify(result).includes('admin-secret'), false);
-  assert.equal(JSON.stringify(result).includes('data-plane-secret'), false);
-  assert.equal(JSON.stringify(result).includes('echoed-admin-secret'), false);
-  assert.equal(JSON.stringify(result).includes('echoed-data-plane-secret'), false);
+  assert.deepEqual(await api.restartRuntime(), runtime);
+  assert.equal(requests[0]?.url, '/api/routing/runtime/restart');
+  assert.equal(requests[0]?.init?.method, 'POST');
+  assert.equal(requests[0]?.init?.body, undefined);
 });

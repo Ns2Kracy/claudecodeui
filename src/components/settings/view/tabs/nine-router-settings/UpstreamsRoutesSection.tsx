@@ -7,7 +7,6 @@ import type {
   CreateRoutingRouteInput,
   RoutingAccountView,
   RoutingCapabilities,
-  RoutingConnectionStatus,
   RoutingModelView,
   RoutingRouteView,
   UpdateRoutingAccountInput,
@@ -29,7 +28,7 @@ import type { RoutingAccountDraft } from './routingState.js';
 
 type UpstreamsRoutesSectionProps = {
   configured: boolean;
-  connectionStatus: RoutingConnectionStatus;
+  connectionStatus: 'connected' | 'offline';
   capabilities: RoutingCapabilities;
   accountSummary: { total: number; degraded: number };
   routeSummary: { total: number };

@@ -578,11 +578,11 @@
   },
   "nineRouter": {
     "title": "9Router",
-    "description": "Optionally route new Claude, Codex, and OpenCode sessions through your own 9Router service.",
+    "description": "Route new Claude, Codex, and OpenCode sessions through the built-in 9Router runtime without extra endpoint or credential setup.",
     "loading": "Loading 9Router settings...",
     "preservation": {
       "title": "Native agent access stays intact",
-      "nativeLogin": "Native OAuth, subscriptions, API keys, and CLI credentials remain available and unchanged. Disconnecting 9Router never signs an agent out.",
+      "nativeLogin": "Native OAuth, subscriptions, API keys, and CLI credentials remain available and unchanged. Restarting the built-in 9Router runtime never signs an agent out.",
       "usageAdvisory": "Usage alerts are advisory only. Routed failures are shown explicitly and never fall back silently to native credentials."
     },
     "alerts": {
@@ -604,6 +604,10 @@
       },
       "operation": {
         "title": "9Router operation failed"
+      },
+      "runtimeUnavailable": {
+        "title": "Built-in 9Router runtime is unavailable",
+        "description": "CloudCLI could not start the embedded runtime. Native agent login remains available. Restart the runtime to try again."
       }
     },
     "connection": {
@@ -789,6 +793,18 @@
         "invalidThreshold": "Enter a non-negative USD amount with no more than six decimal places.",
         "toggle": "Enable {{period}}",
         "advisory": "Advisory only. 9Router remains the billing authority, and CloudCLI does not block requests or enforce spend limits."
+      }
+    },
+    "runtime": {
+      "title": "Built-in 9Router runtime",
+      "version": "Version",
+      "unknown": "Unknown",
+      "restart": "Restart runtime",
+      "status": {
+        "starting": "Starting",
+        "ready": "Ready",
+        "degraded": "Degraded",
+        "unavailable": "Unavailable"
       }
     }
   }

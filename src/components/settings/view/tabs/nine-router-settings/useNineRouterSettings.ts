@@ -9,21 +9,17 @@ import type {
   RoutingUsagePeriod,
   UpdateRoutingAccountInput,
   UpdateRoutingBindingInput,
-  UpdateRoutingConnectionInput,
   UpdateRoutingRouteInput,
   UpdateRoutingUsageAlertInput,
-  ValidateRoutingConnectionInput,
 } from '../../../../../../shared/routing.js';
 
 import { routingApi, RoutingApiError, type RoutingSettingsDetails } from './routingApi.js';
 import {
   accountDraftAfterMutation,
-  connectionDraftAfterMutation,
   createInitialRoutingState,
   createRoutingRequestCoordinator,
   routingStateReducer,
   shouldLoadRoutingDetails,
-  type RoutingConnectionDraft,
   type RoutingAccountDraft,
   type RoutingDetailKey,
   type RoutingState,
@@ -77,22 +73,10 @@ function detailKeysFor(details: RoutingSettingsDetails): RoutingDetailKey[] {
   return keys;
 }
 
-function connectionInput(draft: RoutingConnectionDraft): UpdateRoutingConnectionInput {
-  return {
-    baseUrl: draft.baseUrl.trim(),
-    ...(draft.adminPassword ? { adminPassword: draft.adminPassword } : {}),
-    ...(draft.dataPlaneKey ? { dataPlaneKey: draft.dataPlaneKey } : {}),
-  };
-}
 
 /** Owns all remote and write-only form state for the single Settings > 9Router page. */
 export function useNineRouterSettings() {
   const [state, dispatch] = useReducer(routingStateReducer, undefined, createInitialRoutingState);
-  const [connectionDraft, setConnectionDraft] = useState<RoutingConnectionDraft>({
-    baseUrl: '',
-    adminPassword: '',
-    dataPlaneKey: '',
-  });
   const [accountDraft, setAccountDraft] = useState<RoutingAccountDraft>({
     provider: '',
     name: '',
@@ -131,10 +115,6 @@ export function useNineRouterSettings() {
       const settings = await routingApi.getSettings(details);
       if (!requestCoordinatorRef.current.isCurrentAggregate(token)) return;
       applySettings(details, settings);
-      setConnectionDraft((current) => ({
-        ...current,
-        baseUrl: current.baseUrl || settings.connection.baseUrl || '',
-      }));
     } catch (error) {
       if (!requestCoordinatorRef.current.isCurrentAggregate(token)) return;
       dispatch({ type: 'loadFailed', error: safeUiError(error) });
@@ -280,34 +260,11 @@ export function useNineRouterSettings() {
     return result;
   }, [refreshAfterMutation]);
 
-  const connect = useCallback(() => runMutation(
-    'connection:save',
-    () => routingApi.connect(connectionInput(connectionDraft)),
+  const restartRuntime = useCallback(() => runMutation(
+    'runtime:restart',
+    () => routingApi.restartRuntime(),
     {},
-    (connection) => {
-      detailRequestsRef.current.clear();
-      dispatch({ type: 'detailsCleared' });
-      setConnectionDraft((current) => (
-        connectionDraftAfterMutation(current, true, connection.baseUrl)
-      ));
-    },
-    true,
-  ), [connectionDraft, runMutation]);
-
-  const validateConnection = useCallback((input?: ValidateRoutingConnectionInput) => runMutation(
-    'connection:test',
-    () => routingApi.validateConnection(input ?? connectionInput(connectionDraft)),
-  ), [connectionDraft, runMutation]);
-
-  const disconnect = useCallback(() => runMutation(
-    'connection:disconnect',
-    () => routingApi.disconnect(),
-    {},
-    () => {
-      detailRequestsRef.current.clear();
-      dispatch({ type: 'detailsCleared' });
-      setConnectionDraft({ baseUrl: '', adminPassword: '', dataPlaneKey: '' });
-    },
+    undefined,
     true,
   ), [runMutation]);
 
@@ -372,12 +329,7 @@ export function useNineRouterSettings() {
     () => routingApi.setUsageAlert(period, input),
   ), [runMutation]);
 
-  const setConnectionField = useCallback((
-    field: keyof RoutingConnectionDraft,
-    value: string,
-  ) => {
-    setConnectionDraft((current) => ({ ...current, [field]: value }));
-  }, []);
+
 
   const setAccountField = useCallback(<Key extends keyof RoutingAccountDraft>(
     field: Key,
@@ -391,9 +343,6 @@ export function useNineRouterSettings() {
 
   return {
     ...state,
-    connectionDraft,
-    setConnectionDraft,
-    setConnectionField,
     accountDraft,
     setAccountDraft,
     setAccountField,
@@ -407,9 +356,7 @@ export function useNineRouterSettings() {
     retryUpstreamDetails,
     retryRouteDetails,
     retryUsage,
-    connect,
-    validateConnection,
-    disconnect,
+    restartRuntime,
     setBinding,
     createAccount,
     updateAccount,

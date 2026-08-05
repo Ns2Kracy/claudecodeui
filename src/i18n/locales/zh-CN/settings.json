@@ -572,7 +572,7 @@
   },
   "nineRouter": {
     "title": "9Router",
-    "description": "可选择通过您自己的 9Router 服务运行新的 Claude、Codex 和 OpenCode 会话。",
+    "description": "通过内置 9Router 运行时路由新的 Claude、Codex 和 OpenCode 会话，无需额外端点或凭据设置。",
     "loading": "正在加载 9Router 设置...",
     "preservation": {
       "title": "原生智能体访问保持不变",
@@ -598,6 +598,10 @@
       },
       "operation": {
         "title": "9Router 操作失败"
+      },
+      "runtimeUnavailable": {
+        "title": "内置 9Router 运行时不可用",
+        "description": "CloudCLI 无法启动内置运行时。原生代理登录仍可使用。请重启运行时后重试。"
       }
     },
     "connection": {
@@ -779,6 +783,18 @@
         "invalidThreshold": "请输入非负美元金额，且小数位不超过六位。",
         "toggle": "启用{{period}}",
         "advisory": "仅作提醒。9Router 仍是计费依据，CloudCLI 不会阻止请求或强制执行支出上限。"
+      }
+    },
+    "runtime": {
+      "title": "内置 9Router 运行时",
+      "version": "版本",
+      "unknown": "未知",
+      "restart": "重启运行时",
+      "status": {
+        "starting": "启动中",
+        "ready": "就绪",
+        "degraded": "降级",
+        "unavailable": "不可用"
       }
     }
   }
