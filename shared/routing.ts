@@ -103,18 +103,30 @@ export type RoutingProviderConnectionMethod = 'api_key' | 'oauth' | 'device_code
 
 export type RoutingOAuthStartView = {
   provider: string;
+  transactionId: string;
   authUrl: string;
-  state: string;
   redirectUri: string;
+  expiresAt: string;
+};
+
+export type RoutingOAuthCallbackInput = {
+  transactionId: string;
+  state: string;
+  code: string;
 };
 
 export type RoutingDeviceCodeChallengeView = {
   provider: string;
+  transactionId: string;
   userCode: string;
   verificationUri: string;
   verificationUriComplete: string | null;
-  expiresIn: number | null;
+  expiresAt: string;
   interval: number | null;
+};
+
+export type RoutingOAuthTransactionInput = {
+  transactionId: string;
 };
 
 export type RoutingOAuthPollingStateView = {

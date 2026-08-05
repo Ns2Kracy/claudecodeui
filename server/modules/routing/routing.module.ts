@@ -9,6 +9,8 @@ import { createNotificationEvent, notifyUserIfEnabled } from '@/modules/notifica
 import { NineRouterClient } from './nine-router-client.js';
 import { requestNineRouterJson } from './nine-router-http.js';
 import { createNineRouterRuntimeService, type NineRouterRuntimeServiceDependencies } from './nine-router-runtime.service.js';
+import { createRoutingOAuthCallbackRouter } from './routing-oauth-callback.routes.js';
+import { createRoutingOAuthService } from './routing-oauth.service.js';
 import { createRoutingRouter } from './routing.routes.js';
 import { createRoutingRuntimeService } from './routing-runtime.service.js';
 import { createRoutingService } from './routing.service.js';
@@ -25,6 +27,21 @@ const clientFactory = (credentials: {
     request: requestNineRouterJson,
   });
 
+function routingServiceClientForRuntime() {
+  const runtime = getEmbeddedNineRouterRuntime();
+  const status = runtime.getStatus();
+  const credentials = runtime.getInternalCredentials();
+  return clientFactory({
+    baseUrl: status.origin ?? 'http://127.0.0.1:20128',
+    adminPassword: credentials.initialPassword,
+    dataPlaneKey: credentials.dataPlaneKey,
+  });
+}
+
+const routingOAuthService = createRoutingOAuthService({
+  clientForRuntime: () => routingServiceClientForRuntime(),
+});
+
 /** Used by the routing HTTP router to execute authenticated application workflows. */
 export const routingService = createRoutingService({
   repository: routingDb,
@@ -34,6 +51,7 @@ export const routingService = createRoutingService({
     restart: () => getEmbeddedNineRouterRuntime().restart(),
   },
   clientFactory,
+  oauth: routingOAuthService,
 });
 
 /** Used by provider session creation and run dispatch for sticky per-session routing. */
@@ -45,6 +63,9 @@ export const routingRuntimeService = createRoutingRuntimeService({
   },
   clientFactory,
 });
+
+/** Used by server composition to mount unauthenticated static OAuth callback acks before protected routing routes. */
+export const routingOAuthCallbackRoutes = createRoutingOAuthCallbackRouter();
 
 /** Used by the server composition root to mount the protected routing API. */
 export const routingRoutes = createRoutingRouter(routingService);

@@ -1,4 +1,5 @@
 export {
+  routingOAuthCallbackRoutes,
   routingRoutes,
   routingService,
   routingRuntimeService,

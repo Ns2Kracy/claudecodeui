@@ -16,6 +16,7 @@ import {
     providerRuntimeService,
 } from '@/modules/providers/index.js';
 import {
+    routingOAuthCallbackRoutes,
     routingRoutes,
     startEmbeddedNineRouter,
     stopEmbeddedNineRouter,
@@ -180,6 +181,7 @@ app.use('/api/commands', authenticateToken, commandsRoutes);
 app.use('/api/settings', authenticateToken, settingsRoutes);
 
 // Optional 9router model-source API (protected)
+app.use('/api/routing', routingOAuthCallbackRoutes);
 app.use('/api/routing', authenticateToken, routingRoutes);
 
 app.use('/api/system', authenticateToken, systemRoutes);

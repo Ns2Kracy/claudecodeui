@@ -265,6 +265,12 @@ function providerParam(request: Request): RoutingAgent {
   return provider as RoutingAgent;
 }
 
+function oauthProviderParam(request: Request): string {
+  const provider = requiredString(request.params.provider, 'provider', 64);
+  if (!/^[a-z0-9][a-z0-9_-]{0,63}$/.test(provider)) throw invalidRequest('provider is invalid');
+  return provider;
+}
+
 function bindingInput(request: Request): UpdateRoutingBindingInput {
   const body = bodyRecord(request);
   if (body.source !== 'native' && body.source !== '9router') {
@@ -301,6 +307,22 @@ function alertInput(request: Request): UpdateRoutingUsageAlertInput {
 
 function resourceId(request: Request): string {
   return requiredString(request.params.id, 'id', 512);
+}
+
+function oauthTransactionInput(request: Request): { transactionId: string } {
+  const body = bodyRecord(request);
+  return { transactionId: requiredString(body.transactionId, 'transactionId', 512) };
+}
+
+function oauthCallbackInput(request: Request): { transactionId: string; state: string; code: string } {
+  const transactionId = typeof request.query.transactionId === 'string' ? request.query.transactionId : bodyRecord(request).transactionId;
+  const state = typeof request.query.state === 'string' ? request.query.state : bodyRecord(request).state;
+  const code = typeof request.query.code === 'string' ? request.query.code : bodyRecord(request).code;
+  return {
+    transactionId: requiredString(transactionId, 'transactionId', 512),
+    state: requiredString(state, 'state', 512),
+    code: requiredString(code, 'code', 4096),
+  };
 }
 
 function settingsDetails(request: Request) {
@@ -355,6 +377,42 @@ export function createRoutingRouter(
           await service.restartRuntime(),
         ),
       );
+    }),
+  );
+
+  router.post(
+    '/oauth/:provider/authorize',
+    ...writeGuards,
+    asyncHandler(async (request, response) => {
+      response.json(createApiSuccessResponse(await service.startOAuth(userId(request), oauthProviderParam(request))));
+    }),
+  );
+  router.post(
+    '/oauth/:provider/callback',
+    ...writeGuards,
+    asyncHandler(async (request, response) => {
+      response.json(createApiSuccessResponse(await service.exchangeOAuth(userId(request), oauthProviderParam(request), oauthCallbackInput(request))));
+    }),
+  );
+  router.post(
+    '/oauth/:provider/device-code',
+    ...writeGuards,
+    asyncHandler(async (request, response) => {
+      response.json(createApiSuccessResponse(await service.startDeviceCode(userId(request), oauthProviderParam(request))));
+    }),
+  );
+  router.post(
+    '/oauth/:provider/poll',
+    ...writeGuards,
+    asyncHandler(async (request, response) => {
+      response.json(createApiSuccessResponse(await service.pollDeviceCode(userId(request), oauthProviderParam(request), oauthTransactionInput(request))));
+    }),
+  );
+  router.post(
+    '/oauth/:provider/cancel',
+    ...writeGuards,
+    asyncHandler(async (request, response) => {
+      response.json(createApiSuccessResponse(await service.cancelDeviceCode(userId(request), oauthProviderParam(request), oauthTransactionInput(request))));
     }),
   );
 

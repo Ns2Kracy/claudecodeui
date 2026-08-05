@@ -1,4 +1,4 @@
-import type { IRoutingNineRouterClient, RoutingNineRouterOAuthExchangeInternalInput, RoutingNineRouterOAuthPollInternalInput } from '@/shared/interfaces.js';
+import type { IRoutingNineRouterClient } from '@/shared/interfaces.js';
 import type {
   RoutingClientCredentials,
   RoutingRepository,
@@ -13,6 +13,8 @@ import type {
   RoutingAgent,
   RoutingBindingView,
   RoutingCapabilities,
+  RoutingAccountView,
+  RoutingOAuthPollingStateView,
   RoutingRuntimeView,
   RoutingSettingsView,
   RoutingUsageAlertPeriod,
@@ -29,6 +31,7 @@ import {
   ROUTING_AGENTS,
 } from '../../../shared/routing.js';
 
+import type { createRoutingOAuthService } from './routing-oauth.service.js';
 import type { NineRouterInternalCredentials, NineRouterRuntimeStatus } from './nine-router-runtime.service.js';
 
 type RuntimeCredentialsProvider = {
@@ -41,6 +44,7 @@ type RoutingServiceDependencies = {
   repository: RoutingRepository;
   runtime: RuntimeCredentialsProvider;
   clientFactory(credentials: RoutingClientCredentials): IRoutingNineRouterClient;
+  oauth?: ReturnType<typeof createRoutingOAuthService>;
   now?: () => Date;
 };
 
@@ -222,10 +226,26 @@ export function createRoutingService(dependencies: RoutingServiceDependencies) {
 
     async getProvider(_userId: number, id: string) { return callSafely(() => clientForRuntime().getProvider(id)); },
     async listProviderModels(_userId: number, id: string) { return callSafely(() => clientForRuntime().listProviderModels(id)); },
-    async startOAuth(_userId: number, provider: string, redirectUri: string) { return callSafely(() => clientForRuntime().startOAuth(provider, redirectUri)); },
-    async exchangeOAuth(_userId: number, provider: string, input: RoutingNineRouterOAuthExchangeInternalInput) { return callSafely(() => clientForRuntime().exchangeOAuth(provider, input)); },
-    async startDeviceCode(_userId: number, provider: string) { return callSafely(() => clientForRuntime().startDeviceCode(provider)); },
-    async pollDeviceCode(_userId: number, provider: string, input: RoutingNineRouterOAuthPollInternalInput) { return callSafely(() => clientForRuntime().pollDeviceCode(provider, input)); },
+    async startOAuth(userId: number, provider: string) {
+      if (!dependencies.oauth) throw runtimeUnavailable();
+      return dependencies.oauth.startAuthorizationCode(userId, provider);
+    },
+    async exchangeOAuth(userId: number, provider: string, input: { transactionId: string; state: string; code: string }): Promise<RoutingAccountView> {
+      if (!dependencies.oauth) throw runtimeUnavailable();
+      return callSafely(() => dependencies.oauth!.completeAuthorizationCode(userId, provider, input));
+    },
+    async startDeviceCode(userId: number, provider: string) {
+      if (!dependencies.oauth) throw runtimeUnavailable();
+      return dependencies.oauth.startDeviceCode(userId, provider);
+    },
+    async pollDeviceCode(userId: number, provider: string, input: { transactionId: string }): Promise<RoutingOAuthPollingStateView> {
+      if (!dependencies.oauth) throw runtimeUnavailable();
+      return callSafely(() => dependencies.oauth!.pollDeviceCode(userId, provider, input));
+    },
+    async cancelDeviceCode(userId: number, provider: string, input: { transactionId: string }) {
+      if (!dependencies.oauth) throw runtimeUnavailable();
+      return dependencies.oauth.cancelDeviceCode(userId, provider, input);
+    },
     async listProviderNodes(_userId: number) { return callSafely(() => clientForRuntime().listProviderNodes()); },
     async createProviderNode(_userId: number, input: CreateRoutingProviderNodeInput) { return callSafely(() => clientForRuntime().createProviderNode(input)); },
     async validateProviderNode(_userId: number, input: ValidateRoutingProviderNodeInput) { return callSafely(() => clientForRuntime().validateProviderNode(input)); },

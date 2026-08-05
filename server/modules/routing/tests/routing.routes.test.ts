@@ -209,3 +209,32 @@ test('provider-node routes reject invalid DTOs and unsafe URL syntax before serv
     assert.equal((await fetch(`${baseUrl}/api/routing/provider-nodes/node1`, { method: 'PUT', headers, body: JSON.stringify({ name: 'n', prefix: 'p' }) })).status, 400);
   });
 });
+
+test('OAuth routes are thin, guarded, and never expose internal secrets', async () => {
+  const calls: string[] = [];
+  await withRoutingServer({
+    startOAuth: async (_userId, provider) => { calls.push(`start:${provider}`); return { provider, transactionId: 'tx1', authUrl: 'https://auth.example.test', redirectUri: 'https://app.example.test/cb', expiresAt: '2026-01-01T00:00:00.000Z' }; },
+    startDeviceCode: async (_userId, provider) => { calls.push(`device:${provider}`); return { provider, transactionId: 'tx2', userCode: 'USER', verificationUri: 'https://verify.example.test', verificationUriComplete: null, expiresAt: '2026-01-01T00:00:00.000Z', interval: 5 }; },
+    exchangeOAuth: async (_userId, provider, input) => { calls.push(`exchange:${provider}:${input.transactionId}:${input.state}:${input.code}`); return { id: 'acct', provider, name: 'n', authType: 'oauth', priority: null, active: true, status: 'healthy', lastError: null, expiresAt: null }; },
+    pollDeviceCode: async (_userId, provider, input) => { calls.push(`poll:${provider}:${input.transactionId}`); return { provider, pending: true, account: null }; },
+    cancelDeviceCode: async (_userId, provider, input) => { calls.push(`cancel:${provider}:${input.transactionId}`); return { cancelled: true }; },
+  }, async (baseUrl) => {
+    const headers = { 'content-type': 'application/json', origin: baseUrl };
+    const start = await fetch(`${baseUrl}/api/routing/oauth/openai/authorize`, { method: 'POST', headers });
+    assert.equal(start.status, 200);
+    const startBody = await start.json() as any;
+    assert.deepEqual(Object.keys(startBody.data).sort(), ['authUrl', 'expiresAt', 'provider', 'redirectUri', 'transactionId'].sort());
+    assert.equal((await fetch(`${baseUrl}/api/routing/oauth/Bad.Provider/authorize`, { method: 'POST', headers })).status, 400);
+    assert.equal((await fetch(`${baseUrl}/api/routing/oauth/openai/callback?state=s&code=c`)).status, 404);
+    assert.deepEqual(calls, ['start:openai']);
+    assert.equal((await fetch(`${baseUrl}/api/routing/oauth/openai/callback`, { method: 'POST', headers, body: JSON.stringify({ transactionId: 'tx1', state: 'state1', code: 'code1', redirectUri: 'evil', codeVerifier: 'leak' }) })).status, 200);
+    const device = await fetch(`${baseUrl}/api/routing/oauth/google/device-code`, { method: 'POST', headers });
+    assert.equal(device.status, 200);
+    const deviceBody = await device.json() as any;
+    assert.deepEqual(Object.keys(deviceBody.data).sort(), ['expiresAt', 'interval', 'provider', 'transactionId', 'userCode', 'verificationUri', 'verificationUriComplete'].sort());
+    assert.equal(JSON.stringify(deviceBody).includes('deviceCode'), false);
+    assert.equal((await fetch(`${baseUrl}/api/routing/oauth/google/poll`, { method: 'POST', headers, body: JSON.stringify({ transactionId: 'tx2', deviceCode: 'leak' }) })).status, 200);
+    assert.equal((await fetch(`${baseUrl}/api/routing/oauth/google/cancel`, { method: 'POST', headers, body: JSON.stringify({ transactionId: 'tx2' }) })).status, 200);
+    assert.deepEqual(calls, ['start:openai', 'exchange:openai:tx1:state1:code1', 'device:google', 'poll:google:tx2', 'cancel:google:tx2']);
+  });
+});

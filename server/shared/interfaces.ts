@@ -27,8 +27,6 @@ import type {
   RoutingCapabilities,
   RoutingModelView,
   RoutingOAuthPollingStateView,
-  RoutingOAuthStartView,
-  RoutingDeviceCodeChallengeView,
   RoutingProviderModelsView,
   RoutingProviderNodeValidationView,
   RoutingProviderNodeView,
@@ -206,10 +204,26 @@ export interface IProviderSessionSynchronizer {
 
 
 /** Server-only OAuth authorize result from 9router. Service code must store codeVerifier and expose only safe fields to browsers. */
-export type RoutingNineRouterOAuthStartInternalResult = RoutingOAuthStartView & { codeVerifier: string };
+export type RoutingNineRouterOAuthStartInternalResult = {
+  provider: string;
+  authUrl: string;
+  state: string;
+  redirectUri: string;
+  codeVerifier: string;
+};
 
 /** Server-only device-code result from 9router. Service code must store deviceCode, codeVerifier, and extraData and expose only safe fields to browsers. */
-export type RoutingNineRouterDeviceCodeInternalResult = RoutingDeviceCodeChallengeView & { deviceCode: string; codeVerifier: string; extraData?: unknown };
+export type RoutingNineRouterDeviceCodeInternalResult = {
+  provider: string;
+  deviceCode: string;
+  codeVerifier: string;
+  extraData?: unknown;
+  userCode: string;
+  verificationUri: string;
+  verificationUriComplete: string | null;
+  expiresIn: number | null;
+  interval: number | null;
+};
 
 /**
  * Server-only OAuth authorization-code exchange payload for 9router.
