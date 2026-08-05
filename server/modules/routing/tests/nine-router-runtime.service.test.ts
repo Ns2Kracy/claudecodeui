@@ -108,7 +108,15 @@ function createHarness(overrides: Partial<NineRouterRuntimeServiceDependencies> 
     nowMs += timer.delayMs;
     timer.callback();
   };
-  return { child, timers, clearedTimers, spawnCalls, portChecks, healthChecks, service, runNextTimer };
+  const runTimersUntil = async (predicate: () => boolean, maxTimers = 200) => {
+    for (let i = 0; i < maxTimers; i += 1) {
+      if (predicate()) return;
+      runNextTimer();
+      await flushAsyncStart();
+    }
+    assert.fail(`predicate was not reached after ${maxTimers} timers`);
+  };
+  return { child, timers, clearedTimers, spawnCalls, portChecks, healthChecks, service, runNextTimer, runTimersUntil };
 }
 
 test('start resolves the official custom server, spawns node non-interactively, and becomes ready only after health passes', async () => {
@@ -159,14 +167,17 @@ test('package missing, occupied port, and readiness timeout produce safe typed s
   const timeout = createHarness();
   const startPromise = timeout.service.start();
   await flushAsyncStart();
-  for (let i = 0; i < 101; i += 1) {
-    timeout.runNextTimer();
-    await flushAsyncStart();
-  }
+  await timeout.runTimersUntil(() => timeout.service.getStatus().state === 'unavailable');
   timeout.child.emitExit(null, 'SIGTERM');
   await startPromise;
-  assert.equal(timeout.service.getStatus().state, 'unavailable');
+  assert.deepEqual(timeout.service.getStatus(), {
+    state: 'unavailable',
+    origin: null,
+    version: null,
+    lastError: '9router readiness timed out',
+  });
   assert.deepEqual(timeout.child.killedSignals, ['SIGTERM']);
+  assert.equal(timeout.spawnCalls.length, 1);
 });
 
 test('stop terminates the managed child with SIGTERM and SIGKILL after the deadline, then clears timers', async () => {
