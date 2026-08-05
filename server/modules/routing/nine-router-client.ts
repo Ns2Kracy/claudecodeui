@@ -12,6 +12,7 @@ import type {
   RoutingProviderModelsView,
   RoutingProviderNodeValidationView,
   RoutingProviderNodeView,
+  RoutingProviderNodeType,
   RoutingRouteView,
   RoutingUsagePeriod,
   RoutingUsageView,
@@ -124,6 +125,17 @@ function nullableNumber(value: unknown): number | null {
     throw invalidResponse();
   }
   return value as number;
+}
+
+function optionalProviderNodeType(value: unknown): RoutingProviderNodeType {
+  if (value !== 'openai-compatible' && value !== 'custom-embedding' && value !== 'anthropic-compatible') throw invalidResponse();
+  return value;
+}
+
+function optionalApiType(value: unknown): 'chat' | 'responses' | null {
+  if (value === undefined || value === null || value === '') return null;
+  if (value !== 'chat' && value !== 'responses') throw invalidResponse();
+  return value;
 }
 
 function nonNegativeNumber(value: unknown): number {
@@ -268,10 +280,6 @@ function sanitizeUsage(value: unknown, period: RoutingUsagePeriod): RoutingUsage
 }
 
 
-function nullableBoolean(value: unknown): boolean {
-  return value === undefined ? true : value === true;
-}
-
 function sanitizeProviderModels(value: unknown): RoutingProviderModelsView {
   const data = expectRecord(value);
   const models = data.models;
@@ -290,11 +298,14 @@ function sanitizeOAuthStart(provider: string, value: unknown): RoutingNineRouter
 
 function sanitizeDeviceCode(provider: string, value: unknown): RoutingNineRouterDeviceCodeInternalResult {
   const data = expectRecord(value);
+  const extraData = data.extraData === undefined || data.extraData === null
+    ? null
+    : JSON.parse(JSON.stringify(data.extraData)) as unknown;
   return {
     provider,
     deviceCode: requiredString(data.device_code),
     codeVerifier: requiredString(data.codeVerifier),
-    extraData: data.extraData,
+    extraData,
     userCode: requiredString(data.user_code),
     verificationUri: requiredString(data.verification_uri),
     verificationUriComplete: optionalString(data.verification_uri_complete),
@@ -305,17 +316,20 @@ function sanitizeDeviceCode(provider: string, value: unknown): RoutingNineRouter
 
 function sanitizePoll(provider: string, value: unknown, now: Date): RoutingOAuthPollingStateView {
   const data = expectRecord(value);
+  if (typeof data.pending !== 'boolean') throw invalidResponse();
   const account = data.connection === undefined || data.connection === null ? null : sanitizeAccount(data.connection, now);
-  return { provider, pending: data.pending === true, account };
+  return { provider, pending: data.pending, account };
 }
 
 function sanitizeProviderNode(value: unknown): RoutingProviderNodeView {
   const data = expectRecord(value);
   return {
     id: requiredString(data.id),
+    type: optionalProviderNodeType(data.type),
     name: requiredString(data.name),
+    prefix: requiredString(data.prefix),
     baseUrl: requiredString(data.baseUrl),
-    active: nullableBoolean(data.isActive ?? data.active),
+    apiType: optionalApiType(data.apiType),
     createdAt: optionalString(data.createdAt),
     updatedAt: optionalString(data.updatedAt),
   };
@@ -324,9 +338,12 @@ function sanitizeProviderNode(value: unknown): RoutingProviderNodeView {
 function sanitizeNodePayload(input: CreateRoutingProviderNodeInput | UpdateRoutingProviderNodeInput | ValidateRoutingProviderNodeInput): Record<string, unknown> {
   const payload: Record<string, unknown> = {};
   if ('name' in input && input.name !== undefined) payload.name = input.name;
+  if ('prefix' in input && input.prefix !== undefined) payload.prefix = input.prefix;
+  if ('type' in input && input.type !== undefined) payload.type = input.type;
   if ('baseUrl' in input && input.baseUrl !== undefined) payload.baseUrl = input.baseUrl;
+  if ('apiType' in input && input.apiType !== undefined) payload.apiType = input.apiType;
   if ('apiKey' in input && input.apiKey !== undefined) payload.apiKey = input.apiKey;
-  if ('active' in input && input.active !== undefined) payload.isActive = input.active;
+  if ('modelId' in input && input.modelId !== undefined) payload.modelId = input.modelId;
   return payload;
 }
 

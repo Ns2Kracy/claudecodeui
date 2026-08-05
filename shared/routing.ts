@@ -129,32 +129,47 @@ export type RoutingProviderModelsView = {
   models: RoutingModelView[];
 };
 
+/**
+ * Shared Task 7 provider-node DTOs mirrored from pinned 9router route handlers.
+ * These shapes intentionally exclude credentials from safe views. Create and
+ * update payloads model only upstream provider-node configuration fields. The
+ * validate DTO includes the temporary apiKey because validation is the only
+ * provider-node flow that probes an upstream with user credentials.
+ */
+export type RoutingProviderNodeType = 'openai-compatible' | 'custom-embedding' | 'anthropic-compatible';
+export type RoutingOpenAiProviderNodeApiType = 'chat' | 'responses';
+
 export type RoutingProviderNodeView = {
   id: string;
+  type: RoutingProviderNodeType;
   name: string;
+  prefix: string;
   baseUrl: string;
-  active: boolean;
+  apiType: RoutingOpenAiProviderNodeApiType | null;
   createdAt: string | null;
   updatedAt: string | null;
 };
 
 export type CreateRoutingProviderNodeInput = {
   name: string;
-  baseUrl: string;
-  apiKey?: string;
-  active?: boolean;
+  prefix: string;
+  type: RoutingProviderNodeType;
+  apiType?: RoutingOpenAiProviderNodeApiType;
+  baseUrl?: string;
 };
 
 export type UpdateRoutingProviderNodeInput = {
-  name?: string;
-  baseUrl?: string;
-  apiKey?: string;
-  active?: boolean;
+  name: string;
+  prefix: string;
+  baseUrl: string;
+  apiType?: RoutingOpenAiProviderNodeApiType;
 };
 
 export type ValidateRoutingProviderNodeInput = {
   baseUrl: string;
-  apiKey?: string;
+  apiKey: string;
+  type: RoutingProviderNodeType;
+  modelId?: string;
 };
 
 export type RoutingProviderNodeValidationView = {

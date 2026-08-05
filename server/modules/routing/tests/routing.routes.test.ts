@@ -177,19 +177,35 @@ test('provider detail, model, and provider-node routes are thin authenticated se
     getProvider: async (_userId, id) => { calls.push(`provider:${id}`); return { id, provider: 'openai', name: 'n', authType: 'oauth', priority: null, active: true, status: 'healthy', lastError: null, expiresAt: null }; },
     listProviderModels: async (_userId, id) => { calls.push(`models:${id}`); return { provider: 'openai', connectionId: id, models: [] }; },
     listProviderNodes: async () => { calls.push('nodes:list'); return []; },
-    createProviderNode: async (_userId, input) => { calls.push(`nodes:create:${input.name}`); return { id: 'node1', name: input.name, baseUrl: input.baseUrl, active: true, createdAt: null, updatedAt: null }; },
-    validateProviderNode: async () => { calls.push('nodes:validate'); return { valid: true, message: null }; },
-    updateProviderNode: async (_userId, id) => { calls.push(`nodes:update:${id}`); return { id, name: 'n', baseUrl: 'https://node.test', active: true, createdAt: null, updatedAt: null }; },
+    createProviderNode: async (_userId, input) => { calls.push(`nodes:create:${input.name}:${input.prefix}:${input.type}:${input.apiType ?? 'none'}`); return { id: 'node1', type: input.type, name: input.name, prefix: input.prefix, baseUrl: input.baseUrl ?? 'https://node.test', apiType: input.apiType ?? null, createdAt: null, updatedAt: null }; },
+    validateProviderNode: async (_userId, input) => { calls.push(`nodes:validate:${input.type}:${input.apiKey}:${input.modelId ?? 'none'}`); return { valid: true, message: null }; },
+    updateProviderNode: async (_userId, id, input) => { calls.push(`nodes:update:${id}:${input.name}:${input.prefix}:${input.baseUrl}:${input.apiType ?? 'none'}`); return { id, type: 'openai-compatible', name: input.name, prefix: input.prefix, baseUrl: input.baseUrl, apiType: input.apiType ?? null, createdAt: null, updatedAt: null }; },
     deleteProviderNode: async (_userId, id) => { calls.push(`nodes:delete:${id}`); },
   }, async (baseUrl) => {
     const headers = { 'content-type': 'application/json', origin: baseUrl };
     assert.equal((await fetch(`${baseUrl}/api/routing/accounts/a%2Fb`)).status, 200);
     assert.equal((await fetch(`${baseUrl}/api/routing/accounts/a%2Fb/models`)).status, 200);
     assert.equal((await fetch(`${baseUrl}/api/routing/provider-nodes`)).status, 200);
-    assert.equal((await fetch(`${baseUrl}/api/routing/provider-nodes`, { method: 'POST', headers, body: JSON.stringify({ name: 'n', baseUrl: 'https://node.test' }) })).status, 200);
-    assert.equal((await fetch(`${baseUrl}/api/routing/provider-nodes/validations`, { method: 'POST', headers, body: JSON.stringify({ baseUrl: 'https://node.test' }) })).status, 200);
-    assert.equal((await fetch(`${baseUrl}/api/routing/provider-nodes/node%2F1`, { method: 'PUT', headers, body: JSON.stringify({ active: false }) })).status, 200);
+    assert.equal((await fetch(`${baseUrl}/api/routing/provider-nodes`, { method: 'POST', headers, body: JSON.stringify({ name: 'n', prefix: 'openai', type: 'openai-compatible', apiType: 'chat', baseUrl: 'https://node.test' }) })).status, 200);
+    assert.equal((await fetch(`${baseUrl}/api/routing/provider-nodes/validations`, { method: 'POST', headers, body: JSON.stringify({ baseUrl: 'https://node.test', apiKey: 'k', type: 'custom-embedding', modelId: 'embed-1' }) })).status, 200);
+    assert.equal((await fetch(`${baseUrl}/api/routing/provider-nodes/node%2F1`, { method: 'PUT', headers, body: JSON.stringify({ name: 'n2', prefix: 'openai', baseUrl: 'https://node.test', apiType: 'responses' }) })).status, 200);
     assert.equal((await fetch(`${baseUrl}/api/routing/provider-nodes/node%2F1`, { method: 'DELETE', headers })).status, 200);
-    assert.deepEqual(calls, ['provider:a/b', 'models:a/b', 'nodes:list', 'nodes:create:n', 'nodes:validate', 'nodes:update:node/1', 'nodes:delete:node/1']);
+    assert.deepEqual(calls, ['provider:a/b', 'models:a/b', 'nodes:list', 'nodes:create:n:openai:openai-compatible:chat', 'nodes:validate:custom-embedding:k:embed-1', 'nodes:update:node/1:n2:openai:https://node.test:responses', 'nodes:delete:node/1']);
+  });
+});
+
+test('provider-node routes reject invalid DTOs and unsafe URL syntax before service calls', async () => {
+  await withRoutingServer({
+    createProviderNode: async () => { throw new Error('unexpected create'); },
+    validateProviderNode: async () => { throw new Error('unexpected validate'); },
+    updateProviderNode: async () => { throw new Error('unexpected update'); },
+  }, async (baseUrl) => {
+    const headers = { 'content-type': 'application/json', origin: baseUrl };
+    assert.equal((await fetch(`${baseUrl}/api/routing/provider-nodes`, { method: 'POST', headers, body: JSON.stringify({ name: 'n', prefix: 'p', type: 'openai-compatible' }) })).status, 400);
+    assert.equal((await fetch(`${baseUrl}/api/routing/provider-nodes`, { method: 'POST', headers, body: JSON.stringify({ name: 'n', prefix: 'p', type: 'custom-embedding', baseUrl: 'ftp://node.test' }) })).status, 400);
+    assert.equal((await fetch(`${baseUrl}/api/routing/provider-nodes`, { method: 'POST', headers, body: JSON.stringify({ name: 'n', prefix: 'p', type: 'custom-embedding', baseUrl: 'https://user:pass@node.test' }) })).status, 400);
+    assert.equal((await fetch(`${baseUrl}/api/routing/provider-nodes/validations`, { method: 'POST', headers, body: JSON.stringify({ baseUrl: 'https://node.test', type: 'custom-embedding', apiKey: 'k' }) })).status, 400);
+    assert.equal((await fetch(`${baseUrl}/api/routing/provider-nodes/validations`, { method: 'POST', headers, body: JSON.stringify({ baseUrl: 'https://node.test#secret', type: 'anthropic-compatible', apiKey: 'k' }) })).status, 400);
+    assert.equal((await fetch(`${baseUrl}/api/routing/provider-nodes/node1`, { method: 'PUT', headers, body: JSON.stringify({ name: 'n', prefix: 'p' }) })).status, 400);
   });
 });

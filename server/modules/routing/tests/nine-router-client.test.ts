@@ -22,6 +22,7 @@ type FakeRouterState = {
   rejectNextAccountList: boolean;
   rejectNextRouteCreate: boolean;
   receivedBodies: Array<{ path: string; body: unknown }>;
+  invalidPollPending?: boolean;
 };
 
 async function readJsonBody(request: IncomingMessage): Promise<unknown> {
@@ -259,7 +260,7 @@ async function withFakeRouter(
 
 
       if (request.method === 'GET' && path === '/api/provider-nodes') {
-        sendJson(response, 200, { nodes: [{ id: 'node-1', name: 'Node', baseUrl: 'https://node.test', apiKey: 'hidden' }] });
+        sendJson(response, 200, { nodes: [{ id: 'node-1', type: 'openai-compatible', name: 'Node', prefix: 'openai', baseUrl: 'https://node.test', apiType: 'chat', apiKey: 'hidden' }] });
         return;
       }
       if (request.method === 'POST' && path === '/api/provider-nodes') {
@@ -272,10 +273,14 @@ async function withFakeRouter(
         sendJson(response, 200, { valid: true, error: 'hidden detail' });
         return;
       }
+      if (request.method === 'POST' && path === '/api/oauth/openai/poll') {
+        sendJson(response, 200, { pending: state.invalidPollPending ? 'false' : true, connection: null });
+        return;
+      }
       const nodeMatch = path.match(/^\/api\/provider-nodes\/([^/]+)$/);
       if (nodeMatch && request.method === 'PUT') {
         const body = await readJsonBody(request); state.receivedBodies.push({ path, body });
-        sendJson(response, 200, { node: { id: decodeURIComponent(nodeMatch[1]), name: 'Node', baseUrl: 'https://node.test', ...(body as object), apiKey: 'hidden' } });
+        sendJson(response, 200, { node: { id: decodeURIComponent(nodeMatch[1]), type: 'openai-compatible', name: 'Node', prefix: 'openai', baseUrl: 'https://node.test', apiType: 'responses', ...(body as object), apiKey: 'hidden' } });
         return;
       }
       if (nodeMatch && request.method === 'DELETE') { sendJson(response, 200, { success: true }); return; }
@@ -609,10 +614,22 @@ test('maps provider detail, provider models, and provider nodes into safe DTOs',
     assert.equal((await client.getProvider('account/1')).id, 'account-1');
     assert.equal((await client.listProviderModels('account/1')).models[0].id, 'openai/gpt-4o');
     assert.equal((await client.listProviderNodes())[0].baseUrl, 'https://node.test');
-    assert.equal((await client.createProviderNode({ name: 'Node', baseUrl: 'https://node.test', apiKey: 'secret' })).id, 'node-2');
-    assert.equal((await client.validateProviderNode({ baseUrl: 'https://node.test', apiKey: 'secret' })).message, null);
-    assert.equal((await client.updateProviderNode('node/1', { active: false })).id, 'node/1');
+    assert.equal((await client.createProviderNode({ name: 'Node', prefix: 'openai', type: 'openai-compatible', apiType: 'chat', baseUrl: 'https://node.test' })).id, 'node-2');
+    assert.equal((await client.validateProviderNode({ baseUrl: 'https://node.test', apiKey: 'secret', type: 'custom-embedding', modelId: 'embed-1' })).message, null);
+    assert.equal((await client.updateProviderNode('node/1', { name: 'Node 2', prefix: 'openai', baseUrl: 'https://node.test', apiType: 'responses' })).id, 'node/1');
     await client.deleteProviderNode('node/1');
-    assert.equal(JSON.stringify(state.receivedBodies).includes('secret'), true);
+    assert.deepEqual(state.receivedBodies.filter((item) => item.path.includes('provider-nodes')).map((item) => item.body), [
+      { name: 'Node', prefix: 'openai', type: 'openai-compatible', baseUrl: 'https://node.test', apiType: 'chat' },
+      { baseUrl: 'https://node.test', type: 'custom-embedding', apiKey: 'secret', modelId: 'embed-1' },
+      { name: 'Node 2', prefix: 'openai', baseUrl: 'https://node.test', apiType: 'responses' },
+    ]);
+  });
+});
+
+test('rejects invalid upstream pending states instead of coercing', async () => {
+  await withFakeRouter({}, async ({ baseUrl, request, state }) => {
+    const client = new NineRouterClient({ baseUrl, adminPassword: 'admin-password', dataPlaneKey: 'data-plane-key', request });
+    state.invalidPollPending = true;
+    await assertClientError(() => client.pollDeviceCode('openai', { deviceCode: 'd', codeVerifier: 'v' }), 'ROUTING_UPSTREAM_RESPONSE_INVALID');
   });
 });

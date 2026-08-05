@@ -9,6 +9,7 @@ import type {
   RoutingAgent,
   RoutingUsageAlertPeriod,
   RoutingUsagePeriod,
+  RoutingProviderNodeType,
   UpdateRoutingAccountInput,
   UpdateRoutingProviderNodeInput,
   ValidateRoutingProviderNodeInput,
@@ -152,40 +153,76 @@ function stringArray(value: unknown, fieldName: string): string[] {
   return value.map((item) => requiredString(item, fieldName, 1024));
 }
 
+function providerNodeType(value: unknown): RoutingProviderNodeType {
+  if (value !== 'openai-compatible' && value !== 'custom-embedding' && value !== 'anthropic-compatible') {
+    throw invalidRequest('type is invalid');
+  }
+  return value;
+}
+
+function providerNodeApiType(value: unknown): 'chat' | 'responses' | undefined {
+  if (value === undefined) return undefined;
+  if (value !== 'chat' && value !== 'responses') throw invalidRequest('apiType is invalid');
+  return value;
+}
+
+function providerNodeBaseUrl(value: unknown, required: boolean): string | undefined {
+  if (value === undefined && !required) return undefined;
+  const baseUrl = requiredString(value, 'baseUrl', 2048).trim();
+  let url: URL;
+  try { url = new URL(baseUrl); } catch { throw invalidRequest('baseUrl is invalid'); }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') throw invalidRequest('baseUrl is invalid');
+  if (url.username || url.password || url.hash) throw invalidRequest('baseUrl is invalid');
+  // This CloudCLI boundary only enforces URL syntax for provider-node DTOs.
+  // The pinned upstream /api/provider-nodes/validate handler performs DNS and
+  // private-target SSRF enforcement before its only provider-node network probe.
+  return baseUrl;
+}
+
+function assertProviderNodeApiType(type: RoutingProviderNodeType, apiType: 'chat' | 'responses' | undefined): void {
+  if (type === 'openai-compatible' && apiType === undefined) throw invalidRequest('apiType is required');
+}
+
 
 function providerNodeCreateInput(request: Request): CreateRoutingProviderNodeInput {
   const body = bodyRecord(request);
+  const type = providerNodeType(body.type);
+  const apiType = providerNodeApiType(body.apiType);
+  assertProviderNodeApiType(type, apiType);
   const input: CreateRoutingProviderNodeInput = {
     name: requiredString(body.name, 'name', 256),
-    baseUrl: requiredString(body.baseUrl, 'baseUrl', 2048),
+    prefix: requiredString(body.prefix, 'prefix', 256),
+    type,
   };
-  const apiKey = optionalNonEmptyString(body.apiKey, 'apiKey', 16_384);
-  const active = optionalBoolean(body.active, 'active');
-  if (apiKey !== undefined) input.apiKey = apiKey;
-  if (active !== undefined) input.active = active;
+  const baseUrl = providerNodeBaseUrl(body.baseUrl, false);
+  if (apiType !== undefined) input.apiType = apiType;
+  if (baseUrl !== undefined) input.baseUrl = baseUrl;
   return input;
 }
 
 function providerNodeUpdateInput(request: Request): UpdateRoutingProviderNodeInput {
   const body = bodyRecord(request);
-  const input: UpdateRoutingProviderNodeInput = {};
-  const name = optionalNonEmptyString(body.name, 'name', 256);
-  const baseUrl = optionalNonEmptyString(body.baseUrl, 'baseUrl', 2048);
-  const apiKey = optionalNonEmptyString(body.apiKey, 'apiKey', 16_384);
-  const active = optionalBoolean(body.active, 'active');
-  if (name !== undefined) input.name = name;
-  if (baseUrl !== undefined) input.baseUrl = baseUrl;
-  if (apiKey !== undefined) input.apiKey = apiKey;
-  if (active !== undefined) input.active = active;
-  if (Object.keys(input).length === 0) throw invalidRequest();
+  const apiType = providerNodeApiType(body.apiType);
+  const input: UpdateRoutingProviderNodeInput = {
+    name: requiredString(body.name, 'name', 256),
+    prefix: requiredString(body.prefix, 'prefix', 256),
+    baseUrl: providerNodeBaseUrl(body.baseUrl, true) as string,
+  };
+  if (apiType !== undefined) input.apiType = apiType;
   return input;
 }
 
 function providerNodeValidateInput(request: Request): ValidateRoutingProviderNodeInput {
   const body = bodyRecord(request);
-  const input: ValidateRoutingProviderNodeInput = { baseUrl: requiredString(body.baseUrl, 'baseUrl', 2048) };
-  const apiKey = optionalNonEmptyString(body.apiKey, 'apiKey', 16_384);
-  if (apiKey !== undefined) input.apiKey = apiKey;
+  const type = providerNodeType(body.type);
+  const input: ValidateRoutingProviderNodeInput = {
+    baseUrl: providerNodeBaseUrl(body.baseUrl, true) as string,
+    apiKey: requiredString(body.apiKey, 'apiKey', 16_384),
+    type,
+  };
+  const modelId = optionalNonEmptyString(body.modelId, 'modelId', 1024);
+  if (type === 'custom-embedding' && modelId === undefined) throw invalidRequest('modelId is required');
+  if (modelId !== undefined) input.modelId = modelId;
   return input;
 }
 

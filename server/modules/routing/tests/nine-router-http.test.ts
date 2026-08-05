@@ -161,6 +161,23 @@ test('rejects invalid dynamic Task 7 path inputs before making a request', async
   );
 });
 
+test('rejects malformed, credentialed, fragmented, and oversized base URLs before requests', async () => {
+  const requestFactory = () => { throw new Error('request should not start'); };
+  const dependencies = { requestFactory, targetPolicy: localTargetPolicy };
+  for (const baseUrl of [
+    'not a url',
+    'ftp://router.test',
+    'https://user:pass@router.test',
+    'https://router.test#secret',
+    `https://router.test/${'x'.repeat(3000)}`,
+  ]) {
+    await assertHttpError(
+      () => requestNineRouterJson({ baseUrl, operation: 'health' }, dependencies),
+      'ROUTING_TARGET_BLOCKED',
+    );
+  }
+});
+
 test('does not retry ambiguous Task 7 mutations after network failure', async () => {
   let attempts = 0;
   const requestFactory = () => {
