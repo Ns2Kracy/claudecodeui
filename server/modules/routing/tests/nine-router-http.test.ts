@@ -96,6 +96,96 @@ test('encodes dynamic resource IDs instead of accepting arbitrary paths', async 
   });
 });
 
+test('maps Task 7 provider, OAuth, and provider-node operations to exact upstream paths', async () => {
+  const seen: Array<{ method: string | undefined; url: string | undefined; body: unknown }> = [];
+  await withServer(async (request, response) => {
+    seen.push({
+      method: request.method,
+      url: request.url,
+      body: request.method === 'GET' || request.method === 'DELETE'
+        ? null
+        : JSON.parse(await readRequestBody(request)) as unknown,
+    });
+    response.writeHead(200, { 'content-type': 'application/json' });
+    response.end(JSON.stringify({ ok: true }));
+  }, async (baseUrl) => {
+    const options = { targetPolicy: localTargetPolicy };
+    await requestNineRouterJson({ baseUrl, operation: 'providerGet', id: 'provider/1' }, options);
+    await requestNineRouterJson({ baseUrl, operation: 'providerModels', id: 'provider/1' }, options);
+    await requestNineRouterJson({ baseUrl, operation: 'oauthAuthorize', provider: 'codex', redirectUri: 'http://localhost:1455/auth/callback?x=1' }, options);
+    await requestNineRouterJson({ baseUrl, operation: 'oauthExchange', provider: 'codex', body: { code: 'c' } }, options);
+    await requestNineRouterJson({ baseUrl, operation: 'oauthDeviceCode', provider: 'openai' }, options);
+    await requestNineRouterJson({ baseUrl, operation: 'oauthPoll', provider: 'openai', body: { deviceCode: 'd' } }, options);
+    await requestNineRouterJson({ baseUrl, operation: 'providerNodesList' }, options);
+    await requestNineRouterJson({ baseUrl, operation: 'providerNodeCreate', body: { name: 'n' } }, options);
+    await requestNineRouterJson({ baseUrl, operation: 'providerNodeValidate', body: { baseUrl: 'https://node.test' } }, options);
+    await requestNineRouterJson({ baseUrl, operation: 'providerNodeUpdate', id: 'node/1', body: { isActive: false } }, options);
+    await requestNineRouterJson({ baseUrl, operation: 'providerNodeDelete', id: 'node/1' }, options);
+  });
+
+  assert.deepEqual(seen, [
+    { method: 'GET', url: '/api/providers/provider%2F1', body: null },
+    { method: 'GET', url: '/api/providers/provider%2F1/models', body: null },
+    { method: 'GET', url: '/api/oauth/codex/authorize?redirect_uri=http%3A%2F%2Flocalhost%3A1455%2Fauth%2Fcallback%3Fx%3D1', body: null },
+    { method: 'POST', url: '/api/oauth/codex/exchange', body: { code: 'c' } },
+    { method: 'GET', url: '/api/oauth/openai/device-code', body: null },
+    { method: 'POST', url: '/api/oauth/openai/poll', body: { deviceCode: 'd' } },
+    { method: 'GET', url: '/api/provider-nodes', body: null },
+    { method: 'POST', url: '/api/provider-nodes', body: { name: 'n' } },
+    { method: 'POST', url: '/api/provider-nodes/validate', body: { baseUrl: 'https://node.test' } },
+    { method: 'PUT', url: '/api/provider-nodes/node%2F1', body: { isActive: false } },
+    { method: 'DELETE', url: '/api/provider-nodes/node%2F1', body: null },
+  ]);
+});
+
+test('rejects invalid dynamic Task 7 path inputs before making a request', async () => {
+  const requestFactory = () => {
+    throw new Error('request should not start');
+  };
+  const dependencies = {
+    requestFactory,
+    targetPolicy: localTargetPolicy,
+  };
+
+  await assertHttpError(
+    () => requestNineRouterJson({ baseUrl: 'http://router.test:20128', operation: 'providerGet' }, dependencies),
+    'ROUTING_OPERATION_FAILED',
+  );
+  await assertHttpError(
+    () => requestNineRouterJson({ baseUrl: 'http://router.test:20128', operation: 'oauthAuthorize', provider: '', redirectUri: 'http://localhost/callback' }, dependencies),
+    'ROUTING_OPERATION_FAILED',
+  );
+  await assertHttpError(
+    () => requestNineRouterJson({ baseUrl: 'http://router.test:20128', operation: 'oauthAuthorize', provider: 'codex' }, dependencies),
+    'ROUTING_OPERATION_FAILED',
+  );
+});
+
+test('does not retry ambiguous Task 7 mutations after network failure', async () => {
+  let attempts = 0;
+  const requestFactory = () => {
+    attempts += 1;
+    const request = new EventEmitter() as EventEmitter & {
+      write: () => void;
+      end: () => void;
+      destroy: () => void;
+    };
+    request.write = () => undefined;
+    request.destroy = () => undefined;
+    request.end = () => queueMicrotask(() => request.emit('error', new Error('socket reset')));
+    return request;
+  };
+
+  await assertHttpError(
+    () => requestNineRouterJson(
+      { baseUrl: 'http://router.test:20128', operation: 'providerNodeCreate', body: { name: 'n' } },
+      { requestFactory, targetPolicy: localTargetPolicy },
+    ),
+    'ROUTING_UNREACHABLE',
+  );
+  assert.equal(attempts, 1);
+});
+
 test('enforces a connection timeout with an injected never-connecting request', async () => {
   const requestFactory = () => {
     const request = new EventEmitter() as EventEmitter & {
