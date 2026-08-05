@@ -81,6 +81,7 @@ type NineRouterRuntimeDependencies = {
   health: HealthChecker;
   clock: Clock;
   env?: NodeJS.ProcessEnv;
+  onStatusChange?: (status: RuntimeStatus) => void;
 };
 
 type StopWaiter = { child: ChildProcess; resolve: () => void; timer: unknown };
@@ -160,6 +161,15 @@ export function createNineRouterRuntimeService(dependencies: NineRouterRuntimeDe
   const stopWaiters: StopWaiter[] = [];
   const readinessWaiters = new Set<() => void>();
 
+  function cloneStatus(): RuntimeStatus {
+    return { ...status, lastError: status.lastError ? { ...status.lastError } : null };
+  }
+
+  function transition(nextStatus: RuntimeStatus): void {
+    status = nextStatus;
+    dependencies.onStatusChange?.(cloneStatus());
+  }
+
   function setTimer(callback: () => void, delayMs: number): unknown {
     const timer = dependencies.clock.setTimeout(() => {
       timers.delete(timer);
@@ -189,7 +199,7 @@ export function createNineRouterRuntimeService(dependencies: NineRouterRuntimeDe
   }
 
   function setUnavailable(error: RoutingSafeError): void {
-    status = { state: 'unavailable', origin: null, version: null, lastError: error };
+    transition({ state: 'unavailable', origin: null, version: null, lastError: error });
   }
 
   function processError(error: unknown): RoutingSafeError {
@@ -214,7 +224,7 @@ export function createNineRouterRuntimeService(dependencies: NineRouterRuntimeDe
     }
     rapidCrashCount += 1;
     const delay = Math.min(2 ** (rapidCrashCount - 1) * 1_000, MAX_RESTART_DELAY_MS);
-    status = { state: 'degraded', origin: null, version: null, lastError: routingError('ROUTING_PROCESS_FAILED', reason, true, runtimeCredentials(dependencies)) };
+    transition({ state: 'degraded', origin: null, version: null, lastError: routingError('ROUTING_PROCESS_FAILED', reason, true, runtimeCredentials(dependencies)) });
     setTimer(() => {
       void start();
     }, delay);
@@ -249,18 +259,16 @@ export function createNineRouterRuntimeService(dependencies: NineRouterRuntimeDe
       try {
         health = await dependencies.health.check(BASE_URL);
       } catch (error) {
-        if (captured(generation) && child === currentChild) setUnavailable(processError(error));
-        await stopManaged(true);
-        return;
+        health = { ok: false };
       }
       if (!captured(generation) || child !== currentChild) return;
       if (health.ok) {
-        status = {
+        transition({
           state: 'ready',
           origin: safeHealthField(health.origin),
           version: safeHealthField(health.version),
           lastError: null,
-        };
+        });
         setTimer(() => {
           if (child === currentChild && status.state === 'ready') rapidCrashCount = 0;
         }, STABLE_RESTART_WINDOW_MS);
@@ -278,7 +286,7 @@ export function createNineRouterRuntimeService(dependencies: NineRouterRuntimeDe
     stopping = false;
     const generation = readinessGeneration + 1;
     readinessGeneration = generation;
-    status = { state: 'starting', origin: null, version: null, lastError: null };
+    transition({ state: 'starting', origin: null, version: null, lastError: null });
 
     let serverPath: string | null;
     try {
@@ -337,7 +345,7 @@ export function createNineRouterRuntimeService(dependencies: NineRouterRuntimeDe
 
     child = currentChild;
     currentChild.stderr?.on('data', (chunk: Buffer) => {
-      status = { ...status, lastError: routingError('ROUTING_PROCESS_FAILED', String(chunk), true, runtimeCredentials(dependencies)) };
+      transition({ ...status, lastError: routingError('ROUTING_PROCESS_FAILED', String(chunk), true, runtimeCredentials(dependencies)) });
     });
     currentChild.on('error', (error: unknown) => handleChildError(currentChild, error));
     currentChild.on('exit', (code: number | null, signal: NodeJS.Signals | null) => handleExit(currentChild, code, signal));
@@ -352,7 +360,7 @@ export function createNineRouterRuntimeService(dependencies: NineRouterRuntimeDe
     clearAll(dependencies.clock, timers);
     const current = child;
     if (!current) {
-      if (!preserveStatus) status = initialStatus();
+      if (!preserveStatus) transition(initialStatus());
       return;
     }
     await new Promise<void>((resolve) => {
@@ -365,7 +373,7 @@ export function createNineRouterRuntimeService(dependencies: NineRouterRuntimeDe
     });
     child = null;
     clearAll(dependencies.clock, timers);
-    if (!preserveStatus) status = initialStatus();
+    if (!preserveStatus) transition(initialStatus());
   }
 
   async function stop(): Promise<void> {
@@ -380,7 +388,7 @@ export function createNineRouterRuntimeService(dependencies: NineRouterRuntimeDe
       return start();
     },
     getStatus(): RuntimeStatus {
-      return { ...status, lastError: status.lastError ? { ...status.lastError } : null };
+      return cloneStatus();
     },
     getInternalCredentials(): InternalRuntimeCredentials {
       return runtimeCredentials(dependencies);

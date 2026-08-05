@@ -132,10 +132,16 @@ function createBoundedLoopbackHealthChecker(): NineRouterRuntimeServiceDependenc
   return {
     async check(baseUrl) {
       const timeout = AbortSignal.timeout(1_000);
-      const [healthResponse, versionResponse] = await Promise.all([
-        fetch(`${baseUrl}/api/health`, { signal: timeout }),
-        fetch(`${baseUrl}/api/version`, { signal: timeout }),
-      ]);
+      let healthResponse: Response;
+      let versionResponse: Response;
+      try {
+        [healthResponse, versionResponse] = await Promise.all([
+          fetch(`${baseUrl}/api/health`, { signal: timeout }),
+          fetch(`${baseUrl}/api/version`, { signal: timeout }),
+        ]);
+      } catch {
+        return { ok: false };
+      }
       if (!healthResponse.ok || !versionResponse.ok) return { ok: false };
       const healthJson = await boundedJson(healthResponse);
       const versionJson = await boundedJson(versionResponse);
@@ -194,6 +200,13 @@ function createDefaultEmbeddedNineRouterRuntime(): EmbeddedNineRouterRuntime {
       now: () => new Date(),
       setTimeout: (callback, delayMs) => setTimeout(callback, delayMs),
       clearTimeout: (timer) => clearTimeout(timer as NodeJS.Timeout),
+    },
+    onStatusChange: (status) => {
+      if (status.state === 'ready') {
+        usageMonitor.start();
+      } else {
+        usageMonitor.stop();
+      }
     },
   });
 }

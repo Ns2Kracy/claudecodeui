@@ -5,15 +5,15 @@ import test from 'node:test';
 
 const serverSource = readFileSync(path.join(process.cwd(), 'server/index.ts'), 'utf8');
 
-test('server startup awaits database before embedded 9router and gates usage monitor on readiness', () => {
+test('server startup awaits database before embedded 9router and leaves usage monitor control to runtime status changes', () => {
   const dbStart = serverSource.indexOf('await initializeDatabase()');
   const embeddedStart = serverSource.indexOf('await startEmbeddedNineRouter()');
-  const monitorStart = serverSource.indexOf("if (embeddedNineRouterStatus?.state === 'ready')");
+  const monitorStart = serverSource.indexOf('startRoutingUsageMonitor');
   const legacyAutoConnect = serverSource.indexOf('tryAutoConnect');
 
   assert.ok(dbStart > 0, 'database initialization is awaited');
   assert.ok(embeddedStart > dbStart, 'embedded 9router starts after database initialization');
-  assert.ok(monitorStart > embeddedStart, 'usage monitor is gated after embedded startup status');
+  assert.equal(monitorStart, -1, 'startup does not duplicate runtime usage monitor gating');
   assert.equal(legacyAutoConnect, -1, 'legacy auto-connect is not called during startup');
 });
 

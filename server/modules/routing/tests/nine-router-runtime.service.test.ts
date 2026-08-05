@@ -181,6 +181,27 @@ test('start resolves the official custom server, spawns node non-interactively, 
   });
 });
 
+test('health transport errors during readiness are transient and polling continues until ready', async () => {
+  const statusEvents: string[] = [];
+  const harness = createHarness({ onStatusChange: (status) => statusEvents.push(status.state) });
+  harness.healthChecks.push(new Error('connect ECONNREFUSED 127.0.0.1:20128'), { ok: true, origin: '9router', version: '0.5.45' });
+
+  const startPromise = harness.service.start();
+  await flushAsyncStart();
+  harness.runNextTimer();
+  await startPromise;
+
+  assert.equal(harness.spawnCalls.length, 1);
+  assert.deepEqual(harness.child.killedSignals, []);
+  assert.deepEqual(harness.service.getStatus(), {
+    state: 'ready',
+    origin: '9router',
+    version: '0.5.45',
+    lastError: null,
+  });
+  assert.deepEqual(statusEvents, ['starting', 'ready']);
+});
+
 
 test('derives and ensures the 9router data directory from the database path before spawn', async () => {
   const harness = createHarness({ databasePath: '/var/lib/cloudcli/main.db' });
@@ -439,19 +460,6 @@ test('adapter throws and child error events become safe unavailable/degraded pro
     retryable: true,
   });
 
-  const health = createHarness();
-  health.healthChecks.push(new Error('health jwt-secret-value failed'));
-  const healthStart = health.service.start();
-  await flushAsyncStart();
-  health.runNextTimer();
-  await healthStart;
-  assert.equal(health.service.getStatus().state, 'unavailable');
-  assert.deepEqual(health.service.getStatus().lastError, {
-    code: 'ROUTING_PROCESS_FAILED',
-    message: 'health [redacted] failed',
-    retryable: true,
-  });
-
   const childError = createHarness();
   childError.healthChecks.push({ ok: true, origin: '9router', version: '0.5.45' });
   const childStart = childError.service.start();
@@ -465,6 +473,43 @@ test('adapter throws and child error events become safe unavailable/degraded pro
     message: 'spawn [redacted] failed',
     retryable: true,
   });
+});
+
+test('status change callback follows ready, degraded, recovery, unavailable, and stopped states', async () => {
+  const statusEvents: string[] = [];
+  const harness = createHarness({ onStatusChange: (status) => statusEvents.push(status.state) });
+  harness.healthChecks.push({ ok: true, origin: '9router', version: '0.5.45' });
+
+  const firstStart = harness.service.start();
+  await flushAsyncStart();
+  harness.runNextTimer();
+  await firstStart;
+
+  const firstChild = harness.child;
+  firstChild.emitExit(1, null);
+  harness.healthChecks.push({ ok: true, origin: '9router', version: '0.5.46' });
+  harness.runNextTimer();
+  await flushAsyncStart();
+
+  harness.child.emitExit(1, null);
+  harness.healthChecks.push({ ok: true, origin: '9router', version: '0.5.47' });
+  harness.runNextTimer();
+  await flushAsyncStart();
+  harness.child.emitExit(1, null);
+  await harness.service.stop();
+
+  assert.deepEqual(statusEvents, [
+    'starting',
+    'ready',
+    'degraded',
+    'starting',
+    'ready',
+    'degraded',
+    'starting',
+    'ready',
+    'unavailable',
+    'stopped',
+  ]);
 });
 
 test('getInternalCredentials returns injected secrets while status and redacted stderr never expose them', async () => {

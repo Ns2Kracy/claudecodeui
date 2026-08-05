@@ -18,7 +18,6 @@ import {
 import {
     routingRoutes,
     startEmbeddedNineRouter,
-    startRoutingUsageMonitor,
     stopEmbeddedNineRouter,
     stopRoutingUsageMonitor,
 } from '@/modules/routing/index.js';
@@ -343,15 +342,10 @@ async function startServer() {
 
         // Start embedded 9router after persistence is ready. Startup failure is
         // advisory and must never prevent CloudCLI from serving its own UI/API.
-        const embeddedNineRouterStatus = await startEmbeddedNineRouter().catch((error: unknown) => {
+        await startEmbeddedNineRouter().catch((error: unknown) => {
             console.warn('[Routing] Embedded 9router startup failed:', getErrorMessage(error));
             return null;
         });
-        if (embeddedNineRouterStatus?.state === 'ready') {
-            startRoutingUsageMonitor();
-        } else {
-            console.warn('[Routing] Embedded 9router unavailable; usage monitor disabled');
-        }
 
         // Check if running in production mode (dist folder exists)
         const distIndexPath = path.join(APP_ROOT, 'dist', 'index.html');

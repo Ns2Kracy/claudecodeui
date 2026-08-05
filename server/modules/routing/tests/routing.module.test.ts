@@ -77,6 +77,21 @@ test('production health checker rejects malformed, wrong, and oversized 200 payl
   }
 });
 
+test('production health checker treats rejected fetch as transient not thrown', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    throw new Error('connect ECONNREFUSED 127.0.0.1:20128');
+  };
+
+  try {
+    const result = await createBoundedLoopbackHealthCheckerForTesting().check('http://127.0.0.1:9731');
+
+    assert.deepEqual(result, { ok: false });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test('production filesystem adapter tightens existing data directory to 0700 on POSIX filesystems', async () => {
   const parent = await fsPromises.mkdtemp(path.join(tmpdir(), 'routing-module-'));
   const dataDir = path.join(parent, 'data');
