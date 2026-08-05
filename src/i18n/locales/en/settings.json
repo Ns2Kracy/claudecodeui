@@ -714,7 +714,8 @@
         "confirmDelete": "Delete {{name}}?",
         "boundWarning": "This route is selected by an agent. Switch that agent to Native login or another route to avoid failed sessions.",
         "unavailable": "Route details are unavailable for this Provider Router version."
-      }
+      },
+      "providerConnectionMethodHelp": "Choose a method supported by the Provider Router runtime."
     },
     "runtime": {
       "title": "Built-in Provider Router runtime",

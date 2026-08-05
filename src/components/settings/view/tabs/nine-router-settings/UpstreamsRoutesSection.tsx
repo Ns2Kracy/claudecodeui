@@ -168,7 +168,7 @@ export default function UpstreamsRoutesSection({
                     <div className="space-y-5">
                       <div className="space-y-2">
                         <h3 className="text-sm font-medium text-foreground">Connect a provider</h3>
-                        <p className="text-xs text-muted-foreground">Choose a method supported by the official 9Router runtime.</p>
+                        <p className="text-xs text-muted-foreground">{t('nineRouter.management.providerConnectionMethodHelp')}</p>
                         <ProviderConnections
                           disabled={!canMutate}
                           onConnected={async () => { onRetry(); }}

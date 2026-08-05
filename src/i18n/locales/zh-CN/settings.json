@@ -704,7 +704,8 @@
         "confirmDelete": "删除 {{name}}？",
         "boundWarning": "某个智能体已选择此路由。请先将该智能体切换到原生登录或其他路由，以免新会话失败。",
         "unavailable": "此提供商路由器版本无法提供路由详情。"
-      }
+      },
+      "providerConnectionMethodHelp": "选择提供商路由器运行时支持的连接方式。"
     },
     "runtime": {
       "title": "内置提供商路由器运行时",

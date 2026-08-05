@@ -10,6 +10,7 @@ import { emptyRoutingSettingsView, type RoutingSettingsView } from '../../../../
 import englishSettings from '../../../../../i18n/locales/en/settings.json' with { type: 'json' };
 
 import { NineRouterSettingsTabView, isNineRouterRuntimeReady } from './NineRouterSettingsTab.js';
+import UpstreamsRoutesSection from './UpstreamsRoutesSection.js';
 import type { RoutingErrorContext } from './routingState.js';
 
 // npm test compiles TSX with the server's classic JSX transform. Some shared
@@ -172,6 +173,67 @@ test('degraded runtime does not render ready-only detail controls', async () => 
   assert.equal(markup.includes('Create API-key account'), false);
   assert.equal(markup.includes('Create route'), false);
 });
+
+test('open provider connection section uses localized Provider Router method copy', async () => {
+  const settings = emptyRoutingSettingsView();
+  settings.runtime = {
+    ...settings.runtime,
+    status: 'ready',
+    capabilities: {
+      ...settings.runtime.capabilities,
+      readAccounts: true,
+      writeApiKeyAccounts: true,
+      testAccounts: true,
+      readRoutes: true,
+      writeRoutes: true,
+    },
+  };
+
+  const i18n = createInstance();
+  await i18n.init({
+    lng: 'en',
+    fallbackLng: 'en',
+    ns: ['settings'],
+    defaultNS: 'settings',
+    resources: { en: { settings: englishSettings } },
+    interpolation: { escapeValue: false },
+  });
+
+  const markup = renderToStaticMarkup(createElement(
+    I18nextProvider,
+    { i18n },
+    createElement(UpstreamsRoutesSection, {
+      configured: true,
+      connectionStatus: 'connected',
+      capabilities: settings.runtime.capabilities,
+      accountSummary: settings.accountSummary,
+      routeSummary: settings.routeSummary,
+      accounts: [],
+      models: [],
+      routes: [],
+      loading: false,
+      detailsError: false,
+      activeMutation: null,
+      accountDraft: { provider: '', name: '', apiKey: '', active: true },
+      onAccountFieldChange: () => {},
+      onExpand: () => {},
+      onRetry: () => {},
+      onCreateAccount: async () => true,
+      onUpdateAccount: async () => true,
+      onTestAccount: async () => true,
+      onDeleteAccount: async () => true,
+      onCreateRoute: async () => true,
+      onUpdateRoute: async () => true,
+      onDeleteRoute: async () => true,
+      defaultOpen: true,
+    }),
+  ));
+
+  assert.match(markup, /Connect a provider/);
+  assert.match(markup, /Choose a method supported by the Provider Router runtime/);
+  assert.equal(/9Router/i.test(markup), false);
+});
+
 
 test('degraded runtime is not eligible for automatic account or route detail reads', () => {
   const settings = emptyRoutingSettingsView();
