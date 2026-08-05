@@ -1,4 +1,5 @@
 import type { ChildProcess } from 'node:child_process';
+import path from 'node:path';
 
 const HOSTNAME = '127.0.0.1';
 const PORT = 20128;
@@ -18,6 +19,7 @@ type RuntimeState = 'stopped' | 'starting' | 'ready' | 'degraded' | 'unavailable
 type RoutingSafeErrorCode =
   | 'ROUTING_PACKAGE_MISSING'
   | 'ROUTING_PORT_OCCUPIED'
+  | 'ROUTING_DATA_DIR_UNAVAILABLE'
   | 'ROUTING_STARTUP_TIMEOUT'
   | 'ROUTING_PROCESS_FAILED';
 
@@ -35,12 +37,13 @@ type RuntimeStatus = {
 };
 
 type InternalCredentials = {
-  dataDir: string;
   jwtSecret: string;
   initialPassword: string;
   apiKeySecret: string;
   machineIdSalt: string;
 };
+
+type InternalRuntimeCredentials = InternalCredentials & { dataDir: string };
 
 type PackageResolver = {
   resolveOfficialServerPath(): Promise<string | null>;
@@ -58,6 +61,10 @@ type HealthChecker = {
   check(baseUrl: string): Promise<{ ok: boolean; origin?: string; version?: string }>;
 };
 
+type RuntimeFilesystem = {
+  ensureDataDir(path: string, mode: 0o700): Promise<void>;
+};
+
 type Clock = {
   now(): Date;
   setTimeout(callback: () => void, delayMs: number): unknown;
@@ -66,6 +73,8 @@ type Clock = {
 
 type NineRouterRuntimeDependencies = {
   credentials: InternalCredentials;
+  databasePath: string;
+  filesystem: RuntimeFilesystem;
   packageResolver: PackageResolver;
   processSpawner: ProcessSpawner;
   portAvailability: PortAvailability;
@@ -84,7 +93,15 @@ function safeMessage(message: string): string {
   return message.length > STDERR_LIMIT ? message.slice(message.length - STDERR_LIMIT) : message;
 }
 
-function redact(message: string, secrets: InternalCredentials): string {
+function getDataDir(databasePath: string): string {
+  return path.join(path.dirname(databasePath), '9router');
+}
+
+function runtimeCredentials(dependencies: NineRouterRuntimeDependencies): InternalRuntimeCredentials {
+  return { ...dependencies.credentials, dataDir: getDataDir(dependencies.databasePath) };
+}
+
+function redact(message: string, secrets: InternalRuntimeCredentials): string {
   let result = message;
   for (const secret of Object.values(secrets)) {
     if (secret) result = result.split(secret).join('[redacted]');
@@ -92,7 +109,7 @@ function redact(message: string, secrets: InternalCredentials): string {
   return safeMessage(result);
 }
 
-function routingError(code: RoutingSafeErrorCode, message: string, retryable: boolean, secrets: InternalCredentials): RoutingSafeError {
+function routingError(code: RoutingSafeErrorCode, message: string, retryable: boolean, secrets: InternalRuntimeCredentials): RoutingSafeError {
   return { code, message: redact(message, secrets), retryable };
 }
 
@@ -106,7 +123,7 @@ function safeHealthField(value: string | undefined): string | null {
   return /^[\w .:@/-]+$/.test(value) ? value : null;
 }
 
-function buildEnv(source: NodeJS.ProcessEnv, credentials: InternalCredentials): NodeJS.ProcessEnv {
+function buildEnv(source: NodeJS.ProcessEnv, credentials: InternalRuntimeCredentials): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {};
   for (const key of ALLOWED_ENV_KEYS) {
     if (source[key] !== undefined) env[key] = source[key];
@@ -167,12 +184,16 @@ export function createNineRouterRuntimeService(dependencies: NineRouterRuntimeDe
     for (const resolve of [...readinessWaiters]) resolve();
   }
 
+  function captured(generation: number): boolean {
+    return generation === readinessGeneration && !stopping;
+  }
+
   function setUnavailable(error: RoutingSafeError): void {
     status = { state: 'unavailable', origin: null, version: null, lastError: error };
   }
 
   function processError(error: unknown): RoutingSafeError {
-    return routingError('ROUTING_PROCESS_FAILED', unknownErrorMessage(error), true, dependencies.credentials);
+    return routingError('ROUTING_PROCESS_FAILED', unknownErrorMessage(error), true, runtimeCredentials(dependencies));
   }
 
   function resolveStopWaiters(): void {
@@ -193,12 +214,12 @@ export function createNineRouterRuntimeService(dependencies: NineRouterRuntimeDe
     const reason = `9router exited unexpectedly: code=${code ?? 'null'} signal=${signal ?? 'null'}`;
     if (rapidCrashCount + 1 >= MAX_RAPID_CRASHES) {
       rapidCrashCount += 1;
-      setUnavailable(routingError('ROUTING_PROCESS_FAILED', reason, true, dependencies.credentials));
+      setUnavailable(routingError('ROUTING_PROCESS_FAILED', reason, true, runtimeCredentials(dependencies)));
       return;
     }
     rapidCrashCount += 1;
     const delay = Math.min(2 ** (rapidCrashCount - 1) * 1_000, MAX_RESTART_DELAY_MS);
-    status = { state: 'degraded', origin: null, version: null, lastError: routingError('ROUTING_PROCESS_FAILED', reason, true, dependencies.credentials) };
+    status = { state: 'degraded', origin: null, version: null, lastError: routingError('ROUTING_PROCESS_FAILED', reason, true, runtimeCredentials(dependencies)) };
     setTimer(() => {
       void start();
     }, delay);
@@ -212,16 +233,16 @@ export function createNineRouterRuntimeService(dependencies: NineRouterRuntimeDe
   async function pollUntilReady(generation: number, currentChild: ChildProcess, deadlineMs: number): Promise<void> {
     const started = dependencies.clock.now().getTime();
     while (dependencies.clock.now().getTime() - started <= deadlineMs) {
-      if (generation !== readinessGeneration || child !== currentChild || stopping) return;
+      if (!captured(generation) || child !== currentChild) return;
       let health: { ok: boolean; origin?: string; version?: string };
       try {
         health = await dependencies.health.check(BASE_URL);
       } catch (error) {
-        if (generation === readinessGeneration && child === currentChild && !stopping) setUnavailable(processError(error));
+        if (captured(generation) && child === currentChild) setUnavailable(processError(error));
         await stopManaged(true);
         return;
       }
-      if (generation !== readinessGeneration || child !== currentChild || stopping) return;
+      if (!captured(generation) || child !== currentChild) return;
       if (health.ok) {
         status = {
           state: 'ready',
@@ -236,8 +257,8 @@ export function createNineRouterRuntimeService(dependencies: NineRouterRuntimeDe
       }
       await sleep(HEALTH_POLL_MS);
     }
-    if (generation !== readinessGeneration || child !== currentChild || stopping) return;
-    setUnavailable(routingError('ROUTING_STARTUP_TIMEOUT', '9router readiness timed out', true, dependencies.credentials));
+    if (!captured(generation) || child !== currentChild) return;
+    setUnavailable(routingError('ROUTING_STARTUP_TIMEOUT', '9router readiness timed out', true, runtimeCredentials(dependencies)));
     await stopManaged(true);
   }
 
@@ -255,8 +276,9 @@ export function createNineRouterRuntimeService(dependencies: NineRouterRuntimeDe
       setUnavailable(processError(error));
       return status;
     }
+    if (!captured(generation)) return status;
     if (!serverPath) {
-      setUnavailable(routingError('ROUTING_PACKAGE_MISSING', '9router package app/custom-server.js was not found', false, dependencies.credentials));
+      setUnavailable(routingError('ROUTING_PACKAGE_MISSING', '9router package app/custom-server.js was not found', false, runtimeCredentials(dependencies)));
       return status;
     }
 
@@ -267,16 +289,29 @@ export function createNineRouterRuntimeService(dependencies: NineRouterRuntimeDe
       setUnavailable(processError(error));
       return status;
     }
+    if (!captured(generation)) return status;
     if (!portFree) {
-      setUnavailable(routingError('ROUTING_PORT_OCCUPIED', `Port ${HOSTNAME}:${PORT} is already occupied`, true, dependencies.credentials));
+      setUnavailable(routingError('ROUTING_PORT_OCCUPIED', `Port ${HOSTNAME}:${PORT} is already occupied`, true, runtimeCredentials(dependencies)));
       return status;
     }
 
+    const credentials = runtimeCredentials(dependencies);
+    try {
+      await dependencies.filesystem.ensureDataDir(credentials.dataDir, 0o700);
+    } catch (error) {
+      if (captured(generation)) {
+        setUnavailable(routingError('ROUTING_DATA_DIR_UNAVAILABLE', `Unable to prepare 9router data directory: ${unknownErrorMessage(error)}`, true, credentials));
+      }
+      return status;
+    }
+    if (!captured(generation)) return status;
+
     let currentChild: ChildProcess;
     try {
+      if (!captured(generation)) return status;
       currentChild = dependencies.processSpawner.spawn(process.execPath, [serverPath], {
         detached: false,
-        env: buildEnv(dependencies.env ?? process.env, dependencies.credentials),
+        env: buildEnv(dependencies.env ?? process.env, credentials),
         stdio: ['ignore', 'ignore', 'pipe'],
       });
     } catch (error) {
@@ -284,9 +319,14 @@ export function createNineRouterRuntimeService(dependencies: NineRouterRuntimeDe
       return status;
     }
 
+    if (!captured(generation)) {
+      currentChild.kill('SIGTERM');
+      return status;
+    }
+
     child = currentChild;
     currentChild.stderr?.on('data', (chunk: Buffer) => {
-      status = { ...status, lastError: routingError('ROUTING_PROCESS_FAILED', String(chunk), true, dependencies.credentials) };
+      status = { ...status, lastError: routingError('ROUTING_PROCESS_FAILED', String(chunk), true, runtimeCredentials(dependencies)) };
     });
     currentChild.on('error', handleChildError);
     currentChild.on('exit', handleExit);
@@ -331,8 +371,8 @@ export function createNineRouterRuntimeService(dependencies: NineRouterRuntimeDe
     getStatus(): RuntimeStatus {
       return { ...status, lastError: status.lastError ? { ...status.lastError } : null };
     },
-    getInternalCredentials(): InternalCredentials {
-      return { ...dependencies.credentials };
+    getInternalCredentials(): InternalRuntimeCredentials {
+      return runtimeCredentials(dependencies);
     },
   };
 }

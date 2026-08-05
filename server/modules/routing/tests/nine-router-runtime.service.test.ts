@@ -15,7 +15,18 @@ type FakeChild = {
   killedSignals: NodeJS.Signals[];
 };
 
-type TimerEntry = { id: number; delayMs: number; callback: () => void };
+type TimerEntry = { id: number; dueMs: number; callback: () => void };
+type Deferred<T> = { promise: Promise<T>; resolve: (value: T) => void; reject: (error: unknown) => void };
+
+function deferred<T>(): Deferred<T> {
+  let resolve!: (value: T) => void;
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
 
 function createFakeChild(pid = 9876): FakeChild {
   const listeners = new Map<string, Array<(...args: unknown[]) => unknown>>();
@@ -61,15 +72,21 @@ function createHarness(overrides: Partial<NineRouterRuntimeServiceDependencies> 
   let nowMs = Date.parse('2026-08-05T03:00:00.000Z');
   const clearedTimers: number[] = [];
   const spawnCalls: Array<{ command: string; args: string[]; options: { detached: boolean; env: NodeJS.ProcessEnv; stdio: string[] } }> = [];
+  const ensureDataDirCalls: Array<{ path: string; mode: 0o700 }> = [];
   const portChecks: boolean[] = [];
   const healthChecks: Array<{ ok: boolean; origin?: string; version?: string } | Error> = [];
   const dependencies: NineRouterRuntimeServiceDependencies = {
     credentials: {
-      dataDir: '/state/9router',
       jwtSecret: 'jwt-secret-value',
       initialPassword: 'initial-password-value',
       apiKeySecret: 'api-key-secret-value',
       machineIdSalt: 'machine-salt-value',
+    },
+    databasePath: '/state/cloudcli.sqlite',
+    filesystem: {
+      ensureDataDir: async (dataDir, mode) => {
+        ensureDataDirCalls.push({ path: dataDir, mode });
+      },
     },
     packageResolver: {
       resolveOfficialServerPath: async () => '/repo/node_modules/9router/app/custom-server.js',
@@ -96,7 +113,7 @@ function createHarness(overrides: Partial<NineRouterRuntimeServiceDependencies> 
       now: () => new Date(nowMs),
       setTimeout: (callback, delayMs) => {
         const id = ++timerId;
-        timers.push({ id, delayMs, callback });
+        timers.push({ id, dueMs: nowMs + delayMs, callback });
         return id;
       },
       clearTimeout: (id) => {
@@ -114,10 +131,11 @@ function createHarness(overrides: Partial<NineRouterRuntimeServiceDependencies> 
   };
   const service = createNineRouterRuntimeService(dependencies);
   const runNextTimer = () => {
+    timers.sort((a, b) => a.dueMs - b.dueMs || a.id - b.id);
     let timer = timers.shift();
     while (timer && clearedTimers.includes(timer.id)) timer = timers.shift();
     assert.ok(timer, 'expected timer to be scheduled');
-    nowMs += timer.delayMs;
+    nowMs = timer.dueMs;
     timer.callback();
   };
   const runTimersUntil = async (predicate: () => boolean, maxTimers = 200) => {
@@ -128,7 +146,7 @@ function createHarness(overrides: Partial<NineRouterRuntimeServiceDependencies> 
     }
     assert.fail(`predicate was not reached after ${maxTimers} timers`);
   };
-  return { get child() { return children.at(-1)!; }, children, timers, clearedTimers, spawnCalls, portChecks, healthChecks, service, runNextTimer, runTimersUntil };
+  return { get child() { return children.at(-1)!; }, children, timers, clearedTimers, spawnCalls, ensureDataDirCalls, portChecks, healthChecks, service, runNextTimer, runTimersUntil };
 }
 
 test('start resolves the official custom server, spawns node non-interactively, and becomes ready only after health passes', async () => {
@@ -146,9 +164,11 @@ test('start resolves the official custom server, spawns node non-interactively, 
   assert.equal(harness.spawnCalls[0].options.env.HOSTNAME, '127.0.0.1');
   assert.equal(harness.spawnCalls[0].options.env.PORT, '20128');
   assert.equal(harness.spawnCalls[0].options.env.BASE_URL, 'http://127.0.0.1:20128');
+  assert.equal(harness.spawnCalls[0].options.env.DATA_DIR, '/state/9router');
   assert.equal(harness.spawnCalls[0].options.env.NEXT_PUBLIC_BASE_URL, 'http://127.0.0.1:20128');
   assert.equal(harness.spawnCalls[0].options.env.JWT_SECRET, 'jwt-secret-value');
   assert.equal(harness.spawnCalls[0].options.env.SECRET_SHOULD_NOT_LEAK, undefined);
+  assert.deepEqual(harness.ensureDataDirCalls, [{ path: '/state/9router', mode: 0o700 }]);
 
   harness.runNextTimer();
   await startPromise;
@@ -159,6 +179,74 @@ test('start resolves the official custom server, spawns node non-interactively, 
     version: '0.5.45',
     lastError: null,
   });
+});
+
+
+test('derives and ensures the 9router data directory from the database path before spawn', async () => {
+  const harness = createHarness({ databasePath: '/var/lib/cloudcli/main.db' });
+  harness.healthChecks.push({ ok: true, origin: '9router', version: '0.5.45' });
+
+  const startPromise = harness.service.start();
+  await flushAsyncStart();
+  harness.runNextTimer();
+  await startPromise;
+
+  assert.deepEqual(harness.ensureDataDirCalls, [{ path: '/var/lib/cloudcli/9router', mode: 0o700 }]);
+  assert.equal(harness.spawnCalls[0].options.env.DATA_DIR, '/var/lib/cloudcli/9router');
+  assert.equal(harness.service.getInternalCredentials().dataDir, '/var/lib/cloudcli/9router');
+});
+
+test('data directory preparation failures are reported safely and prevent spawn', async () => {
+  const harness = createHarness({
+    filesystem: { ensureDataDir: async () => { throw new Error('/state/9router permission denied jwt-secret-value'); } },
+  });
+
+  await harness.service.start();
+
+  assert.equal(harness.spawnCalls.length, 0);
+  assert.deepEqual(harness.service.getStatus().lastError, {
+    code: 'ROUTING_DATA_DIR_UNAVAILABLE',
+    message: 'Unable to prepare 9router data directory: [redacted] permission denied [redacted]',
+    retryable: true,
+  });
+});
+
+test('stop can win before spawn after an awaited adapter and resolves stopped without spawning a child', async () => {
+  const resolver = deferred<string | null>();
+  const harness = createHarness({ packageResolver: { resolveOfficialServerPath: () => resolver.promise } });
+  const startPromise = harness.service.start();
+  await flushAsyncStart();
+
+  const stopPromise = harness.service.stop();
+  resolver.resolve('/repo/node_modules/9router/app/custom-server.js');
+  await Promise.all([startPromise, stopPromise]);
+
+  assert.equal(harness.service.getStatus().state, 'stopped');
+  assert.equal(harness.spawnCalls.length, 0);
+  assert.equal(harness.children.length, 0);
+});
+
+
+test('stop racing immediately after spawn terminates only that owned child without attaching it active', async () => {
+  let service: ReturnType<typeof createNineRouterRuntimeService>;
+  const harness = createHarness({
+    processSpawner: {
+      spawn: (command, args, options) => {
+        const child = createFakeChild(2222);
+        harness.children.push(child);
+        harness.spawnCalls.push({ command, args, options });
+        void service.stop();
+        return child as unknown as ChildProcess;
+      },
+    },
+  });
+  service = harness.service;
+
+  await harness.service.start();
+
+  assert.equal(harness.service.getStatus().state, 'stopped');
+  assert.equal(harness.spawnCalls.length, 1);
+  assert.deepEqual(harness.children[0].killedSignals, ['SIGTERM']);
 });
 
 test('package missing, occupied port, and readiness timeout produce safe typed states without spawning or killing a port owner', async () => {
@@ -245,31 +333,38 @@ test('unexpected exit cancels stale readiness polling and stale health cannot ma
 });
 
 test('unexpected exits restart distinct children, count rapid crash cycles, and reset only after stable window', async () => {
-  const harness = createHarness();
-  harness.healthChecks.push({ ok: true, origin: '9router', version: '0.5.45' });
-  const firstStart = harness.service.start();
+  const rapid = createHarness();
+  rapid.healthChecks.push({ ok: true, origin: '9router', version: '0.5.45' });
+  const firstStart = rapid.service.start();
   await flushAsyncStart();
-  harness.runNextTimer();
+  rapid.runNextTimer();
   await firstStart;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    const crashed = harness.child;
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const crashed = rapid.child;
     crashed.emitExit(1, null);
-    const status = harness.service.getStatus();
+    const status = rapid.service.getStatus();
     assert.notEqual(JSON.stringify(status).includes('jwt-secret-value'), true);
-    if (attempt < 3) {
-      assert.equal(status.state, 'degraded');
-      harness.healthChecks.push({ ok: true, origin: '9router', version: `0.5.${45 + attempt}` });
-      harness.runNextTimer();
-      await flushAsyncStart();
-      harness.runNextTimer();
-      await flushAsyncStart();
-      assert.notEqual(harness.child.pid, crashed.pid);
-      assert.equal(harness.service.getStatus().state, 'ready');
-    } else {
-      assert.equal(status.state, 'unavailable');
-    }
+    assert.equal(status.state, 'degraded');
+    rapid.healthChecks.push({ ok: true, origin: '9router', version: `0.5.${46 + attempt}` });
+    rapid.runNextTimer();
+    await flushAsyncStart();
+    assert.notEqual(rapid.child.pid, crashed.pid);
+    assert.equal(rapid.service.getStatus().state, 'ready');
   }
-  assert.equal(harness.spawnCalls.length, 4);
+
+  rapid.child.emitExit(1, null);
+  assert.equal(rapid.service.getStatus().state, 'unavailable');
+  assert.equal(rapid.spawnCalls.length, 3);
+
+  const stable = createHarness();
+  stable.healthChecks.push({ ok: true, origin: '9router', version: '0.5.45' });
+  const stableStart = stable.service.start();
+  await flushAsyncStart();
+  await stableStart;
+  stable.runNextTimer();
+  stable.child.emitExit(1, null);
+  assert.equal(stable.service.getStatus().state, 'degraded');
 });
 
 test('adapter throws and child error events become safe unavailable/degraded process failures', async () => {
