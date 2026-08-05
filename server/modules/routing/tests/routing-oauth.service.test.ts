@@ -96,6 +96,36 @@ test('remote topology rejects auth-code without trusted HTTPS public origin', as
   await rejectsCode(() => service.startAuthorizationCode(7, 'openai'), 'ROUTING_OAUTH_TOPOLOGY_UNSUPPORTED');
 });
 
+test('default topology uses the local server callback when CLOUDCLI_PUBLIC_URL is absent', async () => {
+  const previousPublicUrl = process.env.CLOUDCLI_PUBLIC_URL;
+  const previousServerPort = process.env.SERVER_PORT;
+  delete process.env.CLOUDCLI_PUBLIC_URL;
+  process.env.SERVER_PORT = '3444';
+  try {
+    const service = createRoutingOAuthService({
+      clientForRuntime: () => ({
+        startOAuth: (provider: string, redirectUri: string) => ({
+          provider,
+          authUrl: 'https://auth.example.test',
+          state: 'upstream',
+          redirectUri,
+          codeVerifier: 'verifier',
+        }),
+      }) as never,
+      now: () => new Date(0),
+      randomId: () => 'transaction',
+    });
+
+    const started = await service.startAuthorizationCode(7, 'openai');
+    assert.equal(started.redirectUri, 'http://127.0.0.1:3444/api/routing/oauth/openai/callback');
+  } finally {
+    if (previousPublicUrl === undefined) delete process.env.CLOUDCLI_PUBLIC_URL;
+    else process.env.CLOUDCLI_PUBLIC_URL = previousPublicUrl;
+    if (previousServerPort === undefined) delete process.env.SERVER_PORT;
+    else process.env.SERVER_PORT = previousServerPort;
+  }
+});
+
 test('remote topology accepts only explicit trusted HTTPS public origin', async () => {
   const h = harness();
   const service = createRoutingOAuthService({

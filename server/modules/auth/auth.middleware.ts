@@ -10,6 +10,13 @@ const JWT_SECRET = process.env.JWT_SECRET || appConfigDb.getOrCreateJwtSecret();
 
 // Optional API key middleware
 const validateApiKey = (req, res, next) => {
+  // OAuth providers must be able to return to this static acknowledgement
+  // without knowing CloudCLI's optional machine API key. The route itself
+  // accepts no mutation and exposes no callback parameters.
+  if (/^\/routing\/oauth\/[A-Za-z0-9_-]+\/callback\/?$/.test(req.path)) {
+    return next();
+  }
+
   // Skip API key validation if not configured
   if (!process.env.API_KEY) {
     return next();

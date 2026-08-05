@@ -122,7 +122,7 @@ export function createRoutingOAuthService(dependencies: RoutingOAuthServiceDepen
   const randomId = dependencies.randomId ?? defaultRandomId;
   const topology = dependencies.topology ?? (process.env.CLOUDCLI_PUBLIC_URL
     ? { kind: 'remote', publicUrl: process.env.CLOUDCLI_PUBLIC_URL }
-    : { kind: 'remote' }) as OAuthTopology;
+    : { kind: 'local' }) as OAuthTopology;
   const ttlMs = safeInteger(dependencies.transactionTtlMs ?? DEFAULT_TRANSACTION_TTL_MS, DEFAULT_TRANSACTION_TTL_MS);
   const maxEntries = safeInteger(dependencies.maxEntries ?? DEFAULT_MAX_ENTRIES, DEFAULT_MAX_ENTRIES);
   const minPollIntervalMs = safeInteger(dependencies.minPollIntervalMs ?? DEFAULT_MIN_POLL_INTERVAL_MS, DEFAULT_MIN_POLL_INTERVAL_MS);
