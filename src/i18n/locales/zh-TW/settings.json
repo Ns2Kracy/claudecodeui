@@ -487,11 +487,6 @@
     "title": "9Router",
     "description": "透過內建 9Router 執行階段路由新的 Claude、Codex 和 OpenCode 工作階段，無需額外端點或憑證設定。",
     "loading": "正在載入 9Router 設定...",
-    "preservation": {
-      "title": "原生代理程式存取保持不變",
-      "nativeLogin": "原生 OAuth、訂閱、API 金鑰和 CLI 憑證仍然可用且不會改變。重新啟動內建 9Router 執行階段絕不會登出任何代理程式。",
-      "usageAdvisory": "用量提醒僅供參考。路由失敗會明確顯示，絕不會靜默退回原生憑證。"
-    },
     "alerts": {
       "secureStorage": {
         "title": "安全儲存空間無法使用",
@@ -547,26 +542,6 @@
         "save": "儲存連線",
         "disconnect": "中斷連線"
       }
-    },
-    "modelSource": {
-      "title": "模型來源",
-      "description": "為新工作階段選擇預設來源。現有工作階段保留建立時記錄的來源。",
-      "agents": {
-        "claude": "Claude",
-        "codex": "Codex",
-        "cursor": "Cursor",
-        "opencode": "OpenCode"
-      },
-      "native": "原生登入",
-      "router": "9Router",
-      "route": "路由",
-      "nativePreserved": "原生登入保持已設定狀態，可隨時重新選擇。",
-      "cursorUnsupported": "此版本的 Cursor 僅支援原生執行，其登入和執行階段保持不變。",
-      "loadingRoutes": "正在載入可用路由...",
-      "noRoutes": "請先在 9Router 中建立路由，再將其選為模型來源。",
-      "routeLoadFailed": "無法載入 9Router 路由。",
-      "retryRoutes": "重試",
-      "noFallback": "不會靜默退回：路由執行失敗時，CloudCLI 會回報失敗，而不會使用原生憑證。"
     },
     "management": {
       "title": "上游帳戶和路由",
@@ -642,60 +617,6 @@
         "confirmDelete": "刪除 {{name}}？",
         "boundWarning": "某個代理程式已選擇此路由。請先將該代理程式切換至原生登入或其他路由，以免新工作階段失敗。",
         "unavailable": "此 9Router 版本無法提供路由詳細資料。"
-      }
-    },
-    "usage": {
-      "title": "用量與限額",
-      "description": "查看 9Router 用量估算，並設定可選的提醒門檻。",
-      "dashboard": {
-        "title": "用量估算",
-        "estimate": "資料由 9Router 提供，可能與上游服務商帳單不同。"
-      },
-      "connectFirst": "內建 9Router 執行階段就緒後，才能載入用量並設定提醒限額。",
-      "unavailable": "此 9Router 版本未提供相容的用量資料。",
-      "periodLabel": "用量週期",
-      "periods": {
-        "today": "今天",
-        "7d": "7 天",
-        "30d": "30 天"
-      },
-      "actions": {
-        "refresh": "重新整理",
-        "retry": "重試",
-        "save": "儲存",
-        "saving": "儲存中…"
-      },
-      "loading": "正在載入 9Router 用量…",
-      "loadFailed": "無法載入 9Router 用量。",
-      "empty": "此週期沒有用量紀錄。",
-      "stale": "9Router 傳回了快取快照。取得最新用量前，提醒將暫停。",
-      "metrics": {
-        "requests": "請求數",
-        "promptTokens": "提示詞元",
-        "completionTokens": "補全詞元",
-        "estimatedCost": "預估費用"
-      },
-      "providers": {
-        "title": "服務商分布",
-        "basis": {
-          "cost": "按預估費用",
-          "requests": "按請求數"
-        },
-        "requests": "{{formattedCount}} 次請求",
-        "share": "{{provider}} 用量占比",
-        "empty": "此週期沒有服務商分布資料。"
-      },
-      "alerts": {
-        "title": "提醒門檻",
-        "description": "最新用量達到門檻後，透過你現有的通知管道傳送提醒。",
-        "periods": {
-          "daily": "每日門檻",
-          "30d": "滾動 30 天門檻"
-        },
-        "thresholdHelp": "請輸入非負美元金額，最多六位小數。",
-        "invalidThreshold": "請輸入非負美元金額，且小數位不超過六位。",
-        "toggle": "啟用{{period}}",
-        "advisory": "僅作提醒。9Router 仍是計費依據，CloudCLI 不會阻擋請求或強制執行支出上限。"
       }
     },
     "runtime": {
