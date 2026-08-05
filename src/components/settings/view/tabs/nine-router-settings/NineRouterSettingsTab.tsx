@@ -74,6 +74,10 @@ function errorCode(
   return error?.code || settings.runtime.lastError?.code || '';
 }
 
+export function isNineRouterRuntimeReady(settings: RoutingSettingsView): boolean {
+  return settings.runtime.status === 'ready';
+}
+
 export function NineRouterSettingsTabView({
   settings,
   loading,
@@ -116,7 +120,7 @@ export function NineRouterSettingsTabView({
   const detailErrorOwnsMessage = errorContext === 'details'
     && (routesError || upstreamDetailsError || usageError);
   const showRouteError = routesError && !unauthorized && !incompatible && !runtimeUnavailable;
-  const runtimeReady = settings.runtime.status === 'ready' || settings.runtime.status === 'degraded';
+  const runtimeReady = isNineRouterRuntimeReady(settings);
   const knownStateError = unauthorized || incompatible || runtimeUnavailable || detailErrorOwnsMessage;
   const boundRouteIds = new Set(Object.values(settings.bindings)
     .filter((binding) => binding.source === '9router' && binding.routeId)
@@ -265,9 +269,9 @@ export default function NineRouterSettingsTab() {
   const controller = useNineRouterSettings();
   const { ensureRouteDetails, ensureUsage, usagePeriod } = controller;
   const upstreamDetails = upstreamDetailsState(controller.detailStatus);
-  const canReadRoutes = (controller.settings.runtime.status === 'ready' || controller.settings.runtime.status === 'degraded')
+  const canReadRoutes = isNineRouterRuntimeReady(controller.settings)
     && controller.settings.runtime.capabilities.readRoutes;
-  const canReadUsage = (controller.settings.runtime.status === 'ready' || controller.settings.runtime.status === 'degraded')
+  const canReadUsage = isNineRouterRuntimeReady(controller.settings)
     && controller.settings.runtime.capabilities.readUsage;
   const usageDetailKey = `usage:${usagePeriod}` as const;
 

@@ -673,7 +673,7 @@
         "routes_one": "{{count}} route",
         "routes_other": "{{count}} routes"
       },
-      "connectFirst": "Connect 9Router before loading upstream accounts and routes.",
+      "connectFirst": "The built-in 9Router runtime must be ready before accounts and routes can load.",
       "unavailable": "This 9Router version does not expose supported account or route management APIs.",
       "loading": "Loading upstream accounts and routes...",
       "loadFailed": "Could not load upstream accounts and routes.",
@@ -748,7 +748,7 @@
         "title": "Usage estimate",
         "estimate": "Values are reported by 9Router and may differ from provider billing."
       },
-      "connectFirst": "Connect 9Router to view usage and configure advisory limits.",
+      "connectFirst": "The built-in 9Router runtime must be ready before usage and advisory limits can load.",
       "unavailable": "This 9Router version does not expose compatible usage data.",
       "periodLabel": "Usage period",
       "periods": {

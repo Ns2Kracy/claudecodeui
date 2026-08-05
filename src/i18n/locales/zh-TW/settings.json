@@ -489,7 +489,7 @@
     "loading": "正在載入 9Router 設定...",
     "preservation": {
       "title": "原生代理程式存取保持不變",
-      "nativeLogin": "原生 OAuth、訂閱、API 金鑰和 CLI 憑證仍然可用且不會改變。中斷 9Router 不會登出任何代理程式。",
+      "nativeLogin": "原生 OAuth、訂閱、API 金鑰和 CLI 憑證仍然可用且不會改變。重新啟動內建 9Router 執行階段絕不會登出任何代理程式。",
       "usageAdvisory": "用量提醒僅供參考。路由失敗會明確顯示，絕不會靜默退回原生憑證。"
     },
     "alerts": {
@@ -577,7 +577,7 @@
         "degraded": "{{count}} 個需要處理",
         "routes": "{{count}} 條路由"
       },
-      "connectFirst": "請先連線至 9Router，再載入上游帳戶和路由。",
+      "connectFirst": "內建 9Router 執行階段就緒後，才能載入上游帳戶和路由。",
       "unavailable": "此 9Router 版本未提供受支援的帳戶或路由管理 API。",
       "loading": "正在載入上游帳戶和路由...",
       "loadFailed": "無法載入上游帳戶和路由。",
@@ -651,7 +651,7 @@
         "title": "用量估算",
         "estimate": "資料由 9Router 提供，可能與上游服務商帳單不同。"
       },
-      "connectFirst": "連線 9Router 後即可查看用量並設定提醒限額。",
+      "connectFirst": "內建 9Router 執行階段就緒後，才能載入用量並設定提醒限額。",
       "unavailable": "此 9Router 版本未提供相容的用量資料。",
       "periodLabel": "用量週期",
       "periods": {

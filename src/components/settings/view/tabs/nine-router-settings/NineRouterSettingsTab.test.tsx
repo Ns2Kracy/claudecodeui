@@ -9,7 +9,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { emptyRoutingSettingsView, type RoutingSettingsView } from '../../../../../../shared/routing.js';
 import englishSettings from '../../../../../i18n/locales/en/settings.json' with { type: 'json' };
 
-import { NineRouterSettingsTabView } from './NineRouterSettingsTab.js';
+import { NineRouterSettingsTabView, isNineRouterRuntimeReady } from './NineRouterSettingsTab.js';
 import type { RoutingErrorContext } from './routingState.js';
 
 // npm test compiles TSX with the server's classic JSX transform. Some shared
@@ -152,6 +152,57 @@ test('renders unavailable, unauthorized, and incompatible runtime states inline'
   assert.match(markup, /9Router credentials were rejected/);
   assert.match(markup, /This 9Router version has limited compatibility/);
 });
+
+test('degraded runtime keeps status visible but does not render ready-only detail controls', async () => {
+  const settings = emptyRoutingSettingsView();
+  settings.runtime = {
+    ...settings.runtime,
+    status: 'degraded',
+    version: '0.5.45',
+    capabilities: {
+      readAccounts: true,
+      writeApiKeyAccounts: true,
+      testAccounts: true,
+      readRoutes: true,
+      writeRoutes: true,
+      readUsage: true,
+      claudeRuntime: true,
+      codexRuntime: true,
+      openCodeRuntime: true,
+      cursorRuntime: false,
+    },
+    lastError: { code: 'ROUTING_PROCESS_FAILED', message: 'Runtime health check failed', retryable: true },
+  };
+  settings.routes = [{ id: 'route-1', name: 'quality-first', kind: null, models: ['model-a'] }];
+
+  const markup = await renderRoutingView(settings);
+
+  assert.match(markup, /Degraded/);
+  assert.match(markup, /Runtime health check failed/);
+  assert.equal(markup.includes('Advisory alerts'), false);
+  assert.equal(markup.includes('Create API-key account'), false);
+  assert.equal(markup.includes('Create route'), false);
+});
+
+test('degraded runtime is not eligible for automatic accounts, routes, or usage detail reads', () => {
+  const settings = emptyRoutingSettingsView();
+  settings.runtime = {
+    ...settings.runtime,
+    status: 'degraded',
+    capabilities: {
+      ...settings.runtime.capabilities,
+      readAccounts: true,
+      readRoutes: true,
+      readUsage: true,
+    },
+  };
+
+  assert.equal(isNineRouterRuntimeReady(settings), false);
+
+  settings.runtime.status = 'ready';
+  assert.equal(isNineRouterRuntimeReady(settings), true);
+});
+
 
 test('route loading failures are retryable and are not mislabeled as an empty route list', async () => {
   const settings = emptyRoutingSettingsView();
