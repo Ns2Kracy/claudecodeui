@@ -1,6 +1,4 @@
 import { appConfigDb, routingDb } from '@/modules/database/index.js';
-import { createNotificationEvent, notifyUserIfEnabled } from '@/modules/notifications/index.js';
-
 import { NineRouterClient } from './nine-router-client.js';
 import { requestNineRouterJson } from './nine-router-http.js';
 import { createNineRouterSidecarService, type NineRouterSidecarStatus } from './nine-router-sidecar.service.js';
@@ -10,12 +8,12 @@ import { createRoutingRouter } from './routing.routes.js';
 import { createRoutingRuntimeService } from './routing-runtime.service.js';
 import { createRoutingService } from './routing.service.js';
 import { tryAutoConnect } from './routing-auto-connect.js';
-import { createRoutingUsageMonitor } from './routing-usage-monitor.js';
 
 const sidecarSecretKeys = {
   initialPassword: 'nine_router_initial_password',
   dataPlaneKey: 'nine_router_data_plane_key',
 } as const;
+const CLOUDCLI_DATA_PLANE_KEY_NAME = 'CloudCLI';
 
 const clientFactory = (credentials: {
   baseUrl: string;
@@ -48,7 +46,6 @@ export const routingService = createRoutingService({
   runtime: {
     getStatus: () => getNineRouterSidecar().getStatus(),
     getInternalCredentials: () => getNineRouterSidecar().getInternalCredentials(),
-    restart: () => getNineRouterSidecar().refresh(),
   },
   clientFactory,
   oauth: routingOAuthService,
@@ -70,49 +67,71 @@ export const routingOAuthCallbackRoutes = createRoutingOAuthCallbackRouter();
 /** Used by the server composition root to mount the protected routing API. */
 export const routingRoutes = createRoutingRouter(routingService);
 
-function formatMicrousd(value: number): string {
-  const decimal = (value / 1_000_000).toFixed(6).replace(/0+$/, '').replace(/\.$/, '');
-  return `$${decimal || '0'}`;
-}
-
-const usageMonitor = createRoutingUsageMonitor({
-  repository: routingDb,
-  getUsage: (userId, period) => routingService.getUsage(userId, period),
-  notify: (userId, usageEvent) => {
-    const periodLabel = usageEvent.period === 'daily' ? 'daily' : 'rolling 30-day';
-    const message = `9Router ${periodLabel} usage reached ${formatMicrousd(usageEvent.estimatedCostMicrousd)} (advisory alert at ${formatMicrousd(usageEvent.thresholdMicrousd)}).`;
-    const event = createNotificationEvent({
-      provider: 'system',
-      kind: 'info',
-      code: 'agent.notification',
-      severity: 'warning',
-      meta: {
-        ...usageEvent,
-        message,
-      },
-    });
-    return notifyUserIfEnabled({
-      userId,
-      event: {
-        ...event,
-        dedupeKey: `9router:usage:${userId}:${usageEvent.periodKey}`,
-      },
-    });
-  },
-  reportError: (error, context) => {
-    const code = typeof error === 'object' && error !== null && 'code' in error
-      ? String(error.code)
-      : 'ROUTING_USAGE_CHECK_FAILED';
-    console.warn('[Routing] Usage monitor check failed', { ...context, code });
-  },
-});
-
 type NineRouterSidecar = ReturnType<typeof createNineRouterSidecarService>;
-type NineRouterSidecarFactory = () => NineRouterSidecar;
+type ConfigurableNineRouterSidecar = Omit<NineRouterSidecar, 'updateInternalCredentials'> & Partial<Pick<NineRouterSidecar, 'updateInternalCredentials'>>;
+type NineRouterSidecarFactory = () => ConfigurableNineRouterSidecar;
 const MAX_HEALTH_PAYLOAD_BYTES = 512;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function configuredInitialPassword(): string {
+  const password = process.env.NINE_ROUTER_ADMIN_PASSWORD?.trim();
+  return password || appConfigDb.getOrCreateSecret(sidecarSecretKeys.initialPassword, 32);
+}
+
+function keyValue(value: unknown): string | null {
+  if (!isRecord(value)) return null;
+  const key = value.key;
+  return typeof key === 'string' && key.length > 0 ? key : null;
+}
+
+async function authenticateManagement(baseUrl: string, adminPassword: string): Promise<string | null> {
+  const statusResult = await requestNineRouterJson({ baseUrl, operation: 'authStatus' });
+  if (statusResult.statusCode < 200 || statusResult.statusCode >= 300) return null;
+  const status = isRecord(statusResult.data) ? statusResult.data : null;
+  if (status?.requireLogin !== true) return null;
+  if (status.authMode !== 'password') return null;
+
+  const loginResult = await requestNineRouterJson({
+    baseUrl,
+    operation: 'login',
+    body: { password: adminPassword },
+  });
+  if (loginResult.statusCode < 200 || loginResult.statusCode >= 300) return null;
+  for (const item of loginResult.headers['set-cookie'] ?? []) {
+    const pair = item.split(';', 1)[0]?.trim();
+    if (pair?.startsWith('auth_token=') && pair.length > 'auth_token='.length) return pair;
+  }
+  return null;
+}
+
+async function provisionDataPlaneKey(baseUrl: string, adminPassword: string): Promise<string | null> {
+  const cookie = await authenticateManagement(baseUrl, adminPassword);
+  const keysResult = await requestNineRouterJson({ baseUrl, operation: 'keysList', cookie: cookie ?? undefined });
+  if (keysResult.statusCode >= 200 && keysResult.statusCode < 300 && isRecord(keysResult.data) && Array.isArray(keysResult.data.keys)) {
+    for (const item of keysResult.data.keys) {
+      if (isRecord(item) && item.name === CLOUDCLI_DATA_PLANE_KEY_NAME) {
+        const existing = keyValue(item);
+        if (existing) return existing;
+      }
+    }
+  }
+
+  const created = await requestNineRouterJson({
+    baseUrl,
+    operation: 'keyCreate',
+    cookie: cookie ?? undefined,
+    body: { name: CLOUDCLI_DATA_PLANE_KEY_NAME },
+  });
+  if (created.statusCode < 200 || created.statusCode >= 300) return null;
+  return keyValue(created.data);
+}
+
+/** Used by routing module tests to verify official 9router data-plane key provisioning behavior. */
+export async function provisionNineRouterDataPlaneKeyForTesting(baseUrl: string, adminPassword: string): Promise<string | null> {
+  return provisionDataPlaneKey(baseUrl, adminPassword);
 }
 
 async function boundedJson(response: Response): Promise<unknown> {
@@ -159,20 +178,16 @@ function createDefaultNineRouterSidecar(): NineRouterSidecar {
     baseUrl: process.env.NINE_ROUTER_BASE_URL,
     health: createRemoteSidecarHealthChecker(),
     credentials: {
-      initialPassword: appConfigDb.getOrCreateSecret(sidecarSecretKeys.initialPassword, 32),
+      initialPassword: configuredInitialPassword(),
       dataPlaneKey: appConfigDb.getOrCreateSecret(sidecarSecretKeys.dataPlaneKey, 32),
-    },
-    onStatusChange: (status) => {
-      if (status.state === 'ready') usageMonitor.start();
-      else usageMonitor.stop();
     },
   });
 }
 
-let nineRouterSidecar: NineRouterSidecar | null = null;
+let nineRouterSidecar: ConfigurableNineRouterSidecar | null = null;
 let nineRouterSidecarFactory: NineRouterSidecarFactory = createDefaultNineRouterSidecar;
 
-function getNineRouterSidecar(): NineRouterSidecar {
+function getNineRouterSidecar(): ConfigurableNineRouterSidecar {
   nineRouterSidecar ??= nineRouterSidecarFactory();
   return nineRouterSidecar;
 }
@@ -191,22 +206,22 @@ export function resetNineRouterSidecarForTesting(): void {
 
 /** Used by the server composition root after database initialization to refresh sidecar health. */
 export async function refreshNineRouterSidecar() {
-  return getNineRouterSidecar().refresh();
+  const sidecar = getNineRouterSidecar();
+  const status = await sidecar.refresh();
+  if (status.state !== 'ready') return status;
+  if (!sidecar.updateInternalCredentials) return status;
+  const credentials = sidecar.getInternalCredentials();
+  const provisionedKey = await provisionDataPlaneKey(status.origin, credentials.initialPassword);
+  if (provisionedKey && provisionedKey !== credentials.dataPlaneKey) {
+    appConfigDb.set(sidecarSecretKeys.dataPlaneKey, provisionedKey);
+    sidecar.updateInternalCredentials({ ...credentials, dataPlaneKey: provisionedKey });
+  }
+  return status;
 }
 
 /** Used by diagnostics to report the sidecar state without exposing credentials. */
 export function getNineRouterSidecarStatus(): NineRouterSidecarStatus {
   return getNineRouterSidecar().getStatus();
-}
-
-/** Used by server startup after database initialization to begin advisory usage checks. */
-export function startRoutingUsageMonitor(): void {
-  usageMonitor.start();
-}
-
-/** Used by server shutdown to stop future advisory usage checks. */
-export function stopRoutingUsageMonitor(): void {
-  usageMonitor.stop();
 }
 
 export { tryAutoConnect };

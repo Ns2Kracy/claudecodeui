@@ -75,7 +75,7 @@ function unavailable(origin: string): NineRouterSidecarStatus {
  */
 export function createNineRouterSidecarService(dependencies: NineRouterSidecarDependencies) {
   const origin = validateBaseUrl(dependencies.baseUrl ?? process.env.NINE_ROUTER_BASE_URL ?? 'http://9router:20128');
-  const credentials = dependencies.credentials ?? { initialPassword: '', dataPlaneKey: '' };
+  let credentials = dependencies.credentials ?? { initialPassword: '', dataPlaneKey: '' };
   let status: NineRouterSidecarStatus = unavailable(origin);
 
   function cloneStatus(): NineRouterSidecarStatus {
@@ -105,6 +105,10 @@ export function createNineRouterSidecarService(dependencies: NineRouterSidecarDe
 
     getInternalCredentials(): NineRouterInternalCredentials {
       return { ...credentials };
+    },
+
+    updateInternalCredentials(nextCredentials: NineRouterInternalCredentials): void {
+      credentials = { ...nextCredentials };
     },
   };
 }

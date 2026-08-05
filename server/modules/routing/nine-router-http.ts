@@ -4,8 +4,6 @@ import { isIP, type LookupFunction } from 'node:net';
 
 import { AppError } from '@/shared/utils.js';
 
-import type { RoutingUsagePeriod } from '../../../shared/routing.js';
-
 import { validateRoutingTarget } from './routing-target-policy.js';
 
 type NineRouterOperation =
@@ -13,6 +11,8 @@ type NineRouterOperation =
   | 'version'
   | 'authStatus'
   | 'login'
+  | 'keysList'
+  | 'keyCreate'
   | 'dataPlaneModels'
   | 'catalogModels'
   | 'accountsList'
@@ -35,8 +35,7 @@ type NineRouterOperation =
   | 'routeGet'
   | 'routeCreate'
   | 'routeUpdate'
-  | 'routeDelete'
-  | 'usageStats';
+  | 'routeDelete';
 
 type NineRouterRequestInput = {
   baseUrl: string;
@@ -44,7 +43,6 @@ type NineRouterRequestInput = {
   id?: string;
   provider?: string;
   redirectUri?: string;
-  period?: RoutingUsagePeriod;
   body?: unknown;
   authorization?: string;
   cookie?: string;
@@ -121,18 +119,13 @@ function oauthAuthorizePath(input: NineRouterRequestInput): string {
   return `/api/oauth/${encodedProvider(input)}/authorize?redirect_uri=${encodeURIComponent(input.redirectUri)}`;
 }
 
-function usagePath(input: NineRouterRequestInput): string {
-  if (!input.period || !['today', '7d', '30d'].includes(input.period)) {
-    throw operationFailed(input.operation, 'configured target');
-  }
-  return `/api/usage/stats?period=${encodeURIComponent(input.period)}`;
-}
-
 const OPERATIONS: Record<NineRouterOperation, OperationDefinition> = {
   health: { method: 'GET', path: fixedPath('/api/health') },
   version: { method: 'GET', path: fixedPath('/api/version') },
   authStatus: { method: 'GET', path: fixedPath('/api/auth/status') },
   login: { method: 'POST', path: fixedPath('/api/auth/login') },
+  keysList: { method: 'GET', path: fixedPath('/api/keys') },
+  keyCreate: { method: 'POST', path: fixedPath('/api/keys') },
   dataPlaneModels: { method: 'GET', path: fixedPath('/v1/models') },
   catalogModels: { method: 'GET', path: fixedPath('/api/models') },
   accountsList: { method: 'GET', path: fixedPath('/api/providers') },
@@ -174,7 +167,6 @@ const OPERATIONS: Record<NineRouterOperation, OperationDefinition> = {
     method: 'DELETE',
     path: (input) => `/api/combos/${encodedId(input)}`,
   },
-  usageStats: { method: 'GET', path: usagePath },
 };
 
 function errorMessage(operation: NineRouterOperation, origin: string, detail: string): string {

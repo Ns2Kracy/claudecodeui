@@ -1,16 +1,71 @@
 import assert from 'node:assert/strict';
+import type { AddressInfo } from 'node:net';
+import { createServer } from 'node:http';
 import test from 'node:test';
 
 import {
   configureNineRouterSidecarForTesting,
   createRemoteSidecarHealthCheckerForTesting,
   getNineRouterSidecarStatus,
+  provisionNineRouterDataPlaneKeyForTesting,
   refreshNineRouterSidecar,
   resetNineRouterSidecarForTesting,
 } from '../routing.module.js';
 
 test.afterEach(() => {
   resetNineRouterSidecarForTesting();
+});
+
+test('data-plane provisioning reuses an official CloudCLI key from management REST', async () => {
+  const calls: Array<{ operation: string; body?: unknown; cookie?: string }> = [];
+  const originalLoopback = process.env.ROUTING_ALLOW_LOOPBACK_HTTP;
+  process.env.ROUTING_ALLOW_LOOPBACK_HTTP = 'true';
+  const server = createServer((request, response) => {
+    let raw = '';
+    request.setEncoding('utf8');
+    request.on('data', (chunk) => { raw += chunk; });
+    request.on('end', () => {
+      const body = raw ? JSON.parse(raw) : undefined;
+      const cookie = request.headers.cookie;
+      response.setHeader('content-type', 'application/json');
+      if (request.url === '/api/auth/status') {
+      calls.push({ operation: 'authStatus' });
+        response.end(JSON.stringify({ requireLogin: true, authMode: 'password' }));
+        return;
+      }
+      if (request.url === '/api/auth/login') {
+      calls.push({ operation: 'login', body });
+        response.setHeader('set-cookie', 'auth_token=session; Path=/; HttpOnly');
+        response.end(JSON.stringify({ success: true }));
+        return;
+      }
+      if (request.url === '/api/keys') {
+        calls.push({ operation: request.method === 'POST' ? 'keyCreate' : 'keysList', body, cookie });
+        response.end(JSON.stringify({ keys: [{ name: 'CloudCLI', key: 'sk_existing' }] }));
+        return;
+      }
+      response.statusCode = 404;
+      response.end(JSON.stringify({ error: 'not found' }));
+    });
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  assert.notEqual(address, null);
+  assert.notEqual(typeof address, 'string');
+  const port = (address as AddressInfo).port;
+
+  try {
+    assert.equal(await provisionNineRouterDataPlaneKeyForTesting(`http://127.0.0.1:${port}`, 'shared-admin'), 'sk_existing');
+    assert.deepEqual(calls, [
+      { operation: 'authStatus' },
+      { operation: 'login', body: { password: 'shared-admin' } },
+      { operation: 'keysList', body: undefined, cookie: 'auth_token=session' },
+    ]);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    if (originalLoopback === undefined) delete process.env.ROUTING_ALLOW_LOOPBACK_HTTP;
+    else process.env.ROUTING_ALLOW_LOOPBACK_HTTP = originalLoopback;
+  }
 });
 
 test('production health checker accepts exact pinned health and version payloads', async () => {
