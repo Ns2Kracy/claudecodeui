@@ -17,10 +17,10 @@ import {
 } from '@/modules/providers/index.js';
 import {
     routingRoutes,
-    routingService,
+    startEmbeddedNineRouter,
     startRoutingUsageMonitor,
+    stopEmbeddedNineRouter,
     stopRoutingUsageMonitor,
-    tryAutoConnect,
 } from '@/modules/routing/index.js';
 import { createWebSocketServer } from '@/modules/websocket/index.js';
 
@@ -341,17 +341,17 @@ async function startServer() {
         // Configure Web Push (VAPID keys)
         configureWebPush();
 
-        // Start optional 9router advisory usage checks only after persistence is ready.
-        startRoutingUsageMonitor();
-
-        // Auto-connect 9router from environment variables when all four
-        // provisioning env vars are set (zero-touch container deployment).
-        tryAutoConnect({ routingService }).catch((error: unknown) => {
-          console.warn(
-            '[Routing] Auto-connect attempt failed — %s',
-            (error as Error).message ?? String(error),
-          );
+        // Start embedded 9router after persistence is ready. Startup failure is
+        // advisory and must never prevent CloudCLI from serving its own UI/API.
+        const embeddedNineRouterStatus = await startEmbeddedNineRouter().catch((error: unknown) => {
+            console.warn('[Routing] Embedded 9router startup failed:', getErrorMessage(error));
+            return null;
         });
+        if (embeddedNineRouterStatus?.state === 'ready') {
+            startRoutingUsageMonitor();
+        } else {
+            console.warn('[Routing] Embedded 9router unavailable; usage monitor disabled');
+        }
 
         // Check if running in production mode (dist folder exists)
         const distIndexPath = path.join(APP_ROOT, 'dist', 'index.html');
@@ -396,6 +396,11 @@ async function startServer() {
         // Clean up plugin processes on shutdown
         const shutdownRuntimeServices = async () => {
             stopRoutingUsageMonitor();
+            try {
+                await stopEmbeddedNineRouter();
+            } catch (err) {
+                console.error('[Routing] Error stopping embedded 9router during shutdown:', getErrorMessage(err));
+            }
             try {
                 await browserUseService.stopAllSessions();
             } catch (err) {

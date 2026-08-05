@@ -2,8 +2,12 @@ export {
   routingRoutes,
   routingService,
   routingRuntimeService,
+  startEmbeddedNineRouter,
   startRoutingUsageMonitor,
+  stopEmbeddedNineRouter,
   stopRoutingUsageMonitor,
+  restartEmbeddedNineRouter,
+  getEmbeddedNineRouterStatus,
   tryAutoConnect,
 } from './routing.module.js';
 
