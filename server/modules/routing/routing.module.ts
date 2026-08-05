@@ -1,5 +1,4 @@
 import { spawn } from 'node:child_process';
-import crypto from 'node:crypto';
 import { createRequire } from 'node:module';
 import { promises as fsPromises } from 'node:fs';
 import net from 'node:net';
@@ -93,13 +92,14 @@ const embeddedNineRouterSecretKeys = {
   jwtSecret: 'nine_router_jwt_secret',
   initialPassword: 'nine_router_initial_password',
   apiKeySecret: 'nine_router_api_key_secret',
-  dataPlaneKeyMaterial: 'nine_router_data_plane_key_material',
+  dataPlaneKey: 'nine_router_data_plane_key',
   machineIdSalt: 'nine_router_machine_id_salt',
 } as const;
 
 type EmbeddedNineRouterRuntime = ReturnType<typeof createNineRouterRuntimeService>;
 type EmbeddedNineRouterFactory = () => EmbeddedNineRouterRuntime;
 const MAX_HEALTH_PAYLOAD_BYTES = 512;
+const MAX_KEY_PAYLOAD_BYTES = 2048;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -157,9 +157,86 @@ function createBoundedLoopbackHealthChecker(): NineRouterRuntimeServiceDependenc
       }
       return {
         ok: true,
-        origin: '9router',
+        origin: baseUrl,
         version: currentVersion,
       };
+    },
+  };
+}
+
+function persistedDataPlaneKey(): string {
+  return appConfigDb.get(embeddedNineRouterSecretKeys.dataPlaneKey) ?? '';
+}
+
+function strictKeyFromResponse(data: unknown): string | null {
+  if (!isRecord(data)) return null;
+  const key = data.key;
+  if (typeof key === 'string') return key;
+  if (isRecord(key) && typeof key.key === 'string') return key.key;
+  return null;
+}
+
+async function boundedProvisionJson(response: Response): Promise<unknown> {
+  const contentLength = response.headers.get('content-length');
+  if (contentLength !== null && Number(contentLength) > MAX_KEY_PAYLOAD_BYTES) return null;
+  const body = await response.text();
+  if (Buffer.byteLength(body, 'utf8') > MAX_KEY_PAYLOAD_BYTES) return null;
+  try {
+    return JSON.parse(body) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+async function authenticateManagement(baseUrl: string, adminPassword: string, signal: AbortSignal): Promise<string | undefined> {
+  const status = await fetch(`${baseUrl}/api/auth/status`, { signal });
+  if (!status.ok) throw new Error('management auth status failed');
+  const statusJson = await boundedProvisionJson(status);
+  if (!isRecord(statusJson) || typeof statusJson.requireLogin !== 'boolean' || typeof statusJson.authMode !== 'string') {
+    throw new Error('management auth status response invalid');
+  }
+  if (!statusJson.requireLogin) return undefined;
+  if (statusJson.authMode !== 'password') throw new Error('management auth mode unsupported');
+
+  const login = await fetch(`${baseUrl}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ password: adminPassword }),
+    signal,
+  });
+  if (!login.ok) throw new Error('management login failed');
+  const loginJson = await boundedProvisionJson(login);
+  if (!isRecord(loginJson) || loginJson.success !== true) throw new Error('management login response invalid');
+  const cookie = login.headers.getSetCookie?.().find((item) => item.startsWith('auth_token='))?.split(';', 1)[0]
+    ?? login.headers.get('set-cookie')?.split(';', 1)[0];
+  if (!cookie?.startsWith('auth_token=') || cookie.length <= 'auth_token='.length) {
+    throw new Error('management login cookie missing');
+  }
+  return cookie;
+}
+
+/** Used by the production embedded runtime to create one official installation-owned data-plane key. */
+export function createOfficialDataPlaneKeyProvisioner() {
+  return {
+    async provision(baseUrl: string, credentials: { initialPassword: string }): Promise<void> {
+      if (persistedDataPlaneKey()) return;
+      const signal = AbortSignal.timeout(5_000);
+      const cookie = await authenticateManagement(baseUrl, credentials.initialPassword, signal);
+      const response = await fetch(`${baseUrl}/api/keys`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          ...(cookie ? { cookie } : {}),
+        },
+        body: JSON.stringify({ name: 'CloudCLI embedded runtime' }),
+        signal,
+      });
+      if (!response.ok) throw new Error('data-plane key creation failed');
+      const key = strictKeyFromResponse(await boundedProvisionJson(response));
+      if (!key || key.length > 1024 || !key.startsWith('sk-')) {
+        throw new Error('data-plane key creation response invalid');
+      }
+      appConfigDb.set(embeddedNineRouterSecretKeys.dataPlaneKey, key);
     },
   };
 }
@@ -181,15 +258,12 @@ export function createProductionFilesystemAdapter(): NineRouterRuntimeServiceDep
 
 function createDefaultEmbeddedNineRouterRuntime(): EmbeddedNineRouterRuntime {
   const apiKeySecret = appConfigDb.getOrCreateSecret(embeddedNineRouterSecretKeys.apiKeySecret, 32);
-  const keyId = appConfigDb.getOrCreateSecret(embeddedNineRouterSecretKeys.dataPlaneKeyMaterial, 16).slice(0, 6);
-  const machineId = 'cloudcli';
-  const crc = crypto.createHmac('sha256', apiKeySecret).update(machineId + keyId).digest('hex').slice(0, 8);
   return createNineRouterRuntimeService({
     credentials: {
       jwtSecret: appConfigDb.getOrCreateSecret(embeddedNineRouterSecretKeys.jwtSecret, 32),
       initialPassword: appConfigDb.getOrCreateSecret(embeddedNineRouterSecretKeys.initialPassword, 32),
       apiKeySecret,
-      dataPlaneKey: `sk-${machineId}-${keyId}-${crc}`,
+      dataPlaneKey: persistedDataPlaneKey,
       machineIdSalt: appConfigDb.getOrCreateSecret(embeddedNineRouterSecretKeys.machineIdSalt, 32),
     },
     databasePath: getDatabasePath(),
@@ -206,6 +280,7 @@ function createDefaultEmbeddedNineRouterRuntime(): EmbeddedNineRouterRuntime {
     processSpawner: { spawn },
     portAvailability: createPortAvailability(),
     health: createBoundedLoopbackHealthChecker(),
+    dataPlaneKeyProvisioner: createOfficialDataPlaneKeyProvisioner(),
     clock: {
       now: () => new Date(),
       setTimeout: (callback, delayMs) => setTimeout(callback, delayMs),

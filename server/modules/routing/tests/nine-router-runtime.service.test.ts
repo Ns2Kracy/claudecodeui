@@ -204,6 +204,54 @@ test('health transport errors during readiness are transient and polling continu
 });
 
 
+
+test('readiness provisions data-plane key before reporting ready', async () => {
+  const provisions: Array<{ baseUrl: string; key: string }> = [];
+  let persistedKey = '';
+  const harness = createHarness({
+    credentials: {
+      jwtSecret: 'jwt-secret-value',
+      initialPassword: 'initial-password-value',
+      apiKeySecret: 'api-key-secret-value',
+      dataPlaneKey: () => persistedKey,
+      machineIdSalt: 'machine-salt-value',
+    },
+    dataPlaneKeyProvisioner: {
+      provision: async (baseUrl, credentials) => {
+        persistedKey = 'sk-official-owned-key';
+        provisions.push({ baseUrl, key: credentials.dataPlaneKey });
+      },
+    },
+  });
+  harness.healthChecks.push({ ok: true, origin: 'http://127.0.0.1:20128', version: '0.5.45' });
+
+  await harness.service.start();
+
+  assert.deepEqual(provisions, [{ baseUrl: 'http://127.0.0.1:20128', key: '' }]);
+  assert.equal(harness.service.getStatus().state, 'ready');
+  assert.equal(harness.service.getInternalCredentials().dataPlaneKey, 'sk-official-owned-key');
+});
+
+test('readiness fails and stops child when data-plane key provisioning fails', async () => {
+  const harness = createHarness({
+    dataPlaneKeyProvisioner: {
+      provision: async () => { throw new Error('upstream refused sk-cloudcli-abc123-deadbeef'); },
+    },
+  });
+  harness.healthChecks.push({ ok: true, origin: 'http://127.0.0.1:20128', version: '0.5.45' });
+
+  const startPromise = harness.service.start();
+  await flushAsyncStart();
+  harness.child.emitExit(0, null);
+  await startPromise;
+
+  assert.equal(harness.service.getStatus().state, 'unavailable');
+  assert.equal(harness.service.getStatus().lastError?.code, 'ROUTING_PROCESS_FAILED');
+  assert.match(harness.service.getStatus().lastError?.message ?? '', /Unable to provision 9router data-plane key/);
+  assert.doesNotMatch(harness.service.getStatus().lastError?.message ?? '', /sk-cloudcli/);
+  assert.deepEqual(harness.child.killedSignals, ['SIGTERM']);
+});
+
 test('derives and ensures the 9router data directory from the database path before spawn', async () => {
   const harness = createHarness({ databasePath: '/var/lib/cloudcli/main.db' });
   harness.healthChecks.push({ ok: true, origin: '9router', version: '0.5.45' });

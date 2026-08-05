@@ -4,9 +4,12 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
+import { appConfigDb, closeConnection, initializeDatabase } from '@/modules/database/index.js';
+
 import {
   configureEmbeddedNineRouterForTesting,
   createBoundedLoopbackHealthCheckerForTesting,
+  createOfficialDataPlaneKeyProvisioner,
   createProductionFilesystemAdapter,
   getEmbeddedNineRouterStatus,
   resetEmbeddedNineRouterForTesting,
@@ -14,6 +17,22 @@ import {
   startEmbeddedNineRouter,
   stopEmbeddedNineRouter,
 } from '../routing.module.js';
+
+async function withIsolatedDatabase(runTest: () => void | Promise<void>): Promise<void> {
+  const previousDatabasePath = process.env.DATABASE_PATH;
+  const parent = await fsPromises.mkdtemp(path.join(tmpdir(), 'routing-module-db-'));
+  closeConnection();
+  process.env.DATABASE_PATH = path.join(parent, 'auth.db');
+  await initializeDatabase();
+  try {
+    await runTest();
+  } finally {
+    closeConnection();
+    if (previousDatabasePath === undefined) delete process.env.DATABASE_PATH;
+    else process.env.DATABASE_PATH = previousDatabasePath;
+    await fsPromises.rm(parent, { recursive: true, force: true });
+  }
+}
 
 test.afterEach(() => {
   resetEmbeddedNineRouterForTesting();
@@ -43,10 +62,68 @@ test('production health checker accepts exact pinned health and version payloads
       'http://127.0.0.1:9731/api/version',
     ]);
     assert.equal(result.ok, true);
+    assert.equal(result.origin, 'http://127.0.0.1:9731');
     assert.equal(result.version, '0.5.45');
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test('official data-plane key provisioner authenticates through management route and persists returned key', async () => {
+  await withIsolatedDatabase(async () => {
+    const originalFetch = globalThis.fetch;
+    const requests: Array<{ url: string; method: string; body: unknown; cookie: string | null }> = [];
+    globalThis.fetch = async (input, init = {}) => {
+      const url = String(input);
+      requests.push({
+        url,
+        method: init.method ?? 'GET',
+        body: init.body ? JSON.parse(String(init.body)) : null,
+        cookie: init.headers instanceof Headers ? init.headers.get('cookie') : (init.headers as Record<string, string> | undefined)?.cookie ?? null,
+      });
+      if (url.endsWith('/api/auth/status')) {
+        return new Response(JSON.stringify({ requireLogin: true, authMode: 'password' }), { status: 200 });
+      }
+      if (url.endsWith('/api/auth/login')) {
+        return new Response(JSON.stringify({ success: true }), { status: 200, headers: { 'set-cookie': 'auth_token=session; Path=/; HttpOnly' } });
+      }
+      if (url.endsWith('/api/keys')) {
+        assert.equal((init.headers as Record<string, string>).cookie, 'auth_token=session');
+        return new Response(JSON.stringify({ key: 'sk-official-owned-key', name: 'CloudCLI embedded runtime', id: 'k1', machineId: 'm1' }), { status: 201 });
+      }
+      return new Response(JSON.stringify({ error: 'not found' }), { status: 404 });
+    };
+
+    try {
+      await createOfficialDataPlaneKeyProvisioner().provision('http://127.0.0.1:20128', { initialPassword: 'admin-secret' });
+
+      assert.equal(appConfigDb.get('nine_router_data_plane_key'), 'sk-official-owned-key');
+      assert.deepEqual(requests.map((request) => [request.method, request.url, request.body]), [
+        ['GET', 'http://127.0.0.1:20128/api/auth/status', null],
+        ['POST', 'http://127.0.0.1:20128/api/auth/login', { password: 'admin-secret' }],
+        ['POST', 'http://127.0.0.1:20128/api/keys', { name: 'CloudCLI embedded runtime' }],
+      ]);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
+
+test('official data-plane key provisioner reuses persisted key across restarts', async () => {
+  await withIsolatedDatabase(async () => {
+    appConfigDb.set('nine_router_data_plane_key', 'sk-existing-owned-key');
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () => {
+      throw new Error('provisioner must not call management route when key is already persisted');
+    };
+
+    try {
+      await createOfficialDataPlaneKeyProvisioner().provision('http://127.0.0.1:20128', { initialPassword: 'admin-secret' });
+      assert.equal(appConfigDb.get('nine_router_data_plane_key'), 'sk-existing-owned-key');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
 });
 
 test('production health checker rejects malformed, wrong, and oversized 200 payloads', async () => {

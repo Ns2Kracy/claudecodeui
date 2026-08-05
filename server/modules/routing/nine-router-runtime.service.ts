@@ -40,11 +40,11 @@ type InternalCredentials = {
   jwtSecret: string;
   initialPassword: string;
   apiKeySecret: string;
-  dataPlaneKey: string;
+  dataPlaneKey: string | (() => string);
   machineIdSalt: string;
 };
 
-export type NineRouterInternalCredentials = InternalCredentials & { dataDir: string };
+export type NineRouterInternalCredentials = Omit<InternalCredentials, 'dataPlaneKey'> & { dataPlaneKey: string; dataDir: string };
 
 type InternalRuntimeCredentials = NineRouterInternalCredentials;
 
@@ -62,6 +62,10 @@ type PortAvailability = {
 
 type HealthChecker = {
   check(baseUrl: string): Promise<{ ok: boolean; origin?: string; version?: string }>;
+};
+
+type DataPlaneKeyProvisioner = {
+  provision(baseUrl: string, credentials: InternalRuntimeCredentials): Promise<void>;
 };
 
 type RuntimeFilesystem = {
@@ -82,6 +86,7 @@ type NineRouterRuntimeDependencies = {
   processSpawner: ProcessSpawner;
   portAvailability: PortAvailability;
   health: HealthChecker;
+  dataPlaneKeyProvisioner?: DataPlaneKeyProvisioner;
   clock: Clock;
   env?: NodeJS.ProcessEnv;
   onStatusChange?: (status: NineRouterRuntimeStatus) => void;
@@ -102,7 +107,10 @@ function getDataDir(databasePath: string): string {
 }
 
 function runtimeCredentials(dependencies: NineRouterRuntimeDependencies): InternalRuntimeCredentials {
-  return { ...dependencies.credentials, dataDir: getDataDir(dependencies.databasePath) };
+  const dataPlaneKey = typeof dependencies.credentials.dataPlaneKey === 'function'
+    ? dependencies.credentials.dataPlaneKey()
+    : dependencies.credentials.dataPlaneKey;
+  return { ...dependencies.credentials, dataPlaneKey, dataDir: getDataDir(dependencies.databasePath) };
 }
 
 function redact(message: string, secrets: InternalRuntimeCredentials): string {
@@ -266,6 +274,17 @@ export function createNineRouterRuntimeService(dependencies: NineRouterRuntimeDe
       }
       if (!captured(generation) || child !== currentChild) return;
       if (health.ok) {
+        if (dependencies.dataPlaneKeyProvisioner) {
+          try {
+            await dependencies.dataPlaneKeyProvisioner.provision(BASE_URL, runtimeCredentials(dependencies));
+          } catch (error) {
+            if (!captured(generation) || child !== currentChild) return;
+            setUnavailable(routingError('ROUTING_PROCESS_FAILED', `Unable to provision 9router data-plane key: ${unknownErrorMessage(error)}`, true, runtimeCredentials(dependencies)));
+            await stopManaged(true);
+            return;
+          }
+        }
+        if (!captured(generation) || child !== currentChild) return;
         transition({
           state: 'ready',
           origin: safeHealthField(health.origin),
