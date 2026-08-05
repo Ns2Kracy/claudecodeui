@@ -106,3 +106,104 @@ test('restarts the embedded runtime without sending connection secrets', async (
   assert.equal(requests[0]?.init?.method, 'POST');
   assert.equal(requests[0]?.init?.body, undefined);
 });
+
+test('parses OAuth and device-code views while keeping every request same-origin', async () => {
+  const requests: Array<{ url: string; init?: RequestInit }> = [];
+  const responses = [
+    {
+      provider: 'claude',
+      transactionId: 'oauth-transaction',
+      authUrl: 'https://auth.example.test/authorize',
+      redirectUri: 'http://127.0.0.1:3001/api/routing/oauth/claude/callback',
+      expiresAt: '2030-01-02T03:04:05.000Z',
+    },
+    {
+      provider: 'github',
+      transactionId: 'device-transaction',
+      userCode: 'ABCD-EFGH',
+      verificationUri: 'https://github.com/login/device',
+      verificationUriComplete: null,
+      expiresAt: '2030-01-02T03:04:05.000Z',
+      interval: 5,
+    },
+    { provider: 'github', pending: true, account: null },
+    { cancelled: true },
+  ];
+  const api = createRoutingApiClient(async (url, init) => {
+    requests.push({ url: String(url), init });
+    return jsonResponse({ success: true, data: responses.shift() });
+  });
+
+  assert.equal((await api.startOAuth('claude')).transactionId, 'oauth-transaction');
+  assert.equal((await api.startDeviceCode('github')).userCode, 'ABCD-EFGH');
+  assert.equal((await api.pollDeviceCode('github', 'device-transaction')).pending, true);
+  assert.deepEqual(await api.cancelDeviceCode('github', 'device-transaction'), { cancelled: true });
+
+  assert.deepEqual(requests.map(({ url, init }) => [url, init?.method]), [
+    ['/api/routing/oauth/claude/authorize', 'POST'],
+    ['/api/routing/oauth/github/device-code', 'POST'],
+    ['/api/routing/oauth/github/poll', 'POST'],
+    ['/api/routing/oauth/github/cancel', 'POST'],
+  ]);
+  assert.deepEqual(JSON.parse(String(requests[2]?.init?.body)), { transactionId: 'device-transaction' });
+});
+
+test('rejects malformed OAuth URLs and polling responses at the browser boundary', async () => {
+  const malformed = [
+    {
+      provider: 'claude',
+      transactionId: 'oauth-transaction',
+      authUrl: 42,
+      redirectUri: 'http://127.0.0.1/callback',
+      expiresAt: '2030-01-02T03:04:05.000Z',
+    },
+    { provider: 'github', pending: false, account: null, accessToken: 'must-not-pass' },
+  ];
+  const api = createRoutingApiClient(async () => jsonResponse({ success: true, data: malformed.shift() }));
+
+  await assert.rejects(api.startOAuth('claude'), (error: unknown) => (
+    error instanceof RoutingApiError && error.code === 'ROUTING_INVALID_RESPONSE'
+  ));
+  await assert.rejects(api.pollDeviceCode('github', 'transaction'), (error: unknown) => (
+    error instanceof RoutingApiError && error.code === 'ROUTING_INVALID_RESPONSE'
+  ));
+});
+
+test('validates and creates custom provider nodes through allowlisted routing paths', async () => {
+  const requests: Array<{ url: string; init?: RequestInit }> = [];
+  const node = {
+    id: 'node-1',
+    type: 'openai-compatible',
+    name: 'Internal gateway',
+    prefix: 'internal',
+    baseUrl: 'https://gateway.example.test/v1',
+    apiType: 'responses',
+    createdAt: null,
+    updatedAt: null,
+  };
+  const responses = [{ valid: true, message: null }, node, [node]];
+  const api = createRoutingApiClient(async (url, init) => {
+    requests.push({ url: String(url), init });
+    return jsonResponse({ success: true, data: responses.shift() });
+  });
+
+  assert.deepEqual(await api.validateProviderNode({
+    baseUrl: 'https://gateway.example.test/v1',
+    apiKey: 'write-only-key',
+    type: 'openai-compatible',
+  }), { valid: true, message: null });
+  assert.equal((await api.createProviderNode({
+    name: 'Internal gateway',
+    prefix: 'internal',
+    type: 'openai-compatible',
+    apiType: 'responses',
+    baseUrl: 'https://gateway.example.test/v1',
+  })).id, 'node-1');
+  assert.equal((await api.listProviderNodes())[0]?.prefix, 'internal');
+
+  assert.deepEqual(requests.map(({ url, init }) => [url, init?.method]), [
+    ['/api/routing/provider-nodes/validations', 'POST'],
+    ['/api/routing/provider-nodes', 'POST'],
+    ['/api/routing/provider-nodes', undefined],
+  ]);
+});

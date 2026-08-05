@@ -1,5 +1,6 @@
 import {
   ROUTING_AGENTS,
+  type CreateRoutingProviderNodeInput,
   type CreateRoutingApiKeyAccountInput,
   type CreateRoutingRouteInput,
   type RoutingAccountView,
@@ -8,6 +9,12 @@ import {
   type RoutingCapabilities,
   type RoutingRuntimeView,
   type RoutingModelView,
+  type RoutingDeviceCodeChallengeView,
+  type RoutingOAuthCallbackInput,
+  type RoutingOAuthPollingStateView,
+  type RoutingOAuthStartView,
+  type RoutingProviderNodeValidationView,
+  type RoutingProviderNodeView,
   type RoutingRouteView,
   type RoutingSettingsView,
   type RoutingUsageAlertPeriod,
@@ -18,6 +25,7 @@ import {
   type UpdateRoutingBindingInput,
   type UpdateRoutingRouteInput,
   type UpdateRoutingUsageAlertInput,
+  type ValidateRoutingProviderNodeInput,
 } from '../../../../../../shared/routing.js';
 
 type RoutingFetch = (
@@ -265,6 +273,63 @@ function parseAccountTest(value: unknown, status?: number): RoutingAccountTestRe
   };
 }
 
+function parseOAuthStart(value: unknown, status?: number): RoutingOAuthStartView {
+  const item = record(value, status);
+  return {
+    provider: requiredString(item.provider, status),
+    transactionId: requiredString(item.transactionId, status),
+    authUrl: requiredString(item.authUrl, status),
+    redirectUri: requiredString(item.redirectUri, status),
+    expiresAt: requiredString(item.expiresAt, status),
+  };
+}
+
+function parseDeviceChallenge(value: unknown, status?: number): RoutingDeviceCodeChallengeView {
+  const item = record(value, status);
+  return {
+    provider: requiredString(item.provider, status),
+    transactionId: requiredString(item.transactionId, status),
+    userCode: requiredString(item.userCode, status),
+    verificationUri: requiredString(item.verificationUri, status),
+    verificationUriComplete: nullableString(item.verificationUriComplete, status),
+    expiresAt: requiredString(item.expiresAt, status),
+    interval: item.interval === null ? null : requiredNumber(item.interval, status),
+  };
+}
+
+function parseOAuthPolling(value: unknown, status?: number): RoutingOAuthPollingStateView {
+  const item = record(value, status);
+  const pending = requiredBoolean(item.pending, status);
+  const account = item.account === null ? null : parseAccount(item.account, status);
+  if (!pending && account === null) invalidResponse(status);
+  return { provider: requiredString(item.provider, status), pending, account };
+}
+
+function parseProviderNode(value: unknown, status?: number): RoutingProviderNodeView {
+  const item = record(value, status);
+  return {
+    id: requiredString(item.id, status),
+    type: oneOf(item.type, ['openai-compatible', 'custom-embedding', 'anthropic-compatible'], status),
+    name: requiredString(item.name, status),
+    prefix: requiredString(item.prefix, status),
+    baseUrl: requiredString(item.baseUrl, status),
+    apiType: item.apiType === null ? null : oneOf(item.apiType, ['chat', 'responses'] as const, status),
+    createdAt: nullableString(item.createdAt, status),
+    updatedAt: nullableString(item.updatedAt, status),
+  };
+}
+
+function parseProviderNodeValidation(value: unknown, status?: number): RoutingProviderNodeValidationView {
+  const item = record(value, status);
+  return { valid: requiredBoolean(item.valid, status), message: nullableString(item.message, status) };
+}
+
+function parseCancelled(value: unknown, status?: number): { cancelled: true } {
+  const item = record(value, status);
+  if (item.cancelled !== true) invalidResponse(status);
+  return { cancelled: true };
+}
+
 function parseDeleted(value: unknown, status?: number): { deleted: true } {
   const item = record(value, status);
   if (item.deleted !== true) invalidResponse(status);
@@ -360,6 +425,30 @@ export function createRoutingApiClient(fetcher: RoutingFetch) {
     },
     restartRuntime() {
       return request('/runtime/restart', parseRuntime, jsonRequest('POST'));
+    },
+    startOAuth(provider: string) {
+      return request(`/oauth/${encodeURIComponent(provider)}/authorize`, parseOAuthStart, jsonRequest('POST'));
+    },
+    exchangeOAuth(provider: string, input: RoutingOAuthCallbackInput) {
+      return request(`/oauth/${encodeURIComponent(provider)}/callback`, parseAccount, jsonRequest('POST', input));
+    },
+    startDeviceCode(provider: string) {
+      return request(`/oauth/${encodeURIComponent(provider)}/device-code`, parseDeviceChallenge, jsonRequest('POST'));
+    },
+    pollDeviceCode(provider: string, transactionId: string) {
+      return request(`/oauth/${encodeURIComponent(provider)}/poll`, parseOAuthPolling, jsonRequest('POST', { transactionId }));
+    },
+    cancelDeviceCode(provider: string, transactionId: string) {
+      return request(`/oauth/${encodeURIComponent(provider)}/cancel`, parseCancelled, jsonRequest('POST', { transactionId }));
+    },
+    listProviderNodes() {
+      return request('/provider-nodes', (value) => array(value, parseProviderNode));
+    },
+    createProviderNode(input: CreateRoutingProviderNodeInput) {
+      return request('/provider-nodes', parseProviderNode, jsonRequest('POST', input));
+    },
+    validateProviderNode(input: ValidateRoutingProviderNodeInput) {
+      return request('/provider-nodes/validations', parseProviderNodeValidation, jsonRequest('POST', input));
     },
     createAccount(input: CreateRoutingApiKeyAccountInput) {
       return request('/accounts', parseAccount, jsonRequest('POST', input));
