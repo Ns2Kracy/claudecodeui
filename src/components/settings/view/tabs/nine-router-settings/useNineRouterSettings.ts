@@ -3,14 +3,9 @@ import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import type {
   CreateRoutingApiKeyAccountInput,
   CreateRoutingRouteInput,
-  RoutingAgent,
   RoutingSettingsView,
-  RoutingUsageAlertPeriod,
-  RoutingUsagePeriod,
   UpdateRoutingAccountInput,
-  UpdateRoutingBindingInput,
   UpdateRoutingRouteInput,
-  UpdateRoutingUsageAlertInput,
 } from '../../../../../../shared/routing.js';
 
 import { routingApi, RoutingApiError, type RoutingSettingsDetails } from './routingApi.js';
@@ -48,7 +43,6 @@ function safeUiError(error: unknown): RoutingUiError {
 
 function loadedDetails(
   state: RoutingState,
-  usagePeriod: RoutingUsagePeriod,
   required: RoutingSettingsDetails = {},
   includeLoading = false,
 ): RoutingSettingsDetails {
@@ -60,7 +54,6 @@ function loadedDetails(
   if (requested('accounts')) details.accounts = true;
   if (requested('models')) details.models = true;
   if (requested('routes')) details.routes = true;
-  if (requested(`usage:${usagePeriod}`)) details.usage = usagePeriod;
   return details;
 }
 
@@ -69,7 +62,6 @@ function detailKeysFor(details: RoutingSettingsDetails): RoutingDetailKey[] {
   if (details.accounts) keys.push('accounts');
   if (details.models) keys.push('models');
   if (details.routes) keys.push('routes');
-  if (details.usage) keys.push(`usage:${details.usage}`);
   return keys;
 }
 
@@ -83,14 +75,11 @@ export function useNineRouterSettings() {
     apiKey: '',
     active: true,
   });
-  const [usagePeriod, setUsagePeriod] = useState<RoutingUsagePeriod>('today');
   const stateRef = useRef(state);
-  const usagePeriodRef = useRef(usagePeriod);
   const detailRequestsRef = useRef(new Set<RoutingDetailKey>());
   const mutationRef = useRef<string | null>(null);
   const requestCoordinatorRef = useRef(createRoutingRequestCoordinator());
   stateRef.current = state;
-  usagePeriodRef.current = usagePeriod;
 
   const applySettings = useCallback((
     details: RoutingSettingsDetails,
@@ -106,7 +95,6 @@ export function useNineRouterSettings() {
     dispatch({ type: 'loadStarted' });
     const details = loadedDetails(
       stateRef.current,
-      usagePeriodRef.current,
       {},
       true,
     );
@@ -168,11 +156,6 @@ export function useNineRouterSettings() {
     { routes: true },
   ), [ensureDetails]);
 
-  const ensureUsage = useCallback((period: RoutingUsagePeriod) => {
-    setUsagePeriod(period);
-    return ensureDetails([`usage:${period}`], { usage: period });
-  }, [ensureDetails]);
-
   const retryDetails = useCallback((
     keys: RoutingDetailKey[],
     details: RoutingSettingsDetails,
@@ -192,18 +175,13 @@ export function useNineRouterSettings() {
     { routes: true },
   ), [retryDetails]);
 
-  const retryUsage = useCallback((period: RoutingUsagePeriod) => retryDetails(
-    [`usage:${period}`],
-    { usage: period },
-  ), [retryDetails]);
-
   const refreshAfterMutation = useCallback(async (
     required: RoutingSettingsDetails = {},
     resetDetails = false,
   ) => {
     const details = resetDetails
       ? required
-      : loadedDetails(stateRef.current, usagePeriodRef.current, required, true);
+      : loadedDetails(stateRef.current, required, true);
     const keys = detailKeysFor(details);
     const token = requestCoordinatorRef.current.startAggregate();
     try {
@@ -260,18 +238,6 @@ export function useNineRouterSettings() {
     return result;
   }, [refreshAfterMutation]);
 
-  const restartRuntime = useCallback(() => runMutation(
-    'runtime:restart',
-    () => routingApi.restartRuntime(),
-    {},
-    undefined,
-    true,
-  ), [runMutation]);
-
-  const setBinding = useCallback((provider: RoutingAgent, input: UpdateRoutingBindingInput) => (
-    runMutation(`binding:${provider}`, () => routingApi.setBinding(provider, input))
-  ), [runMutation]);
-
   const createAccount = useCallback((input: CreateRoutingApiKeyAccountInput = accountDraft) => runMutation(
     'account:create',
     () => routingApi.createAccount(input),
@@ -321,14 +287,6 @@ export function useNineRouterSettings() {
     { accounts: true, models: true, routes: true },
   ), [runMutation]);
 
-  const setUsageAlert = useCallback((
-    period: RoutingUsageAlertPeriod,
-    input: UpdateRoutingUsageAlertInput,
-  ) => runMutation(
-    `usage-alert:${period}`,
-    () => routingApi.setUsageAlert(period, input),
-  ), [runMutation]);
-
 
 
   const setAccountField = useCallback(<Key extends keyof RoutingAccountDraft>(
@@ -346,18 +304,11 @@ export function useNineRouterSettings() {
     accountDraft,
     setAccountDraft,
     setAccountField,
-    usagePeriod,
-    usage: state.usageByPeriod[usagePeriod] ?? null,
-    setUsagePeriod: ensureUsage,
     loadSettings,
     ensureUpstreamDetails,
     ensureRouteDetails,
-    ensureUsage,
     retryUpstreamDetails,
     retryRouteDetails,
-    retryUsage,
-    restartRuntime,
-    setBinding,
     createAccount,
     updateAccount,
     testAccount,
@@ -365,7 +316,6 @@ export function useNineRouterSettings() {
     createRoute,
     updateRoute,
     deleteRoute,
-    setUsageAlert,
     clearError,
     isMutating,
   };

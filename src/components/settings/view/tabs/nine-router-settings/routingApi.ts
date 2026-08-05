@@ -5,7 +5,6 @@ import {
   type CreateRoutingRouteInput,
   type RoutingAccountView,
   type RoutingAgent,
-  type RoutingBindingView,
   type RoutingCapabilities,
   type RoutingRuntimeView,
   type RoutingModelView,
@@ -17,14 +16,8 @@ import {
   type RoutingProviderNodeView,
   type RoutingRouteView,
   type RoutingSettingsView,
-  type RoutingUsageAlertPeriod,
-  type RoutingUsageAlertView,
-  type RoutingUsagePeriod,
-  type RoutingUsageView,
   type UpdateRoutingAccountInput,
-  type UpdateRoutingBindingInput,
   type UpdateRoutingRouteInput,
-  type UpdateRoutingUsageAlertInput,
   type ValidateRoutingProviderNodeInput,
 } from '../../../../../../shared/routing.js';
 
@@ -37,7 +30,6 @@ export type RoutingSettingsDetails = {
   accounts?: boolean;
   models?: boolean;
   routes?: boolean;
-  usage?: RoutingUsagePeriod;
 };
 
 export type RoutingAccountTestResult = {
@@ -145,23 +137,12 @@ function parseSafeError(value: unknown, status?: number): RoutingRuntimeView['la
 function parseRuntime(value: unknown, status?: number): RoutingRuntimeView {
   const item = record(value, status);
   return {
-    mode: oneOf(item.mode, ['embedded'], status),
+    mode: oneOf(item.mode, ['sidecar'], status),
     status: oneOf(item.status, ['starting', 'ready', 'degraded', 'unavailable'], status),
     version: nullableString(item.version, status),
     lastCheckedAt: nullableString(item.lastCheckedAt, status),
     lastError: parseSafeError(item.lastError, status),
     capabilities: parseCapabilities(item.capabilities, status),
-  };
-}
-
-function parseBinding(value: unknown, status?: number): RoutingBindingView {
-  const item = record(value, status);
-  return {
-    provider: oneOf(item.provider, ROUTING_AGENTS, status),
-    source: oneOf(item.source, ['native', '9router'], status),
-    routeId: nullableString(item.routeId, status),
-    routeName: nullableString(item.routeName, status),
-    supported: requiredBoolean(item.supported, status),
   };
 }
 
@@ -199,55 +180,17 @@ function parseRoute(value: unknown, status?: number): RoutingRouteView {
   };
 }
 
-function parseUsage(value: unknown, status?: number): RoutingUsageView {
-  const item = record(value, status);
-  const byProvider = array(item.byProvider, (entry) => {
-    const provider = record(entry, status);
-    return {
-      id: requiredString(provider.id, status),
-      requests: requiredNumber(provider.requests, status),
-      costMicrousd: requiredNumber(provider.costMicrousd, status),
-    };
-  }, status);
-  return {
-    period: oneOf(item.period, ['today', '7d', '30d'], status),
-    requests: requiredNumber(item.requests, status),
-    promptTokens: requiredNumber(item.promptTokens, status),
-    completionTokens: requiredNumber(item.completionTokens, status),
-    estimatedCostMicrousd: requiredNumber(item.estimatedCostMicrousd, status),
-    byProvider,
-    staleAt: nullableString(item.staleAt, status),
-  };
-}
-
-function parseUsageAlert(value: unknown, status?: number): RoutingUsageAlertView {
-  const item = record(value, status);
-  return {
-    period: oneOf(item.period, ['daily', '30d'], status),
-    enabled: requiredBoolean(item.enabled, status),
-    thresholdMicrousd: requiredNumber(item.thresholdMicrousd, status),
-  };
-}
-
 function parseSettings(value: unknown, status?: number): RoutingSettingsView {
   const item = record(value, status);
-  const rawBindings = record(item.bindings, status);
-  const bindings = Object.fromEntries(ROUTING_AGENTS.map((provider) => {
-    const binding = parseBinding(rawBindings[provider], status);
-    if (binding.provider !== provider) invalidResponse(status);
-    return [provider, binding];
-  })) as Record<RoutingAgent, RoutingBindingView>;
   const accountSummary = record(item.accountSummary, status);
   const routeSummary = record(item.routeSummary, status);
   const settings: RoutingSettingsView = {
     runtime: parseRuntime(item.runtime, status),
-    bindings,
     accountSummary: {
       total: requiredNumber(accountSummary.total, status),
       degraded: requiredNumber(accountSummary.degraded, status),
     },
     routeSummary: { total: requiredNumber(routeSummary.total, status) },
-    usageAlerts: array(item.usageAlerts, (alert) => parseUsageAlert(alert, status), status),
   };
   if (item.accounts !== undefined) {
     settings.accounts = array(item.accounts, (account) => parseAccount(account, status), status);
@@ -257,9 +200,6 @@ function parseSettings(value: unknown, status?: number): RoutingSettingsView {
   }
   if (item.routes !== undefined) {
     settings.routes = array(item.routes, (route) => parseRoute(route, status), status);
-  }
-  if (item.usage !== undefined) {
-    settings.usage = parseUsage(item.usage, status);
   }
   return settings;
 }
@@ -384,10 +324,8 @@ function detailQuery(details: RoutingSettingsDetails): string {
   if (details.accounts) names.push('accounts');
   if (details.models) names.push('models');
   if (details.routes) names.push('routes');
-  if (details.usage) names.push('usage');
   if (names.length === 0) return '';
   const query = new URLSearchParams({ details: names.join(',') });
-  if (details.usage) query.set('period', details.usage);
   return `?${query.toString()}`;
 }
 
@@ -422,9 +360,6 @@ export function createRoutingApiClient(fetcher: RoutingFetch) {
   return {
     getSettings(details: RoutingSettingsDetails = {}) {
       return request(detailQuery(details), parseSettings);
-    },
-    restartRuntime() {
-      return request('/runtime/restart', parseRuntime, jsonRequest('POST'));
     },
     startOAuth(provider: string) {
       return request(`/oauth/${encodeURIComponent(provider)}/authorize`, parseOAuthStart, jsonRequest('POST'));
@@ -470,20 +405,6 @@ export function createRoutingApiClient(fetcher: RoutingFetch) {
     },
     deleteRoute(id: string) {
       return request(`/routes/${encodeURIComponent(id)}`, parseDeleted, jsonRequest('DELETE'));
-    },
-    setBinding(provider: RoutingAgent, input: UpdateRoutingBindingInput) {
-      return request(
-        `/bindings/providers/${encodeURIComponent(provider)}`,
-        parseBinding,
-        jsonRequest('PUT', input),
-      );
-    },
-    setUsageAlert(period: RoutingUsageAlertPeriod, input: UpdateRoutingUsageAlertInput) {
-      return request(
-        `/usage-alerts/${encodeURIComponent(period)}`,
-        parseUsageAlert,
-        jsonRequest('PUT', input),
-      );
     },
   };
 }

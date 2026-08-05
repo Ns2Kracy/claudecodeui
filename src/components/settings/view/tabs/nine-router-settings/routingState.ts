@@ -2,8 +2,6 @@ import {
   emptyRoutingSettingsView,
   type CreateRoutingApiKeyAccountInput,
   type RoutingSettingsView,
-  type RoutingUsagePeriod,
-  type RoutingUsageView,
 } from '../../../../../../shared/routing.js';
 
 export type RoutingUiError = {
@@ -17,7 +15,7 @@ export type RoutingDetailKey =
   | 'accounts'
   | 'models'
   | 'routes'
-  | `usage:${RoutingUsagePeriod}`;
+;
 
 export type RoutingDetailStatus = 'loading' | 'loaded' | 'error';
 export type RoutingErrorContext = 'load' | 'details' | 'mutation';
@@ -34,7 +32,6 @@ export type RoutingState = {
   errorContext: RoutingErrorContext | null;
   activeMutation: string | null;
   detailStatus: Partial<Record<RoutingDetailKey, RoutingDetailStatus>>;
-  usageByPeriod: Partial<Record<RoutingUsagePeriod, RoutingUsageView>>;
 };
 
 
@@ -63,7 +60,6 @@ export function createInitialRoutingState(): RoutingState {
     errorContext: null,
     activeMutation: null,
     detailStatus: {},
-    usageByPeriod: {},
   };
 }
 
@@ -125,7 +121,6 @@ function mergeSettings(
     accounts: incoming.accounts ?? current.accounts,
     models: incoming.models ?? current.models,
     routes: incoming.routes ?? current.routes,
-    usage: incoming.usage ?? current.usage,
   };
 }
 
@@ -174,13 +169,7 @@ export function routingStateReducer(
         settings: mergeSettings(state.settings, action.settings),
         loading: false,
         error: null,
-        errorContext: null,
-        usageByPeriod: action.settings.usage
-          ? {
-              ...state.usageByPeriod,
-              [action.settings.usage.period]: action.settings.usage,
-            }
-          : state.usageByPeriod,
+        errorContext: null
       };
     case 'loadFailed':
       return { ...state, loading: false, error: action.error, errorContext: 'load' };
@@ -197,13 +186,7 @@ export function routingStateReducer(
         settings: mergeSettings(state.settings, action.settings),
         error: null,
         errorContext: null,
-        detailStatus: statusesFor(state.detailStatus, action.keys, 'loaded'),
-        usageByPeriod: action.settings.usage
-          ? {
-              ...state.usageByPeriod,
-              [action.settings.usage.period]: action.settings.usage,
-            }
-          : state.usageByPeriod,
+        detailStatus: statusesFor(state.detailStatus, action.keys, 'loaded')
       };
     case 'detailsFailed':
       return {
@@ -222,15 +205,13 @@ export function routingStateReducer(
         accounts: _accounts,
         models: _models,
         routes: _routes,
-        usage: _usage,
         ...aggregateSettings
       } = state.settings;
       return {
         ...state,
         settings: aggregateSettings,
         detailStatus: {},
-        usageByPeriod: {},
-      };
+          };
     }
     case 'mutationStarted':
       return { ...state, activeMutation: action.key, error: null, errorContext: null };

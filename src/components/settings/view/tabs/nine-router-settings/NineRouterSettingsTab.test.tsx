@@ -22,6 +22,7 @@ async function renderRoutingView(
   options: {
     error?: { code: string; message: string; status: number; retryable: boolean } | null;
     routesError?: boolean;
+    upstreamDetailsError?: boolean;
     errorContext?: RoutingErrorContext | null;
   } = {},
 ): Promise<string> {
@@ -45,8 +46,7 @@ async function renderRoutingView(
       errorContext: options.errorContext,
       activeMutation: null,
       routesError: options.routesError,
-      onRestartRuntime: () => {},
-      onSetBinding: () => {},
+      upstreamDetailsError: options.upstreamDetailsError,
       onRetryRoutes: () => {},
       accountDraft: { provider: '', name: '', apiKey: '', active: true },
       onAccountFieldChange: () => {},
@@ -59,22 +59,17 @@ async function renderRoutingView(
       onCreateRoute: async () => true,
       onUpdateRoute: async () => true,
       onDeleteRoute: async () => true,
-      usage: null,
-      usagePeriod: 'today',
-      onUsagePeriodChange: () => {},
-      onRetryUsage: () => {},
-      onSetUsageAlert: async () => true,
     }),
   ));
 }
 
-test('first render shows built-in runtime status and no connection controls', async () => {
+test('first render shows sidecar runtime status and no obsolete controls', async () => {
   const settings = emptyRoutingSettingsView();
   const markup = await renderRoutingView(settings);
 
   assert.match(markup, /Built-in 9Router runtime/);
   assert.match(markup, /Unavailable/);
-  assert.match(markup, />Restart runtime</);
+  assert.equal(markup.includes('Restart runtime'), false);
   assert.equal(markup.includes('Endpoint'), false);
   assert.equal(markup.includes('Admin password'), false);
   assert.equal(markup.includes('Data-plane API key'), false);
@@ -83,7 +78,7 @@ test('first render shows built-in runtime status and no connection controls', as
   assert.equal(markup.includes('write-only'), false);
 });
 
-test('ready runtime enables route and usage sections and keeps native login messaging', async () => {
+test('ready runtime enables provider and route details without source or usage UI', async () => {
   const settings = emptyRoutingSettingsView();
   settings.runtime = {
     ...settings.runtime,
@@ -95,7 +90,7 @@ test('ready runtime enables route and usage sections and keeps native login mess
       testAccounts: true,
       readRoutes: true,
       writeRoutes: true,
-      readUsage: true,
+      readUsage: false,
       claudeRuntime: true,
       codexRuntime: true,
       openCodeRuntime: true,
@@ -103,22 +98,16 @@ test('ready runtime enables route and usage sections and keeps native login mess
     },
   };
   settings.routes = [{ id: 'route-1', name: 'quality-first', kind: null, models: ['model-a'] }];
-  settings.bindings.claude = {
-    provider: 'claude', source: '9router', routeId: 'route-1', routeName: 'quality-first', supported: true,
-  };
-
   const markup = await renderRoutingView(settings);
 
   assert.equal(markup.includes('never-render-admin'), false);
   assert.equal(markup.includes('never-render-key'), false);
-  assert.match(markup, /Native login/);
   assert.match(markup, /9Router/);
-  assert.match(markup, /Claude/);
-  assert.match(markup, /Codex/);
-  assert.match(markup, /OpenCode/);
-  assert.match(markup, /Cursor is native-only/);
-  assert.match(markup, /Usage &amp; limits/);
-  assert.match(markup, /Advisory alerts/);
+  assert.match(markup, /Upstreams and routes/);
+  assert.equal(markup.includes('Native login'), false);
+  assert.equal(markup.includes('Usage &amp; limits'), false);
+  assert.equal(markup.includes('Advisory alerts'), false);
+  assert.equal(markup.includes('Model source'), false);
   assert.equal(markup.includes('role="tablist"'), false);
 });
 
@@ -165,7 +154,7 @@ test('degraded runtime keeps status visible but does not render ready-only detai
       testAccounts: true,
       readRoutes: true,
       writeRoutes: true,
-      readUsage: true,
+      readUsage: false,
       claudeRuntime: true,
       codexRuntime: true,
       openCodeRuntime: true,
@@ -184,7 +173,7 @@ test('degraded runtime keeps status visible but does not render ready-only detai
   assert.equal(markup.includes('Create route'), false);
 });
 
-test('degraded runtime is not eligible for automatic accounts, routes, or usage detail reads', () => {
+test('degraded runtime is not eligible for automatic account or route detail reads', () => {
   const settings = emptyRoutingSettingsView();
   settings.runtime = {
     ...settings.runtime,
@@ -193,7 +182,7 @@ test('degraded runtime is not eligible for automatic accounts, routes, or usage 
       ...settings.runtime.capabilities,
       readAccounts: true,
       readRoutes: true,
-      readUsage: true,
+      readUsage: false,
     },
   };
 
@@ -204,7 +193,7 @@ test('degraded runtime is not eligible for automatic accounts, routes, or usage 
 });
 
 
-test('route loading failures are retryable and are not mislabeled as an empty route list', async () => {
+test('route loading failures are scoped away from obsolete operation alerts', async () => {
   const settings = emptyRoutingSettingsView();
   settings.runtime = {
     ...settings.runtime,
@@ -214,6 +203,7 @@ test('route loading failures are retryable and are not mislabeled as an empty ro
 
   const markup = await renderRoutingView(settings, {
     routesError: true,
+    upstreamDetailsError: true,
     errorContext: 'details',
     error: {
       code: 'ROUTING_ROUTES_FAILED',
@@ -223,9 +213,6 @@ test('route loading failures are retryable and are not mislabeled as an empty ro
     },
   });
 
-  assert.match(markup, /Could not load 9Router routes/);
-  assert.equal((markup.match(/Could not load 9Router routes/g) ?? []).length, 1);
-  assert.match(markup, />Retry</);
   assert.equal(markup.includes('9Router operation failed'), false);
   assert.equal(markup.includes('Could not load route details'), false);
   assert.equal(markup.includes('Create a route in 9Router'), false);

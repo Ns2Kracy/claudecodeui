@@ -63,16 +63,7 @@ test('builds allowlisted detail queries and encodes dynamic resource ids once', 
     ...emptyRoutingSettingsView(),
     accounts: [],
     models: [],
-    routes: [],
-    usage: {
-      period: '7d' as const,
-      requests: 0,
-      promptTokens: 0,
-      completionTokens: 0,
-      estimatedCostMicrousd: 0,
-      byProvider: [],
-      staleAt: null,
-    },
+    routes: []
   };
   const api = createRoutingApiClient(async (url, init) => {
     requests.push({ url: String(url), init });
@@ -82,29 +73,12 @@ test('builds allowlisted detail queries and encodes dynamic resource ids once', 
     return jsonResponse({ success: true, data: settings });
   });
 
-  await api.getSettings({ accounts: true, models: true, routes: true, usage: '7d' });
+  await api.getSettings({ accounts: true, models: true, routes: true });
   await api.deleteAccount('account/name');
 
-  assert.equal(requests[0]?.url, '/api/routing?details=accounts%2Cmodels%2Croutes%2Cusage&period=7d');
+  assert.equal(requests[0]?.url, '/api/routing?details=accounts%2Cmodels%2Croutes');
   assert.equal(requests[1]?.url, '/api/routing/accounts/account%2Fname');
   assert.equal(requests[1]?.init?.method, 'DELETE');
-});
-
-test('restarts the embedded runtime without sending connection secrets', async () => {
-  const requests: Array<{ url: string; init?: RequestInit }> = [];
-  const runtime = {
-    ...emptyRoutingSettingsView().runtime,
-    status: 'starting' as const,
-  };
-  const api = createRoutingApiClient(async (url, init) => {
-    requests.push({ url: String(url), init });
-    return jsonResponse({ success: true, data: runtime });
-  });
-
-  assert.deepEqual(await api.restartRuntime(), runtime);
-  assert.equal(requests[0]?.url, '/api/routing/runtime/restart');
-  assert.equal(requests[0]?.init?.method, 'POST');
-  assert.equal(requests[0]?.init?.body, undefined);
 });
 
 test('parses OAuth and device-code views while keeping every request same-origin', async () => {

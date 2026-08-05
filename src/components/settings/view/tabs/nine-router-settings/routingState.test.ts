@@ -91,31 +91,21 @@ test('detail loads merge data without discarding details loaded by another secti
       }],
     },
   });
-  const usageLoaded = routingStateReducer(accountsLoaded, {
+  const routesLoaded = routingStateReducer(accountsLoaded, {
     type: 'detailsSucceeded',
-    keys: ['usage:today'],
+    keys: ['routes'],
     settings: {
       ...emptyRoutingSettingsView(),
-      usage: {
-        period: 'today',
-        requests: 4,
-        promptTokens: 10,
-        completionTokens: 5,
-        estimatedCostMicrousd: 100,
-        byProvider: [],
-        staleAt: null,
-      },
+      routes: [{ id: 'route-1', name: 'quality-first', kind: null, models: ['model-a'] }],
     },
   });
 
-  assert.equal(usageLoaded.settings.accounts?.[0]?.id, 'account-1');
-  assert.equal(usageLoaded.usageByPeriod.today?.requests, 4);
+  assert.equal(routesLoaded.settings.accounts?.[0]?.id, 'account-1');
+  assert.equal(routesLoaded.settings.routes?.[0]?.id, 'route-1');
 
-  const cleared = routingStateReducer(usageLoaded, { type: 'detailsCleared' });
+  const cleared = routingStateReducer(routesLoaded, { type: 'detailsCleared' });
   assert.equal(cleared.settings.accounts, undefined);
-  assert.equal(cleared.settings.usage, undefined);
   assert.deepEqual(cleared.detailStatus, {});
-  assert.deepEqual(cleared.usageByPeriod, {});
 });
 
 test('a late aggregate response cannot discard details that completed first', () => {
