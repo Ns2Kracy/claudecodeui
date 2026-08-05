@@ -286,8 +286,7 @@ export function createNineRouterRuntimeService(dependencies: NineRouterRuntimeDe
 
     child = currentChild;
     currentChild.stderr?.on('data', (chunk: Buffer) => {
-      const message = redact(String(chunk), dependencies.credentials);
-      status = { ...status, lastError: routingError('ROUTING_PROCESS_FAILED', message, true, { dataDir: '', jwtSecret: '', initialPassword: '', apiKeySecret: '', machineIdSalt: '' }) };
+      status = { ...status, lastError: routingError('ROUTING_PROCESS_FAILED', String(chunk), true, dependencies.credentials) };
     });
     currentChild.on('error', handleChildError);
     currentChild.on('exit', handleExit);
