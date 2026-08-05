@@ -15,20 +15,24 @@ const sidecarSecretKeys = {
 } as const;
 const CLOUDCLI_DATA_PLANE_KEY_NAME = 'CloudCLI';
 
+function requestConfiguredSidecar(input: Parameters<typeof requestNineRouterJson>[0]) {
+  const sidecarHostname = new URL(input.baseUrl).hostname;
+  return requestNineRouterJson(input, {
+    targetPolicy: {
+      allowedHosts: [sidecarHostname],
+      allowedHttpHosts: [sidecarHostname],
+    },
+  });
+}
+
 const clientFactory = (credentials: {
   baseUrl: string;
   adminPassword: string;
   dataPlaneKey: string;
 }) => {
-  const sidecarHostname = new URL(credentials.baseUrl).hostname;
   return new NineRouterClient({
     ...credentials,
-    request: (input) => requestNineRouterJson(input, {
-      targetPolicy: {
-        allowedHosts: [sidecarHostname],
-        allowedHttpHosts: [sidecarHostname],
-      },
-    }),
+    request: (input) => requestConfiguredSidecar(input),
   });
 };
 
@@ -95,13 +99,13 @@ function keyValue(value: unknown): string | null {
 }
 
 async function authenticateManagement(baseUrl: string, adminPassword: string): Promise<string | null> {
-  const statusResult = await requestNineRouterJson({ baseUrl, operation: 'authStatus' });
+  const statusResult = await requestConfiguredSidecar({ baseUrl, operation: 'authStatus' });
   if (statusResult.statusCode < 200 || statusResult.statusCode >= 300) return null;
   const status = isRecord(statusResult.data) ? statusResult.data : null;
   if (status?.requireLogin !== true) return null;
   if (status.authMode !== 'password') return null;
 
-  const loginResult = await requestNineRouterJson({
+  const loginResult = await requestConfiguredSidecar({
     baseUrl,
     operation: 'login',
     body: { password: adminPassword },
@@ -116,7 +120,7 @@ async function authenticateManagement(baseUrl: string, adminPassword: string): P
 
 async function provisionDataPlaneKey(baseUrl: string, adminPassword: string): Promise<string | null> {
   const cookie = await authenticateManagement(baseUrl, adminPassword);
-  const keysResult = await requestNineRouterJson({ baseUrl, operation: 'keysList', cookie: cookie ?? undefined });
+  const keysResult = await requestConfiguredSidecar({ baseUrl, operation: 'keysList', cookie: cookie ?? undefined });
   if (keysResult.statusCode >= 200 && keysResult.statusCode < 300 && isRecord(keysResult.data) && Array.isArray(keysResult.data.keys)) {
     for (const item of keysResult.data.keys) {
       if (isRecord(item) && item.name === CLOUDCLI_DATA_PLANE_KEY_NAME) {
@@ -126,7 +130,7 @@ async function provisionDataPlaneKey(baseUrl: string, adminPassword: string): Pr
     }
   }
 
-  const created = await requestNineRouterJson({
+  const created = await requestConfiguredSidecar({
     baseUrl,
     operation: 'keyCreate',
     cookie: cookie ?? undefined,
