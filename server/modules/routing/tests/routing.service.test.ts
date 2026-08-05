@@ -47,37 +47,27 @@ function createHarness(state: 'ready' | 'unavailable' = 'ready') {
     createRoute: async (input: any) => ({ id: 'r2', name: input.name, kind: input.kind ?? null, models: input.models }),
     updateRoute: async (id: string, input: any) => ({ id, name: input.name ?? 'quality-first', kind: input.kind ?? null, models: input.models ?? ['m1'] }),
     deleteRoute: async () => undefined,
-    getUsage: async (period: 'today' | '7d' | '30d') => ({ period, requests: 1, promptTokens: 2, completionTokens: 3, estimatedCostMicrousd: 4, byProvider: [], staleAt: null }),
   };
   const runtime = {
     getStatus: () => ({ state, origin: 'http://127.0.0.1:20128', version: '0.5.45', lastError: state === 'ready' ? null : { code: 'ROUTING_STARTUP_TIMEOUT' as const, message: 'startup timed out', retryable: true } }),
     getInternalCredentials: () => ({ jwtSecret: 'jwt', initialPassword: 'admin', apiKeySecret: 'hmac-secret', dataPlaneKey: 'sk-cloudcli-abc123-deadbeef', machineIdSalt: 'salt', dataDir: '/db/9router' }),
-    restart: async () => undefined,
   };
   const service = createRoutingService({ repository, runtime, clientFactory: () => { calls.push('client'); return client; }, now: () => new Date('2026-08-04T00:00:00.000Z') });
   return { service, calls };
 }
 
-test('settings report embedded runtime without connection storage', async () => {
+test('settings report sidecar runtime without connection storage', async () => {
   const { service, calls } = createHarness('ready');
-  const settings = await service.getSettings(7, { accounts: true, models: true, routes: true, usage: 'today' });
-  assert.equal(settings.runtime.mode, 'embedded');
+  const settings = await service.getSettings(7, { accounts: true, models: true, routes: true });
+  assert.equal(settings.runtime.mode, 'sidecar');
   assert.equal(settings.runtime.status, 'ready');
   assert.equal(settings.runtime.version, '0.5.45');
   assert.equal('connection' in settings, false);
   assert.equal(settings.accounts?.length, 1);
   assert.equal(settings.routes?.length, 1);
   assert.equal(settings.models?.length, 1);
-  assert.equal(settings.usage?.requests, 1);
   assert.deepEqual(settings.runtime.capabilities.cursorRuntime, false);
   assert.equal(calls.includes('client'), true);
-});
-
-test('management operations use supervisor credentials and do not require a connection row', async () => {
-  const { service, calls } = createHarness('ready');
-  const binding = await service.setProviderBinding(7, 'claude', { source: '9router', routeId: 'r1' });
-  assert.equal(binding.routeName, 'quality-first');
-  assert.deepEqual(calls, ['client', 'claude:9router:r1']);
 });
 
 test('unavailable embedded runtime is safe and typed for explicit 9router operations', async () => {

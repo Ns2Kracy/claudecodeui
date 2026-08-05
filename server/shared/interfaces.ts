@@ -31,8 +31,6 @@ import type {
   RoutingProviderNodeValidationView,
   RoutingProviderNodeView,
   RoutingRouteView,
-  RoutingUsagePeriod,
-  RoutingUsageView,
   UpdateRoutingAccountInput,
   UpdateRoutingRouteInput,
   UpdateRoutingProviderNodeInput,
@@ -293,5 +291,4 @@ export interface IRoutingNineRouterClient {
   createRoute(input: CreateRoutingRouteInput): Promise<RoutingRouteView>;
   updateRoute(id: string, input: UpdateRoutingRouteInput): Promise<RoutingRouteView>;
   deleteRoute(id: string): Promise<void>;
-  getUsage(period: RoutingUsagePeriod): Promise<RoutingUsageView>;
 }

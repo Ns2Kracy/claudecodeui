@@ -5,9 +5,8 @@ export const ROUTING_ROUTE_NAME_PATTERN = /^[a-zA-Z0-9_.-]+$/;
 export type RoutingAgent = (typeof ROUTING_AGENTS)[number];
 export type RoutingSupportedAgent = (typeof ROUTING_SUPPORTED_AGENTS)[number];
 export type RoutingModelSource = 'native' | '9router';
-export type RoutingRuntimeStatus = 'starting' | 'ready' | 'degraded' | 'unavailable';
-export type RoutingUsagePeriod = 'today' | '7d' | '30d';
 export type RoutingUsageAlertPeriod = 'daily' | '30d';
+export type RoutingRuntimeStatus = 'starting' | 'ready' | 'degraded' | 'unavailable';
 
 export type RoutingSafeError = {
   code: string;
@@ -29,20 +28,12 @@ export type RoutingCapabilities = {
 };
 
 export type RoutingRuntimeView = {
-  mode: 'embedded';
+  mode: 'sidecar';
   status: RoutingRuntimeStatus;
   version: string | null;
   lastCheckedAt: string | null;
   lastError: RoutingSafeError | null;
   capabilities: RoutingCapabilities;
-};
-
-export type RoutingBindingView = {
-  provider: RoutingAgent;
-  source: RoutingModelSource;
-  routeId: string | null;
-  routeName: string | null;
-  supported: boolean;
 };
 
 export type RoutingAccountView = {
@@ -70,32 +61,13 @@ export type RoutingRouteView = {
   models: string[];
 };
 
-export type RoutingUsageView = {
-  period: RoutingUsagePeriod;
-  requests: number;
-  promptTokens: number;
-  completionTokens: number;
-  estimatedCostMicrousd: number;
-  byProvider: Array<{ id: string; requests: number; costMicrousd: number }>;
-  staleAt: string | null;
-};
-
-export type RoutingUsageAlertView = {
-  period: RoutingUsageAlertPeriod;
-  enabled: boolean;
-  thresholdMicrousd: number;
-};
-
 export type RoutingSettingsView = {
   runtime: RoutingRuntimeView;
-  bindings: Record<RoutingAgent, RoutingBindingView>;
   accountSummary: { total: number; degraded: number };
   routeSummary: { total: number };
   accounts?: RoutingAccountView[];
   models?: RoutingModelView[];
   routes?: RoutingRouteView[];
-  usage?: RoutingUsageView;
-  usageAlerts: RoutingUsageAlertView[];
 };
 
 
@@ -216,16 +188,6 @@ export type UpdateRoutingRouteInput = {
   kind?: string | null;
 };
 
-export type UpdateRoutingBindingInput = {
-  source: RoutingModelSource;
-  routeId?: string | null;
-};
-
-export type UpdateRoutingUsageAlertInput = {
-  enabled: boolean;
-  thresholdMicrousd: number;
-};
-
 const EMPTY_CAPABILITIES: RoutingCapabilities = {
   readAccounts: false,
   writeApiKeyAccounts: false,
@@ -239,34 +201,18 @@ const EMPTY_CAPABILITIES: RoutingCapabilities = {
   cursorRuntime: false,
 };
 
-function nativeBinding(provider: RoutingAgent): RoutingBindingView {
-  return {
-    provider,
-    source: 'native',
-    routeId: null,
-    routeName: null,
-    supported: provider !== 'cursor',
-  };
-}
 
 export function emptyRoutingSettingsView(): RoutingSettingsView {
   return {
     runtime: {
-      mode: 'embedded',
+      mode: 'sidecar',
       status: 'unavailable',
       version: null,
       lastCheckedAt: null,
       lastError: null,
       capabilities: { ...EMPTY_CAPABILITIES },
     },
-    bindings: {
-      claude: nativeBinding('claude'),
-      codex: nativeBinding('codex'),
-      cursor: nativeBinding('cursor'),
-      opencode: nativeBinding('opencode'),
-    },
     accountSummary: { total: 0, degraded: 0 },
     routeSummary: { total: 0 },
-    usageAlerts: [],
   };
 }

@@ -10,7 +10,7 @@ import {
 test('routing contracts keep agent identity separate from model source', () => {
   assert.deepEqual(ROUTING_AGENTS, ['claude', 'codex', 'cursor', 'opencode']);
   assert.deepEqual(ROUTING_SUPPORTED_AGENTS, ['claude', 'codex', 'opencode']);
-  assert.equal(emptyRoutingSettingsView().bindings.cursor.source, 'native');
+  assert.equal('bindings' in emptyRoutingSettingsView(), false);
 });
 
 test('public runtime DTO contains status but no secrets', () => {
@@ -19,7 +19,7 @@ test('public runtime DTO contains status but no secrets', () => {
     /"(?:adminPassword|dataPlaneKey|apiKey|cookie|ciphertext)"\s*:/i.test(json),
     false,
   );
-  assert.equal(json.includes('embedded'), true);
+  assert.equal(json.includes('sidecar'), true);
   assert.equal(json.includes('hasAdminCredential'), false);
   assert.equal(json.includes('hasDataPlaneKey'), false);
 });

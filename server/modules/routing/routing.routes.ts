@@ -6,18 +6,13 @@ import type {
   CreateRoutingApiKeyAccountInput,
   CreateRoutingProviderNodeInput,
   CreateRoutingRouteInput,
-  RoutingAgent,
-  RoutingUsageAlertPeriod,
-  RoutingUsagePeriod,
   RoutingProviderNodeType,
   UpdateRoutingAccountInput,
   UpdateRoutingProviderNodeInput,
   ValidateRoutingProviderNodeInput,
-  UpdateRoutingBindingInput,
   UpdateRoutingRouteInput,
-  UpdateRoutingUsageAlertInput,
 } from '../../../shared/routing.js';
-import { ROUTING_AGENTS, ROUTING_ROUTE_NAME_PATTERN } from '../../../shared/routing.js';
+import { ROUTING_ROUTE_NAME_PATTERN } from '../../../shared/routing.js';
 
 import {
   createRoutingMutationGuard,
@@ -257,52 +252,10 @@ function routeUpdateInput(request: Request): UpdateRoutingRouteInput {
   return input;
 }
 
-function providerParam(request: Request): RoutingAgent {
-  const provider = requiredString(request.params.provider, 'provider', 32);
-  if (!ROUTING_AGENTS.includes(provider as RoutingAgent)) {
-    throw invalidRequest('provider is invalid');
-  }
-  return provider as RoutingAgent;
-}
-
 function oauthProviderParam(request: Request): string {
   const provider = requiredString(request.params.provider, 'provider', 64);
   if (!/^[a-z0-9][a-z0-9_-]{0,63}$/.test(provider)) throw invalidRequest('provider is invalid');
   return provider;
-}
-
-function bindingInput(request: Request): UpdateRoutingBindingInput {
-  const body = bodyRecord(request);
-  if (body.source !== 'native' && body.source !== '9router') {
-    throw invalidRequest('source is invalid');
-  }
-  const routeId = optionalNullableString(body.routeId, 'routeId', 512);
-  return {
-    source: body.source,
-    ...(routeId !== undefined ? { routeId } : {}),
-  };
-}
-
-function alertPeriodParam(request: Request): RoutingUsageAlertPeriod {
-  const period = requiredString(request.params.period, 'period', 16);
-  if (period !== 'daily' && period !== '30d') {
-    throw invalidRequest('period is invalid');
-  }
-  return period;
-}
-
-function alertInput(request: Request): UpdateRoutingUsageAlertInput {
-  const body = bodyRecord(request);
-  if (typeof body.enabled !== 'boolean') {
-    throw invalidRequest('enabled must be a boolean');
-  }
-  if (!Number.isSafeInteger(body.thresholdMicrousd) || Number(body.thresholdMicrousd) < 0) {
-    throw invalidRequest('thresholdMicrousd must be a non-negative integer');
-  }
-  return {
-    enabled: body.enabled,
-    thresholdMicrousd: Number(body.thresholdMicrousd),
-  };
 }
 
 function resourceId(request: Request): string {
@@ -331,20 +284,11 @@ function settingsDetails(request: Request) {
     accounts?: boolean;
     models?: boolean;
     routes?: boolean;
-    usage?: RoutingUsagePeriod;
   } = {};
-  const allowed = new Set(['accounts', 'models', 'routes', 'usage']);
+  const allowed = new Set(['accounts', 'models', 'routes']);
   for (const item of raw.split(',').map((value) => value.trim()).filter(Boolean)) {
     if (!allowed.has(item)) throw invalidRequest('details is invalid');
-    if (item === 'usage') {
-      const period = typeof request.query.period === 'string' ? request.query.period : 'today';
-      if (!['today', '7d', '30d'].includes(period)) {
-        throw invalidRequest('period is invalid');
-      }
-      details.usage = period as RoutingUsagePeriod;
-    } else {
-      details[item as 'accounts' | 'models' | 'routes'] = true;
-    }
+    details[item as 'accounts' | 'models' | 'routes'] = true;
   }
   return details;
 }
@@ -368,18 +312,6 @@ export function createRoutingRouter(
       );
     }),
   );
-  router.post(
-    '/runtime/restart',
-    ...writeGuards,
-    asyncHandler(async (request, response) => {
-      response.json(
-        createApiSuccessResponse(
-          await service.restartRuntime(),
-        ),
-      );
-    }),
-  );
-
   router.post(
     '/oauth/:provider/authorize',
     ...writeGuards,
@@ -542,36 +474,5 @@ export function createRoutingRouter(
       response.json(createApiSuccessResponse({ deleted: true }));
     }),
   );
-  router.put(
-    '/bindings/providers/:provider',
-    ...writeGuards,
-    asyncHandler(async (request, response) => {
-      response.json(
-        createApiSuccessResponse(
-          await service.setProviderBinding(
-            userId(request),
-            providerParam(request),
-            bindingInput(request),
-          ),
-        ),
-      );
-    }),
-  );
-  router.put(
-    '/usage-alerts/:period',
-    ...writeGuards,
-    asyncHandler(async (request, response) => {
-      response.json(
-        createApiSuccessResponse(
-          await service.setUsageAlert(
-            userId(request),
-            alertPeriodParam(request),
-            alertInput(request),
-          ),
-        ),
-      );
-    }),
-  );
-
-  return router;
+ return router;
 }

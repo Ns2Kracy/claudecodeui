@@ -47,16 +47,14 @@ test('server startup keeps CloudCLI alive when sidecar is unavailable', () => {
   assert.ok(listen > sidecarRefresh, 'server listen remains after nonfatal sidecar handling');
 });
 
-test('server shutdown stops monitor but does not stop or signal Compose-owned 9router', () => {
+test('server shutdown does not stop or signal Compose-owned 9router', () => {
   const shutdown = serverSource.indexOf('const shutdownRuntimeServices = async () => {');
-  const stopMonitor = serverSource.indexOf('stopRoutingUsageMonitor()', shutdown);
   const stopSidecar = serverSource.indexOf('stopEmbeddedNineRouter', shutdown);
   const refreshSidecar = serverSource.indexOf('refreshNineRouterSidecar', shutdown);
   const processExit = serverSource.indexOf('process.exit(0)', shutdown);
 
   assert.ok(shutdown > 0, 'shutdown routine exists');
-  assert.ok(stopMonitor > shutdown, 'usage monitor is stopped during shutdown');
   assert.equal(stopSidecar, -1, 'CloudCLI shutdown does not stop sidecar process');
   assert.equal(refreshSidecar, -1, 'CloudCLI shutdown does not signal sidecar');
-  assert.ok(processExit > stopMonitor, 'process exits after local cleanup');
+  assert.ok(processExit > shutdown, 'process exits after local cleanup');
 });

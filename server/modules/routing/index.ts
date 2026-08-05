@@ -4,8 +4,6 @@ export {
   routingService,
   routingRuntimeService,
   refreshNineRouterSidecar,
-  startRoutingUsageMonitor,
-  stopRoutingUsageMonitor,
   getNineRouterSidecarStatus,
   tryAutoConnect,
 } from './routing.module.js';

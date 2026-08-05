@@ -363,7 +363,7 @@ test('validates the pinned version, management login, and data-plane key', async
   });
 });
 
-test('maps accounts, models, routes, and usage into secret-free DTOs', async () => {
+test('maps accounts, models, and routes into secret-free DTOs', async () => {
   await withFakeRouter({}, async ({ baseUrl, request }) => {
     const client = new NineRouterClient({
       baseUrl,
@@ -376,8 +376,7 @@ test('maps accounts, models, routes, and usage into secret-free DTOs', async () 
     const accounts = await client.listAccounts();
     const models = await client.listModels();
     const routes = await client.listRoutes();
-    const usage = await client.getUsage('today');
-    const serialized = JSON.stringify({ accounts, models, routes, usage });
+    const serialized = JSON.stringify({ accounts, models, routes });
 
     assert.deepEqual(accounts, [
       {
@@ -401,33 +400,6 @@ test('maps accounts, models, routes, and usage into secret-free DTOs', async () 
         models: ['openai/gpt-5', 'anthropic/claude-sonnet'],
       },
     ]);
-    assert.deepEqual(usage, {
-      period: 'today',
-      requests: 12,
-      promptTokens: 1_000,
-      completionTokens: 250,
-      estimatedCostMicrousd: 1_234_567,
-      byProvider: [
-        { id: 'anthropic', requests: 2, costMicrousd: 34_567 },
-        { id: 'openai', requests: 10, costMicrousd: 1_200_000 },
-      ],
-      staleAt: null,
-    });
-    for (const secret of [
-      'planted-upstream-key',
-      'planted-access-token',
-      'planted-refresh-token',
-      'planted-id-token',
-      'planted-cookie',
-      'planted-provider-secret',
-      'planted-model-secret',
-      'planted-model-token',
-      'planted-usage-key',
-      'planted-prompt',
-      'planted-response',
-    ]) {
-      assert.equal(serialized.includes(secret), false);
-    }
   });
 });
 

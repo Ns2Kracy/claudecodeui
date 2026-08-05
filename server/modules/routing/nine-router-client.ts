@@ -14,8 +14,6 @@ import type {
   RoutingProviderNodeView,
   RoutingProviderNodeType,
   RoutingRouteView,
-  RoutingUsagePeriod,
-  RoutingUsageView,
   UpdateRoutingAccountInput,
   UpdateRoutingProviderNodeInput,
   ValidateRoutingProviderNodeInput,
@@ -250,35 +248,6 @@ function sanitizeRoute(value: unknown): RoutingRouteView {
     models: value.models.map(requiredString),
   };
 }
-
-function sanitizeUsage(value: unknown, period: RoutingUsagePeriod): RoutingUsageView {
-  if (!isRecord(value) || !isRecord(value.byProvider)) {
-    throw invalidResponse();
-  }
-  const byProvider = Object.entries(value.byProvider)
-    .map(([id, raw]) => {
-      if (!isRecord(raw)) {
-        throw invalidResponse();
-      }
-      return {
-        id: requiredString(id),
-        requests: nonNegativeInteger(raw.requests),
-        costMicrousd: dollarsToMicrousd(raw.cost),
-      };
-    })
-    .sort((first, second) => first.id.localeCompare(second.id));
-
-  return {
-    period,
-    requests: nonNegativeInteger(value.totalRequests),
-    promptTokens: nonNegativeInteger(value.totalPromptTokens),
-    completionTokens: nonNegativeInteger(value.totalCompletionTokens),
-    estimatedCostMicrousd: dollarsToMicrousd(value.totalCost),
-    byProvider,
-    staleAt: null,
-  };
-}
-
 
 function sanitizeProviderModels(value: unknown): RoutingProviderModelsView {
   const data = expectRecord(value);
@@ -635,14 +604,7 @@ export class NineRouterClient implements IRoutingNineRouterClient {
     );
   }
 
-  async getUsage(period: RoutingUsagePeriod): Promise<RoutingUsageView> {
-    const result = await this.managementRequest(
-      { baseUrl: this.baseUrl, operation: 'usageStats', period },
-      'readUsage',
-      true,
-    );
-    return sanitizeUsage(result.data, period);
-  }
+
 
   private async loadProfile(refresh = false): Promise<CapabilityProfile> {
     if (this.profile && !refresh) {

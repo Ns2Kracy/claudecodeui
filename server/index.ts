@@ -19,7 +19,6 @@ import {
     refreshNineRouterSidecar,
     routingOAuthCallbackRoutes,
     routingRoutes,
-    stopRoutingUsageMonitor,
 } from '@/modules/routing/index.js';
 import { createWebSocketServer } from '@/modules/websocket/index.js';
 
@@ -390,8 +389,7 @@ async function startServer() {
         await closeSessionsWatcher();
         // Clean up plugin processes on shutdown
         const shutdownRuntimeServices = async () => {
-            stopRoutingUsageMonitor();
-            try {
+                    try {
                 await browserUseService.stopAllSessions();
             } catch (err) {
                 console.error('[Browser] Error stopping sessions during shutdown:', getErrorMessage(err));

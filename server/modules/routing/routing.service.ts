@@ -10,26 +10,17 @@ import type {
   CreateRoutingApiKeyAccountInput,
   CreateRoutingProviderNodeInput,
   CreateRoutingRouteInput,
-  RoutingAgent,
-  RoutingBindingView,
   RoutingCapabilities,
   RoutingAccountView,
   RoutingOAuthPollingStateView,
   RoutingRuntimeView,
   RoutingSettingsView,
-  RoutingUsageAlertPeriod,
-  RoutingUsagePeriod,
   UpdateRoutingAccountInput,
   UpdateRoutingProviderNodeInput,
   ValidateRoutingProviderNodeInput,
-  UpdateRoutingBindingInput,
   UpdateRoutingRouteInput,
-  UpdateRoutingUsageAlertInput,
 } from '../../../shared/routing.js';
-import {
-  emptyRoutingSettingsView,
-  ROUTING_AGENTS,
-} from '../../../shared/routing.js';
+import { emptyRoutingSettingsView } from '../../../shared/routing.js';
 
 import type { createRoutingOAuthService } from './routing-oauth.service.js';
 import type { NineRouterInternalCredentials, NineRouterSidecarStatus } from './nine-router-sidecar.service.js';
@@ -37,7 +28,6 @@ import type { NineRouterInternalCredentials, NineRouterSidecarStatus } from './n
 type RuntimeCredentialsProvider = {
   getStatus(): NineRouterSidecarStatus;
   getInternalCredentials(): NineRouterInternalCredentials;
-  restart(): Promise<unknown>;
 };
 
 type RoutingServiceDependencies = {
@@ -62,52 +52,15 @@ function runtimeUnavailable(): AppError {
   });
 }
 
-function runtimeUnsupported(): AppError {
-  return new AppError('This agent cannot use 9router', {
-    code: 'ROUTING_RUNTIME_UNSUPPORTED',
-    statusCode: 400,
-  });
-}
-
-function routeRequired(): AppError {
-  return new AppError('A valid 9router route is required', {
-    code: 'ROUTING_ROUTE_REQUIRED',
-    statusCode: 400,
-  });
-}
-
 function safeAppError(error: unknown): AppError {
   return error instanceof AppError ? error : safeOperationFailure();
-}
-
-function runtimeCapability(
-  provider: RoutingAgent,
-): keyof Pick<
-  RoutingCapabilities,
-  'claudeRuntime' | 'codexRuntime' | 'openCodeRuntime' | 'cursorRuntime'
-> {
-  switch (provider) {
-    case 'claude': return 'claudeRuntime';
-    case 'codex': return 'codexRuntime';
-    case 'opencode': return 'openCodeRuntime';
-    case 'cursor': return 'cursorRuntime';
-  }
-}
-
-function bindingView(
-  provider: RoutingAgent,
-  source: 'native' | '9router',
-  routeId: string | null,
-  routeName: string | null,
-): RoutingBindingView {
-  return { provider, source, routeId, routeName, supported: provider !== 'cursor' };
 }
 
 function runtimeView(status: NineRouterSidecarStatus, checkedAt: string): RoutingRuntimeView {
   const defaults = emptyRoutingSettingsView().runtime;
   const state = status.state;
   return {
-    mode: 'embedded',
+    mode: 'sidecar',
     status: state,
     version: status.version,
     lastCheckedAt: checkedAt,
@@ -119,7 +72,7 @@ function runtimeView(status: NineRouterSidecarStatus, checkedAt: string): Routin
           testAccounts: true,
           readRoutes: true,
           writeRoutes: true,
-          readUsage: true,
+          readUsage: false,
           claudeRuntime: true,
           codexRuntime: true,
           openCodeRuntime: true,
@@ -162,20 +115,9 @@ export function createRoutingService(dependencies: RoutingServiceDependencies) {
       const settings = emptyRoutingSettingsView();
       settings.runtime = runtimeView(dependencies.runtime.getStatus(), now().toISOString());
 
-      for (const stored of dependencies.repository.getProviderDefaults(userId)) {
-        if (!ROUTING_AGENTS.includes(stored.provider)) continue;
-        settings.bindings[stored.provider] = stored.provider === 'cursor'
-          ? bindingView('cursor', 'native', null, null)
-          : bindingView(stored.provider, stored.source, stored.routeId, stored.routeName);
-      }
-      settings.usageAlerts = dependencies.repository.listAlerts(userId).map((alert) => ({
-        period: alert.period,
-        enabled: alert.enabled,
-        thresholdMicrousd: alert.thresholdMicrousd,
-      }));
 
       const capabilities = settings.runtime.capabilities;
-      if (!capabilities.readAccounts && !capabilities.readRoutes && !capabilities.readUsage) return settings;
+      if (!capabilities.readAccounts && !capabilities.readRoutes) return settings;
 
       try {
         const client = clientForRuntime();
@@ -193,32 +135,12 @@ export function createRoutingService(dependencies: RoutingServiceDependencies) {
           if (details.routes) settings.routes = routes;
           if (details.models) settings.models = await client.listModels();
         }
-        if (capabilities.readUsage && details.usage) settings.usage = await client.getUsage(details.usage);
       } catch (error) {
         const safeError = safeAppError(error);
         settings.runtime.status = safeError.code === 'ROUTING_RUNTIME_UNAVAILABLE' ? 'unavailable' : 'degraded';
         settings.runtime.lastError = { code: safeError.code, message: safeError.message, retryable: safeError.statusCode >= 500 };
       }
       return settings;
-    },
-
-    async restartRuntime(): Promise<RoutingRuntimeView> {
-      await dependencies.runtime.restart();
-      return runtimeView(dependencies.runtime.getStatus(), now().toISOString());
-    },
-
-    async setProviderBinding(userId: number, provider: RoutingAgent, input: UpdateRoutingBindingInput): Promise<RoutingBindingView> {
-      if (input.source === 'native') {
-        dependencies.repository.setProviderDefault(userId, provider, { source: 'native' });
-        return bindingView(provider, 'native', null, null);
-      }
-      if (provider === 'cursor') throw runtimeUnsupported();
-      if (typeof input.routeId !== 'string' || !input.routeId) throw routeRequired();
-      const capabilities = runtimeView(dependencies.runtime.getStatus(), now().toISOString()).capabilities;
-      if (capabilities[runtimeCapability(provider)] !== true) throw runtimeUnsupported();
-      const route = await callSafely(() => clientForRuntime().getRoute(input.routeId as string));
-      dependencies.repository.setProviderDefault(userId, provider, { source: '9router', routeId: route.id, routeName: route.name });
-      return bindingView(provider, '9router', route.id, route.name);
     },
 
     async listModels(_userId: number) { return callSafely(() => clientForRuntime().listModels()); },
@@ -260,10 +182,5 @@ export function createRoutingService(dependencies: RoutingServiceDependencies) {
     async createRoute(_userId: number, input: CreateRoutingRouteInput) { return callSafely(() => clientForRuntime().createRoute(input)); },
     async updateRoute(_userId: number, id: string, input: UpdateRoutingRouteInput) { return callSafely(() => clientForRuntime().updateRoute(id, input)); },
     async deleteRoute(_userId: number, id: string): Promise<void> { await callSafely(() => clientForRuntime().deleteRoute(id)); },
-    async getUsage(_userId: number, period: RoutingUsagePeriod) { return callSafely(() => clientForRuntime().getUsage(period)); },
-    async setUsageAlert(userId: number, period: RoutingUsageAlertPeriod, input: UpdateRoutingUsageAlertInput) {
-      dependencies.repository.upsertAlert(userId, { period, ...input });
-      return { period, ...input };
-    },
   };
 }

@@ -6,7 +6,6 @@ import type {
   RoutingCapabilities,
   RoutingModelSource,
   RoutingUsageAlertPeriod,
-  RoutingUsagePeriod,
 } from '../../shared/routing.js';
 
 //----------------- HTTP RESPONSE SHAPES ------------
@@ -141,9 +140,11 @@ export type RoutingBindingPersistenceInput = {
   routeName?: string | null;
 };
 
+
 /**
- * Advisory usage threshold record stored per user and period. Monetary values
- * are integer micro-USD so comparisons never depend on floating-point money.
+ * Legacy advisory usage threshold record kept for database compatibility only.
+ * Task 3 removes product-facing usage monitor semantics, but existing stored
+ * records remain readable so migrations and repository tests do not lose data.
  */
 export type RoutingStoredAlert = {
   period: RoutingUsageAlertPeriod;
@@ -151,7 +152,6 @@ export type RoutingStoredAlert = {
   enabled: boolean;
   lastNotifiedPeriodKey: string | null;
 };
-
 /**
  * Complete persistence boundary consumed by routing application/runtime
  * services and implemented by the database module's `routingDb` repository.
@@ -176,10 +176,7 @@ export type RoutingRepository = {
   getSessionBinding(userId: number, sessionId: string): RoutingStoredBinding | null;
   deleteSessionBinding(userId: number, sessionId: string): void;
   listAlerts(userId: number): RoutingStoredAlert[];
-  upsertAlert(
-    userId: number,
-    alert: Omit<RoutingStoredAlert, 'lastNotifiedPeriodKey'>,
-  ): void;
+  upsertAlert(userId: number, alert: Omit<RoutingStoredAlert, 'lastNotifiedPeriodKey'>): void;
   markAlertNotified(userId: number, period: RoutingUsageAlertPeriod, periodKey: string): void;
 };
 
@@ -196,13 +193,12 @@ export type RoutingClientCredentials = {
 /**
  * Optional detail expansions accepted by the aggregate routing settings read.
  * Summary counts remain available without these flags; large account, model,
- * route, and usage arrays are included only when explicitly requested.
+ * and route arrays are included only when explicitly requested.
  */
 export type RoutingSettingsDetails = {
   accounts?: boolean;
   models?: boolean;
   routes?: boolean;
-  usage?: RoutingUsagePeriod;
 };
 
 /**

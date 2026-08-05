@@ -12,7 +12,7 @@ const KNOWN_CAPABILITIES: RoutingCapabilities = {
   testAccounts: true,
   readRoutes: true,
   writeRoutes: true,
-  readUsage: true,
+  readUsage: false,
   claudeRuntime: true,
   codexRuntime: true,
   openCodeRuntime: true,
