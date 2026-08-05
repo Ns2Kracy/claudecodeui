@@ -23,6 +23,7 @@ import SettingsCard from '../../SettingsCard';
 import SettingsSection from '../../SettingsSection';
 
 import AccountEditor from './AccountEditor.js';
+import ProviderConnections from './ProviderConnections.js';
 import RouteEditor from './RouteEditor.js';
 import type { RoutingAccountDraft } from './routingState.js';
 
@@ -164,19 +165,30 @@ export default function UpstreamsRoutesSection({
               {configured && canReadAnything && !loading && !detailsError && (
                 <>
                   {capabilities.readAccounts ? (
-                    <AccountEditor
-                      accounts={accounts}
-                      models={models}
-                      canWrite={canMutate && capabilities.writeApiKeyAccounts}
-                      canTest={canMutate && capabilities.testAccounts}
-                      activeMutation={activeMutation}
-                      draft={accountDraft}
-                      onDraftFieldChange={onAccountFieldChange}
-                      onCreate={onCreateAccount}
-                      onUpdate={onUpdateAccount}
-                      onTest={onTestAccount}
-                      onDelete={onDeleteAccount}
-                    />
+                    <div className="space-y-5">
+                      <div className="space-y-2">
+                        <h3 className="text-sm font-medium text-foreground">Connect a provider</h3>
+                        <p className="text-xs text-muted-foreground">Choose a method supported by the official 9Router runtime.</p>
+                        <ProviderConnections
+                          disabled={!canMutate}
+                          onConnected={async () => { onRetry(); }}
+                        />
+                      </div>
+                      <div className="border-t border-border" />
+                      <AccountEditor
+                        accounts={accounts}
+                        models={models}
+                        canWrite={canMutate && capabilities.writeApiKeyAccounts}
+                        canTest={canMutate && capabilities.testAccounts}
+                        activeMutation={activeMutation}
+                        draft={accountDraft}
+                        onDraftFieldChange={onAccountFieldChange}
+                        onCreate={onCreateAccount}
+                        onUpdate={onUpdateAccount}
+                        onTest={onTestAccount}
+                        onDelete={onDeleteAccount}
+                      />
+                    </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">
                       {t('nineRouter.management.accounts.unavailable')}

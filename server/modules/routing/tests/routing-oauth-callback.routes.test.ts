@@ -32,6 +32,7 @@ test('OAuth callback responder is unprotected static no-store HTML and does not 
     assert.ok(nonce);
     assert.match(html, new RegExp(`<script nonce="${nonce}">`));
     assert.match(html, /OAuth callback received/);
+    assert.match(html, /url:window\.location\.href/);
     assert.equal(html.includes('secret-code'), false);
     assert.equal(html.includes('secret-state'), false);
 

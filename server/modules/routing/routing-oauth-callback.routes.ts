@@ -22,7 +22,7 @@ export function createRoutingOAuthCallbackRouter(): express.Router {
       response.setHeader('Cache-Control', 'no-store');
       response.setHeader('Referrer-Policy', 'no-referrer');
       response.setHeader('Content-Security-Policy', `default-src 'none'; script-src 'nonce-${nonce}'; connect-src 'none'; img-src 'none'; style-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`);
-      response.type('html').send(`<!doctype html><html><head><meta charset="utf-8"><title>OAuth complete</title></head><body><p>OAuth callback received. You may close this window.</p><script nonce="${nonce}">try{if(window.opener)window.opener.postMessage({type:'routing-oauth-callback'},window.location.origin)}catch(_){}</script></body></html>`);
+      response.type('html').send(`<!doctype html><html><head><meta charset="utf-8"><title>OAuth complete</title></head><body><p>OAuth callback received. You may close this window.</p><script nonce="${nonce}">try{if(window.opener)window.opener.postMessage({type:'routing-oauth-callback',url:window.location.href},window.location.origin)}catch(_){}</script></body></html>`);
     }),
   );
   return router;
