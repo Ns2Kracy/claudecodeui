@@ -7,25 +7,6 @@ import { createRoutingRuntimeService } from '../routing-runtime.service.js';
 
 function createHarness() {
   const state = {
-    connection: {
-      userId: 7,
-      baseUrl: 'https://router.example',
-      adminSecretCiphertext: 'sealed-admin',
-      dataPlaneKeyCiphertext: 'sealed-key',
-      upstreamVersion: '0.5.45',
-      capabilities: null,
-      lastCheckedAt: null,
-      lastErrorCode: null,
-    } as null | {
-      userId: number;
-      baseUrl: string;
-      adminSecretCiphertext: string;
-      dataPlaneKeyCiphertext: string;
-      upstreamVersion: string | null;
-      capabilities: null;
-      lastCheckedAt: string | null;
-      lastErrorCode: string | null;
-    },
     sessionBinding: null as null | {
       provider: 'claude' | 'codex' | 'cursor' | 'opencode';
       source: 'native' | '9router';
@@ -33,13 +14,13 @@ function createHarness() {
       routeName: string | null;
     },
     snapshotCalls: [] as Array<{ userId: number; sessionId: string; provider: string }>,
-    openCalls: [] as Array<{ userId: number; purpose: string; envelope: string }>,
+    credentialReads: 0,
     clientFactoryCalls: 0,
     routeCalls: [] as string[],
   };
 
   const repository = {
-    getConnection: () => state.connection,
+    getConnection: () => null,
     upsertConnection: () => undefined,
     deleteConnectionAndSettings: () => undefined,
     listConnectionUserIds: () => [],
@@ -62,12 +43,11 @@ function createHarness() {
     upsertAlert: () => undefined,
     markAlertNotified: () => undefined,
   };
-  const secretStore = {
-    available: true,
-    seal: () => 'unused',
-    open: (userId: number, purpose: 'admin-password' | 'data-plane-key', envelope: string) => {
-      state.openCalls.push({ userId, purpose, envelope });
-      return purpose === 'admin-password' ? 'decrypted-admin' : 'decrypted-runtime-key';
+  const runtime = {
+    getStatus: () => ({ state: 'ready' as const, origin: 'http://127.0.0.1:20128', version: '0.5.45', lastError: null }),
+    getInternalCredentials: () => {
+      state.credentialReads += 1;
+      return { jwtSecret: 'jwt', initialPassword: 'embedded-admin', apiKeySecret: 'hmac-secret', dataPlaneKey: 'embedded-runtime-key', machineIdSalt: 'salt', dataDir: '/db/9router' };
     },
   };
   const client = {
@@ -83,14 +63,14 @@ function createHarness() {
   };
   const service = createRoutingRuntimeService({
     repository,
-    secretStore,
+    runtime,
     clientFactory: () => {
       state.clientFactoryCalls += 1;
       return client;
     },
   });
 
-  return { state, repository, secretStore, client, service };
+  return { state, repository, runtime, client, service };
 }
 
 test('snapshots provider defaults through the user-scoped repository', async () => {
@@ -121,7 +101,7 @@ test('missing and native session bindings resolve native without decrypting', as
     await harness.service.resolveForRun(7, 'session-native', 'claude'),
     { source: 'native' },
   );
-  assert.equal(harness.state.openCalls.length, 0);
+  assert.equal(harness.state.credentialReads, 0);
   assert.equal(harness.state.clientFactoryCalls, 0);
 });
 
@@ -138,16 +118,13 @@ test('router sessions decrypt only at run time and refresh the route name by sta
 
   assert.deepEqual(configuration, {
     source: '9router',
-    baseUrl: 'https://router.example',
-    openAiBaseUrl: 'https://router.example/v1',
-    apiKey: 'decrypted-runtime-key',
+    baseUrl: 'http://127.0.0.1:20128',
+    openAiBaseUrl: 'http://127.0.0.1:20128/v1',
+    apiKey: 'embedded-runtime-key',
     routeId: 'route-1',
     routeName: 'renamed-current-route',
   });
-  assert.deepEqual(
-    harness.state.openCalls.map((call) => call.purpose),
-    ['admin-password', 'data-plane-key'],
-  );
+  assert.equal(harness.state.credentialReads, 1);
   assert.deepEqual(harness.state.routeCalls, ['route-1']);
 });
 
@@ -186,7 +163,7 @@ test('sanitizes unexpected runtime failures without exposing decrypted values', 
     routeName: 'quality-first',
   };
   harness.client.getRoute = async () => {
-    throw new Error('failed with decrypted-runtime-key and decrypted-admin');
+    throw new Error('failed with embedded-runtime-key and embedded-admin');
   };
 
   await assert.rejects(
@@ -194,8 +171,8 @@ test('sanitizes unexpected runtime failures without exposing decrypted values', 
     (error: unknown) => {
       assert.ok(error instanceof AppError);
       assert.equal(error.code, 'ROUTING_OPERATION_FAILED');
-      assert.equal(error.message.includes('decrypted-runtime-key'), false);
-      assert.equal(error.message.includes('decrypted-admin'), false);
+      assert.equal(error.message.includes('embedded-runtime-key'), false);
+      assert.equal(error.message.includes('embedded-admin'), false);
       return true;
     },
   );

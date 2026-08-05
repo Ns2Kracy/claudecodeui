@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import crypto from 'node:crypto';
 import { createRequire } from 'node:module';
 import { promises as fsPromises } from 'node:fs';
 import net from 'node:net';
@@ -11,13 +12,10 @@ import { requestNineRouterJson } from './nine-router-http.js';
 import { createNineRouterRuntimeService, type NineRouterRuntimeServiceDependencies } from './nine-router-runtime.service.js';
 import { createRoutingRouter } from './routing.routes.js';
 import { createRoutingRuntimeService } from './routing-runtime.service.js';
-import { createRoutingSecretStore } from './routing-secret-store.js';
 import { createRoutingService } from './routing.service.js';
 import { tryAutoConnect } from './routing-auto-connect.js';
-import { validateRoutingTarget } from './routing-target-policy.js';
 import { createRoutingUsageMonitor } from './routing-usage-monitor.js';
 
-const secretStore = createRoutingSecretStore();
 const clientFactory = (credentials: {
   baseUrl: string;
   adminPassword: string;
@@ -31,15 +29,21 @@ const clientFactory = (credentials: {
 /** Used by the routing HTTP router to execute authenticated application workflows. */
 export const routingService = createRoutingService({
   repository: routingDb,
-  secretStore,
-  validateTarget: validateRoutingTarget,
+  runtime: {
+    getStatus: () => getEmbeddedNineRouterRuntime().getStatus(),
+    getInternalCredentials: () => getEmbeddedNineRouterRuntime().getInternalCredentials(),
+    restart: () => getEmbeddedNineRouterRuntime().restart(),
+  },
   clientFactory,
 });
 
 /** Used by provider session creation and run dispatch for sticky per-session routing. */
 export const routingRuntimeService = createRoutingRuntimeService({
   repository: routingDb,
-  secretStore,
+  runtime: {
+    getStatus: () => getEmbeddedNineRouterRuntime().getStatus(),
+    getInternalCredentials: () => getEmbeddedNineRouterRuntime().getInternalCredentials(),
+  },
   clientFactory,
 });
 
@@ -89,6 +93,7 @@ const embeddedNineRouterSecretKeys = {
   jwtSecret: 'nine_router_jwt_secret',
   initialPassword: 'nine_router_initial_password',
   apiKeySecret: 'nine_router_api_key_secret',
+  dataPlaneKeyMaterial: 'nine_router_data_plane_key_material',
   machineIdSalt: 'nine_router_machine_id_salt',
 } as const;
 
@@ -175,11 +180,16 @@ export function createProductionFilesystemAdapter(): NineRouterRuntimeServiceDep
 }
 
 function createDefaultEmbeddedNineRouterRuntime(): EmbeddedNineRouterRuntime {
+  const apiKeySecret = appConfigDb.getOrCreateSecret(embeddedNineRouterSecretKeys.apiKeySecret, 32);
+  const keyId = appConfigDb.getOrCreateSecret(embeddedNineRouterSecretKeys.dataPlaneKeyMaterial, 16).slice(0, 6);
+  const machineId = 'cloudcli';
+  const crc = crypto.createHmac('sha256', apiKeySecret).update(machineId + keyId).digest('hex').slice(0, 8);
   return createNineRouterRuntimeService({
     credentials: {
       jwtSecret: appConfigDb.getOrCreateSecret(embeddedNineRouterSecretKeys.jwtSecret, 32),
       initialPassword: appConfigDb.getOrCreateSecret(embeddedNineRouterSecretKeys.initialPassword, 32),
-      apiKeySecret: appConfigDb.getOrCreateSecret(embeddedNineRouterSecretKeys.apiKeySecret, 32),
+      apiKeySecret,
+      dataPlaneKey: `sk-${machineId}-${keyId}-${crc}`,
       machineIdSalt: appConfigDb.getOrCreateSecret(embeddedNineRouterSecretKeys.machineIdSalt, 32),
     },
     databasePath: getDatabasePath(),

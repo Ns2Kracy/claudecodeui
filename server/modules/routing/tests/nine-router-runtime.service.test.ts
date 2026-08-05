@@ -80,6 +80,7 @@ function createHarness(overrides: Partial<NineRouterRuntimeServiceDependencies> 
       jwtSecret: 'jwt-secret-value',
       initialPassword: 'initial-password-value',
       apiKeySecret: 'api-key-secret-value',
+      dataPlaneKey: 'sk-cloudcli-abc123-deadbeef',
       machineIdSalt: 'machine-salt-value',
     },
     databasePath: '/state/cloudcli.sqlite',
@@ -526,6 +527,7 @@ test('getInternalCredentials returns injected secrets while status and redacted 
     jwtSecret: 'jwt-secret-value',
     initialPassword: 'initial-password-value',
     apiKeySecret: 'api-key-secret-value',
+    dataPlaneKey: 'sk-cloudcli-abc123-deadbeef',
     machineIdSalt: 'machine-salt-value',
   });
   const serializedStatus = JSON.stringify(harness.service.getStatus());

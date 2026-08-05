@@ -5,12 +5,7 @@ export const ROUTING_ROUTE_NAME_PATTERN = /^[a-zA-Z0-9_.-]+$/;
 export type RoutingAgent = (typeof ROUTING_AGENTS)[number];
 export type RoutingSupportedAgent = (typeof ROUTING_SUPPORTED_AGENTS)[number];
 export type RoutingModelSource = 'native' | '9router';
-export type RoutingConnectionStatus =
-  | 'disconnected'
-  | 'checking'
-  | 'connected'
-  | 'degraded'
-  | 'offline';
+export type RoutingRuntimeStatus = 'starting' | 'ready' | 'degraded' | 'unavailable';
 export type RoutingUsagePeriod = 'today' | '7d' | '30d';
 export type RoutingUsageAlertPeriod = 'daily' | '30d';
 
@@ -33,14 +28,10 @@ export type RoutingCapabilities = {
   cursorRuntime: false;
 };
 
-export type RoutingConnectionView = {
-  configured: boolean;
-  baseUrl: string | null;
-  status: RoutingConnectionStatus;
+export type RoutingRuntimeView = {
+  mode: 'embedded';
+  status: RoutingRuntimeStatus;
   version: string | null;
-  hasAdminCredential: boolean;
-  hasDataPlaneKey: boolean;
-  secureStorageAvailable: boolean;
   lastCheckedAt: string | null;
   lastError: RoutingSafeError | null;
   capabilities: RoutingCapabilities;
@@ -96,7 +87,7 @@ export type RoutingUsageAlertView = {
 };
 
 export type RoutingSettingsView = {
-  connection: RoutingConnectionView;
+  runtime: RoutingRuntimeView;
   bindings: Record<RoutingAgent, RoutingBindingView>;
   accountSummary: { total: number; degraded: number };
   routeSummary: { total: number };
@@ -106,16 +97,6 @@ export type RoutingSettingsView = {
   usage?: RoutingUsageView;
   usageAlerts: RoutingUsageAlertView[];
 };
-
-export type UpdateRoutingConnectionInput = {
-  baseUrl: string;
-  adminPassword?: string;
-  dataPlaneKey?: string;
-  clearAdminPassword?: boolean;
-  clearDataPlaneKey?: boolean;
-};
-
-export type ValidateRoutingConnectionInput = UpdateRoutingConnectionInput;
 
 export type CreateRoutingApiKeyAccountInput = {
   provider: string;
@@ -179,14 +160,10 @@ function nativeBinding(provider: RoutingAgent): RoutingBindingView {
 
 export function emptyRoutingSettingsView(): RoutingSettingsView {
   return {
-    connection: {
-      configured: false,
-      baseUrl: null,
-      status: 'disconnected',
+    runtime: {
+      mode: 'embedded',
+      status: 'unavailable',
       version: null,
-      hasAdminCredential: false,
-      hasDataPlaneKey: false,
-      secureStorageAvailable: false,
       lastCheckedAt: null,
       lastError: null,
       capabilities: { ...EMPTY_CAPABILITIES },

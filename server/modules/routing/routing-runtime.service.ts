@@ -8,105 +8,75 @@ import { AppError } from '@/shared/utils.js';
 
 import type { RoutingAgent } from '../../../shared/routing.js';
 
-import type { RoutingSecretStore } from './routing-secret-store.js';
+import type { NineRouterInternalCredentials, NineRouterRuntimeStatus } from './nine-router-runtime.service.js';
+
+type RuntimeCredentialsProvider = {
+  getStatus(): NineRouterRuntimeStatus;
+  getInternalCredentials(): NineRouterInternalCredentials;
+};
 
 type RoutingRuntimeServiceDependencies = {
   repository: RoutingRepository;
-  secretStore: RoutingSecretStore;
+  runtime: RuntimeCredentialsProvider;
   clientFactory(credentials: RoutingClientCredentials): Pick<IRoutingNineRouterClient, 'getRoute'>;
 };
 
 function runtimeUnsupported(): AppError {
-  return new AppError('This agent cannot use 9router', {
-    code: 'ROUTING_RUNTIME_UNSUPPORTED',
-    statusCode: 400,
-  });
+  return new AppError('This agent cannot use 9router', { code: 'ROUTING_RUNTIME_UNSUPPORTED', statusCode: 400 });
 }
 
 function runtimeUnavailable(): AppError {
-  return new AppError('The routed session configuration is unavailable', {
-    code: 'ROUTING_RUNTIME_UNAVAILABLE',
-    statusCode: 409,
-  });
+  return new AppError('The embedded 9router runtime is unavailable', { code: 'ROUTING_RUNTIME_UNAVAILABLE', statusCode: 409 });
 }
 
 function safeOperationFailure(): AppError {
-  return new AppError('The 9router runtime configuration could not be resolved', {
-    code: 'ROUTING_OPERATION_FAILED',
-    statusCode: 502,
-  });
+  return new AppError('The 9router runtime configuration could not be resolved', { code: 'ROUTING_OPERATION_FAILED', statusCode: 502 });
 }
 
 function safeRuntimeError(error: unknown): AppError {
   if (error instanceof AppError) {
-    return new AppError('The 9router runtime configuration could not be resolved', {
-      code: error.code,
-      statusCode: error.statusCode,
-    });
+    return new AppError('The 9router runtime configuration could not be resolved', { code: error.code, statusCode: error.statusCode });
   }
   return safeOperationFailure();
 }
 
 /**
- * Used by provider session creation and run dispatch to snapshot model-source
- * defaults once, then resolve only server-owned user/session bindings. Native
- * paths never decrypt credentials or construct a 9router client.
+ * Used by provider session creation and run dispatch for sticky per-session
+ * routing. Explicit 9router bindings fail safely when the embedded runtime is
+ * unavailable instead of falling back to native execution.
  */
-export function createRoutingRuntimeService(
-  dependencies: RoutingRuntimeServiceDependencies,
-) {
+export function createRoutingRuntimeService(dependencies: RoutingRuntimeServiceDependencies) {
+  function runtimeClient(): { client: Pick<IRoutingNineRouterClient, 'getRoute'>; credentials: RoutingClientCredentials } {
+    const status = dependencies.runtime.getStatus();
+    if (status.state !== 'ready') throw runtimeUnavailable();
+    const internal = dependencies.runtime.getInternalCredentials();
+    const credentials = {
+      baseUrl: status.origin ?? 'http://127.0.0.1:20128',
+      adminPassword: internal.initialPassword,
+      dataPlaneKey: internal.dataPlaneKey,
+    };
+    return { client: dependencies.clientFactory(credentials), credentials };
+  }
+
   return {
-    async snapshotSessionBinding(
-      userId: number,
-      sessionId: string,
-      provider: RoutingAgent,
-    ): Promise<void> {
+    async snapshotSessionBinding(userId: number, sessionId: string, provider: RoutingAgent): Promise<void> {
       dependencies.repository.snapshotSessionBinding(userId, sessionId, provider);
     },
 
-    async resolveForRun(
-      userId: number,
-      sessionId: string,
-      provider: RoutingAgent,
-    ): Promise<RuntimeRoutingConfiguration> {
+    async resolveForRun(userId: number, sessionId: string, provider: RoutingAgent): Promise<RuntimeRoutingConfiguration> {
       const binding = dependencies.repository.getSessionBinding(userId, sessionId);
-      if (!binding || binding.provider !== provider || binding.source === 'native') {
-        return { source: 'native' };
-      }
-      if (provider === 'cursor') {
-        throw runtimeUnsupported();
-      }
-      if (!binding.routeId) {
-        throw runtimeUnavailable();
-      }
-
-      const connection = dependencies.repository.getConnection(userId);
-      if (!connection) {
-        throw runtimeUnavailable();
-      }
+      if (!binding || binding.provider !== provider || binding.source === 'native') return { source: 'native' };
+      if (provider === 'cursor') throw runtimeUnsupported();
+      if (!binding.routeId) throw runtimeUnavailable();
 
       try {
-        const adminPassword = dependencies.secretStore.open(
-          userId,
-          'admin-password',
-          connection.adminSecretCiphertext,
-        );
-        const apiKey = dependencies.secretStore.open(
-          userId,
-          'data-plane-key',
-          connection.dataPlaneKeyCiphertext,
-        );
-        const client = dependencies.clientFactory({
-          baseUrl: connection.baseUrl,
-          adminPassword,
-          dataPlaneKey: apiKey,
-        });
+        const { client, credentials } = runtimeClient();
         const route = await client.getRoute(binding.routeId);
         return {
           source: '9router',
-          baseUrl: connection.baseUrl,
-          openAiBaseUrl: `${connection.baseUrl}/v1`,
-          apiKey,
+          baseUrl: credentials.baseUrl,
+          openAiBaseUrl: `${credentials.baseUrl}/v1`,
+          apiKey: credentials.dataPlaneKey,
           routeId: route.id,
           routeName: route.name,
         };

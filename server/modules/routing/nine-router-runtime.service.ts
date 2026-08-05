@@ -14,7 +14,7 @@ const STDERR_LIMIT = 1024;
 const MAX_HEALTH_FIELD_LENGTH = 128;
 const ALLOWED_ENV_KEYS = ['HOME', 'PATH', 'TMPDIR', 'TEMP', 'TMP', 'NODE_ENV'] as const;
 
-type RuntimeState = 'stopped' | 'starting' | 'ready' | 'degraded' | 'unavailable';
+export type NineRouterRuntimeState = 'stopped' | 'starting' | 'ready' | 'degraded' | 'unavailable';
 
 type RoutingSafeErrorCode =
   | 'ROUTING_PACKAGE_MISSING'
@@ -23,27 +23,30 @@ type RoutingSafeErrorCode =
   | 'ROUTING_STARTUP_TIMEOUT'
   | 'ROUTING_PROCESS_FAILED';
 
-type RoutingSafeError = {
+export type NineRouterRuntimeSafeError = {
   code: RoutingSafeErrorCode;
   message: string;
   retryable: boolean;
 };
 
-type RuntimeStatus = {
-  state: RuntimeState;
+export type NineRouterRuntimeStatus = {
+  state: NineRouterRuntimeState;
   origin: string | null;
   version: string | null;
-  lastError: RoutingSafeError | null;
+  lastError: NineRouterRuntimeSafeError | null;
 };
 
 type InternalCredentials = {
   jwtSecret: string;
   initialPassword: string;
   apiKeySecret: string;
+  dataPlaneKey: string;
   machineIdSalt: string;
 };
 
-type InternalRuntimeCredentials = InternalCredentials & { dataDir: string };
+export type NineRouterInternalCredentials = InternalCredentials & { dataDir: string };
+
+type InternalRuntimeCredentials = NineRouterInternalCredentials;
 
 type PackageResolver = {
   resolveOfficialServerPath(): Promise<string | null>;
@@ -81,12 +84,12 @@ type NineRouterRuntimeDependencies = {
   health: HealthChecker;
   clock: Clock;
   env?: NodeJS.ProcessEnv;
-  onStatusChange?: (status: RuntimeStatus) => void;
+  onStatusChange?: (status: NineRouterRuntimeStatus) => void;
 };
 
 type StopWaiter = { child: ChildProcess; resolve: () => void; timer: unknown };
 
-function initialStatus(): RuntimeStatus {
+function initialStatus(): NineRouterRuntimeStatus {
   return { state: 'stopped', origin: null, version: null, lastError: null };
 }
 
@@ -110,7 +113,7 @@ function redact(message: string, secrets: InternalRuntimeCredentials): string {
   return safeMessage(result);
 }
 
-function routingError(code: RoutingSafeErrorCode, message: string, retryable: boolean, secrets: InternalRuntimeCredentials): RoutingSafeError {
+function routingError(code: RoutingSafeErrorCode, message: string, retryable: boolean, secrets: InternalRuntimeCredentials): NineRouterRuntimeSafeError {
   return { code, message: redact(message, secrets), retryable };
 }
 
@@ -161,11 +164,11 @@ export function createNineRouterRuntimeService(dependencies: NineRouterRuntimeDe
   const stopWaiters: StopWaiter[] = [];
   const readinessWaiters = new Set<() => void>();
 
-  function cloneStatus(): RuntimeStatus {
+  function cloneStatus(): NineRouterRuntimeStatus {
     return { ...status, lastError: status.lastError ? { ...status.lastError } : null };
   }
 
-  function transition(nextStatus: RuntimeStatus): void {
+  function transition(nextStatus: NineRouterRuntimeStatus): void {
     status = nextStatus;
     dependencies.onStatusChange?.(cloneStatus());
   }
@@ -198,11 +201,11 @@ export function createNineRouterRuntimeService(dependencies: NineRouterRuntimeDe
     return generation === readinessGeneration && !stopping;
   }
 
-  function setUnavailable(error: RoutingSafeError): void {
+  function setUnavailable(error: NineRouterRuntimeSafeError): void {
     transition({ state: 'unavailable', origin: null, version: null, lastError: error });
   }
 
-  function processError(error: unknown): RoutingSafeError {
+  function processError(error: unknown): NineRouterRuntimeSafeError {
     return routingError('ROUTING_PROCESS_FAILED', unknownErrorMessage(error), true, runtimeCredentials(dependencies));
   }
 
@@ -281,7 +284,7 @@ export function createNineRouterRuntimeService(dependencies: NineRouterRuntimeDe
     await stopManaged(true);
   }
 
-  async function start(): Promise<RuntimeStatus> {
+  async function start(): Promise<NineRouterRuntimeStatus> {
     if (status.state === 'starting' || status.state === 'ready') return status;
     stopping = false;
     const generation = readinessGeneration + 1;
@@ -383,11 +386,11 @@ export function createNineRouterRuntimeService(dependencies: NineRouterRuntimeDe
   return {
     start,
     stop,
-    async restart(): Promise<RuntimeStatus> {
+    async restart(): Promise<NineRouterRuntimeStatus> {
       await stop();
       return start();
     },
-    getStatus(): RuntimeStatus {
+    getStatus(): NineRouterRuntimeStatus {
       return cloneStatus();
     },
     getInternalCredentials(): InternalRuntimeCredentials {

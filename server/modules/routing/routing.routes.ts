@@ -10,7 +10,6 @@ import type {
   RoutingUsagePeriod,
   UpdateRoutingAccountInput,
   UpdateRoutingBindingInput,
-  UpdateRoutingConnectionInput,
   UpdateRoutingRouteInput,
   UpdateRoutingUsageAlertInput,
 } from '../../../shared/routing.js';
@@ -112,22 +111,6 @@ function optionalInteger(value: unknown, fieldName: string): number | undefined 
     throw invalidRequest(`${fieldName} must be a non-negative integer`);
   }
   return Number(value);
-}
-
-function connectionInput(request: Request): UpdateRoutingConnectionInput {
-  const body = bodyRecord(request);
-  const input: UpdateRoutingConnectionInput = {
-    baseUrl: requiredString(body.baseUrl, 'baseUrl', 2048),
-  };
-  const adminPassword = optionalString(body.adminPassword, 'adminPassword');
-  const dataPlaneKey = optionalString(body.dataPlaneKey, 'dataPlaneKey');
-  const clearAdminPassword = optionalBoolean(body.clearAdminPassword, 'clearAdminPassword');
-  const clearDataPlaneKey = optionalBoolean(body.clearDataPlaneKey, 'clearDataPlaneKey');
-  if (adminPassword !== undefined) input.adminPassword = adminPassword;
-  if (dataPlaneKey !== undefined) input.dataPlaneKey = dataPlaneKey;
-  if (clearAdminPassword !== undefined) input.clearAdminPassword = clearAdminPassword;
-  if (clearDataPlaneKey !== undefined) input.clearDataPlaneKey = clearDataPlaneKey;
-  return input;
 }
 
 function accountCreateInput(request: Request): CreateRoutingApiKeyAccountInput {
@@ -273,7 +256,6 @@ export function createRoutingRouter(
 ): express.Router {
   const router = express.Router();
   const mutationGuard = createRoutingMutationGuard();
-  const validationLimiter = createRoutingRateLimiter({ limit: 5, windowMs: 60_000 });
   const writeLimiter = createRoutingRateLimiter({ limit: 30, windowMs: 60_000 });
   const writeGuards = [mutationGuard, writeLimiter];
 
@@ -287,35 +269,15 @@ export function createRoutingRouter(
       );
     }),
   );
-  router.put(
-    '/connection',
-    ...writeGuards,
-    asyncHandler(async (request, response) => {
-      response.json(
-        createApiSuccessResponse(
-          await service.connect(userId(request), connectionInput(request)),
-        ),
-      );
-    }),
-  );
   router.post(
-    '/connection/validations',
-    mutationGuard,
-    validationLimiter,
+    '/runtime/restart',
+    ...writeGuards,
     asyncHandler(async (request, response) => {
       response.json(
         createApiSuccessResponse(
-          await service.validateConnection(userId(request), connectionInput(request)),
+          await service.restartRuntime(),
         ),
       );
-    }),
-  );
-  router.delete(
-    '/connection',
-    ...writeGuards,
-    asyncHandler(async (request, response) => {
-      await service.disconnect(userId(request));
-      response.json(createApiSuccessResponse({ disconnected: true }));
     }),
   );
   router.post(
