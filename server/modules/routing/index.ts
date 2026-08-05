@@ -3,15 +3,13 @@ export {
   routingRoutes,
   routingService,
   routingRuntimeService,
-  startEmbeddedNineRouter,
+  refreshNineRouterSidecar,
   startRoutingUsageMonitor,
-  stopEmbeddedNineRouter,
   stopRoutingUsageMonitor,
-  restartEmbeddedNineRouter,
-  getEmbeddedNineRouterStatus,
+  getNineRouterSidecarStatus,
   tryAutoConnect,
 } from './routing.module.js';
 
-// Future routing startup wiring consumes this factory through the module barrel
-// so callers do not deep-import the runtime supervisor implementation.
-export { createNineRouterRuntimeService } from './nine-router-runtime.service.js';
+// Routing composition consumes this factory through the module barrel so callers
+// do not deep-import the sidecar health adapter implementation.
+export { createNineRouterSidecarService } from './nine-router-sidecar.service.js';

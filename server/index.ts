@@ -16,10 +16,9 @@ import {
     providerRuntimeService,
 } from '@/modules/providers/index.js';
 import {
+    refreshNineRouterSidecar,
     routingOAuthCallbackRoutes,
     routingRoutes,
-    startEmbeddedNineRouter,
-    stopEmbeddedNineRouter,
     stopRoutingUsageMonitor,
 } from '@/modules/routing/index.js';
 import { createWebSocketServer } from '@/modules/websocket/index.js';
@@ -342,10 +341,10 @@ async function startServer() {
         // Configure Web Push (VAPID keys)
         configureWebPush();
 
-        // Start embedded 9router after persistence is ready. Startup failure is
-        // advisory and must never prevent CloudCLI from serving its own UI/API.
-        await startEmbeddedNineRouter().catch((error: unknown) => {
-            console.warn('[Routing] Embedded 9router startup failed:', getErrorMessage(error));
+        // Refresh Compose-owned 9router sidecar health after persistence is ready.
+        // Sidecar unavailability is advisory and must never prevent CloudCLI from serving its own UI/API.
+        await refreshNineRouterSidecar().catch((error: unknown) => {
+            console.warn('[Routing] 9router sidecar health check failed:', getErrorMessage(error));
             return null;
         });
 
@@ -392,11 +391,6 @@ async function startServer() {
         // Clean up plugin processes on shutdown
         const shutdownRuntimeServices = async () => {
             stopRoutingUsageMonitor();
-            try {
-                await stopEmbeddedNineRouter();
-            } catch (err) {
-                console.error('[Routing] Error stopping embedded 9router during shutdown:', getErrorMessage(err));
-            }
             try {
                 await browserUseService.stopAllSessions();
             } catch (err) {

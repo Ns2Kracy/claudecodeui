@@ -8,10 +8,10 @@ import { AppError } from '@/shared/utils.js';
 
 import type { RoutingAgent } from '../../../shared/routing.js';
 
-import type { NineRouterInternalCredentials, NineRouterRuntimeStatus } from './nine-router-runtime.service.js';
+import type { NineRouterInternalCredentials, NineRouterSidecarStatus } from './nine-router-sidecar.service.js';
 
 type RuntimeCredentialsProvider = {
-  getStatus(): NineRouterRuntimeStatus;
+  getStatus(): NineRouterSidecarStatus;
   getInternalCredentials(): NineRouterInternalCredentials;
 };
 
