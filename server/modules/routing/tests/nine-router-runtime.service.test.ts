@@ -332,6 +332,68 @@ test('unexpected exit cancels stale readiness polling and stale health cannot ma
   assert.equal(harness.spawnCalls.length, 1);
 });
 
+test('stale exit from an old stopped child after replacement does not corrupt the live ready child', async () => {
+  const harness = createHarness();
+  harness.healthChecks.push({ ok: true, origin: '9router', version: '0.5.45' });
+  const firstStart = harness.service.start();
+  await flushAsyncStart();
+  harness.runNextTimer();
+  await firstStart;
+  const oldChild = harness.child;
+
+  const stopPromise = harness.service.stop();
+  assert.deepEqual(oldChild.killedSignals, ['SIGTERM']);
+  harness.runNextTimer();
+  await stopPromise;
+
+  harness.healthChecks.push({ ok: true, origin: '9router', version: '0.5.46' });
+  const replacementStart = harness.service.start();
+  await flushAsyncStart();
+  await replacementStart;
+  const replacement = harness.child;
+  assert.notEqual(replacement.pid, oldChild.pid);
+  assert.equal(harness.service.getStatus().state, 'ready');
+
+  oldChild.emitExit(0, null);
+
+  assert.equal(harness.child.pid, replacement.pid);
+  assert.deepEqual(harness.service.getStatus(), {
+    state: 'ready',
+    origin: '9router',
+    version: '0.5.46',
+    lastError: null,
+  });
+});
+
+test('active child error without exit is terminal, restarts once, ignores following exit, and recovers', async () => {
+  const harness = createHarness();
+  harness.healthChecks.push({ ok: true, origin: '9router', version: '0.5.45' });
+  const firstStart = harness.service.start();
+  await flushAsyncStart();
+  harness.runNextTimer();
+  await firstStart;
+  const failedChild = harness.child;
+
+  failedChild.emitError(new Error('spawn jwt-secret-value failed'));
+  assert.equal(harness.service.getStatus().state, 'degraded');
+  assert.deepEqual(failedChild.killedSignals, ['SIGTERM']);
+  failedChild.emitExit(1, null);
+  assert.equal(harness.spawnCalls.length, 1);
+
+  harness.healthChecks.push({ ok: true, origin: '9router', version: '0.5.46' });
+  harness.runNextTimer();
+  await flushAsyncStart();
+
+  assert.equal(harness.spawnCalls.length, 2);
+  assert.notEqual(harness.child.pid, failedChild.pid);
+  assert.deepEqual(harness.service.getStatus(), {
+    state: 'ready',
+    origin: '9router',
+    version: '0.5.46',
+    lastError: null,
+  });
+});
+
 test('unexpected exits restart distinct children, count rapid crash cycles, and reset only after stable window', async () => {
   const rapid = createHarness();
   rapid.healthChecks.push({ ok: true, origin: '9router', version: '0.5.45' });

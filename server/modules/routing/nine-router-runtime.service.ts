@@ -83,7 +83,7 @@ type NineRouterRuntimeDependencies = {
   env?: NodeJS.ProcessEnv;
 };
 
-type StopWaiter = { resolve: () => void; timer: unknown };
+type StopWaiter = { child: ChildProcess; resolve: () => void; timer: unknown };
 
 function initialStatus(): RuntimeStatus {
   return { state: 'stopped', origin: null, version: null, lastError: null };
@@ -196,22 +196,17 @@ export function createNineRouterRuntimeService(dependencies: NineRouterRuntimeDe
     return routingError('ROUTING_PROCESS_FAILED', unknownErrorMessage(error), true, runtimeCredentials(dependencies));
   }
 
-  function resolveStopWaiters(): void {
-    for (const waiter of stopWaiters.splice(0)) {
+  function resolveStopWaiters(completedChild: ChildProcess | null = null): void {
+    for (const waiter of [...stopWaiters]) {
+      if (completedChild && waiter.child !== completedChild) continue;
+      stopWaiters.splice(stopWaiters.indexOf(waiter), 1);
       dependencies.clock.clearTimeout(waiter.timer);
       timers.delete(waiter.timer);
       waiter.resolve();
     }
   }
 
-  function handleExit(code: number | null, signal: NodeJS.Signals | null): void {
-    child = null;
-    readinessGeneration += 1;
-    cancelReadiness();
-    resolveStopWaiters();
-    if (stopping) return;
-
-    const reason = `9router exited unexpectedly: code=${code ?? 'null'} signal=${signal ?? 'null'}`;
+  function scheduleRestartForTerminal(reason: string): void {
     if (rapidCrashCount + 1 >= MAX_RAPID_CRASHES) {
       rapidCrashCount += 1;
       setUnavailable(routingError('ROUTING_PROCESS_FAILED', reason, true, runtimeCredentials(dependencies)));
@@ -225,9 +220,25 @@ export function createNineRouterRuntimeService(dependencies: NineRouterRuntimeDe
     }, delay);
   }
 
-  function handleChildError(error: unknown): void {
+  function handleTerminal(currentChild: ChildProcess, reason: string, terminateOwnedChild: boolean): void {
+    resolveStopWaiters(currentChild);
+    if (child !== currentChild) return;
+
+    child = null;
     readinessGeneration += 1;
-    status = { state: child ? 'degraded' : 'unavailable', origin: null, version: null, lastError: processError(error) };
+    cancelReadiness();
+    if (terminateOwnedChild) currentChild.kill('SIGTERM');
+    if (stopping) return;
+    scheduleRestartForTerminal(reason);
+  }
+
+  function handleExit(currentChild: ChildProcess, code: number | null, signal: NodeJS.Signals | null): void {
+    const reason = `9router exited unexpectedly: code=${code ?? 'null'} signal=${signal ?? 'null'}`;
+    handleTerminal(currentChild, reason, false);
+  }
+
+  function handleChildError(currentChild: ChildProcess, error: unknown): void {
+    handleTerminal(currentChild, unknownErrorMessage(error), true);
   }
 
   async function pollUntilReady(generation: number, currentChild: ChildProcess, deadlineMs: number): Promise<void> {
@@ -328,8 +339,8 @@ export function createNineRouterRuntimeService(dependencies: NineRouterRuntimeDe
     currentChild.stderr?.on('data', (chunk: Buffer) => {
       status = { ...status, lastError: routingError('ROUTING_PROCESS_FAILED', String(chunk), true, runtimeCredentials(dependencies)) };
     });
-    currentChild.on('error', handleChildError);
-    currentChild.on('exit', handleExit);
+    currentChild.on('error', (error: unknown) => handleChildError(currentChild, error));
+    currentChild.on('exit', (code: number | null, signal: NodeJS.Signals | null) => handleExit(currentChild, code, signal));
     await pollUntilReady(generation, currentChild, READINESS_TIMEOUT_MS);
     return status;
   }
@@ -347,9 +358,9 @@ export function createNineRouterRuntimeService(dependencies: NineRouterRuntimeDe
     await new Promise<void>((resolve) => {
       const timer = setTimer(() => {
         current.kill('SIGKILL');
-        resolveStopWaiters();
+        resolveStopWaiters(current);
       }, STOP_KILL_DEADLINE_MS);
-      stopWaiters.push({ resolve, timer });
+      stopWaiters.push({ child: current, resolve, timer });
       current.kill('SIGTERM');
     });
     child = null;
