@@ -24,7 +24,15 @@ const clientFactory = (credentials: {
 }) =>
   new NineRouterClient({
     ...credentials,
-    request: requestNineRouterJson,
+    // The embedded runtime is owned by this process and bound to this fixed
+    // loopback host. Keep the general transport's SSRF defaults closed while
+    // explicitly admitting only this internal management target.
+    request: (input) => requestNineRouterJson(input, {
+      targetPolicy: {
+        allowLoopbackHttp: true,
+        allowedHosts: ['127.0.0.1'],
+      },
+    }),
   });
 
 function routingServiceClientForRuntime() {

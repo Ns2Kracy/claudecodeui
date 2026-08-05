@@ -4,6 +4,18 @@ import path from 'node:path';
 import test from 'node:test';
 
 const serverSource = readFileSync(path.join(process.cwd(), 'server/index.ts'), 'utf8');
+const routingModuleSource = readFileSync(path.join(process.cwd(), 'server/modules/routing/routing.module.ts'), 'utf8');
+
+test('embedded 9router client explicitly admits only its fixed loopback management target', () => {
+  const clientFactory = routingModuleSource.indexOf('const clientFactory');
+  const loopbackPolicy = routingModuleSource.indexOf('allowLoopbackHttp: true', clientFactory);
+  const fixedHost = routingModuleSource.indexOf("allowedHosts: ['127.0.0.1']", clientFactory);
+  const serviceFactory = routingModuleSource.indexOf('function routingServiceClientForRuntime', clientFactory);
+
+  assert.ok(clientFactory >= 0);
+  assert.ok(loopbackPolicy > clientFactory && loopbackPolicy < serviceFactory);
+  assert.ok(fixedHost > loopbackPolicy && fixedHost < serviceFactory);
+});
 
 test('server startup awaits database before embedded 9router and leaves usage monitor control to runtime status changes', () => {
   const dbStart = serverSource.indexOf('await initializeDatabase()');
