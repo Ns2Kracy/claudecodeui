@@ -25,7 +25,7 @@ export function withUnavailableSelectedModel(
   }
   return [
     ...options,
-    { value: selectedModel, label: `${selectedModel.slice('9router:'.length)} (Unavailable)`, source: '9router' },
+    { value: selectedModel, label: `${selectedModel.slice('9router:'.length)} (Provider unavailable)`, source: '9router' },
   ];
 }
 

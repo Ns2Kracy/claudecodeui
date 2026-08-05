@@ -63,12 +63,12 @@ async function renderRoutingView(
   ));
 }
 
-test('first render shows sidecar runtime status and no obsolete controls', async () => {
+test('first render shows router-safe terminology and no obsolete controls', async () => {
   const settings = emptyRoutingSettingsView();
   const markup = await renderRoutingView(settings);
 
-  assert.match(markup, /Built-in 9Router runtime/);
-  assert.match(markup, /Unavailable/);
+  assert.match(markup, /Provider Router/);
+  assert.equal(/9Router/i.test(markup), false);
   assert.equal(markup.includes('Restart runtime'), false);
   assert.equal(markup.includes('Endpoint'), false);
   assert.equal(markup.includes('Admin password'), false);
@@ -102,7 +102,7 @@ test('ready runtime enables provider and route details without source or usage U
 
   assert.equal(markup.includes('never-render-admin'), false);
   assert.equal(markup.includes('never-render-key'), false);
-  assert.match(markup, /9Router/);
+  assert.equal(/9Router/i.test(markup), false);
   assert.match(markup, /Upstreams and routes/);
   assert.equal(markup.includes('Native login'), false);
   assert.equal(markup.includes('Usage &amp; limits'), false);
@@ -137,12 +137,12 @@ test('renders unavailable, unauthorized, and incompatible runtime states inline'
     await renderRoutingView(incompatible),
   ].join('\n');
 
-  assert.match(markup, /Built-in 9Router runtime is unavailable/);
-  assert.match(markup, /9Router credentials were rejected/);
-  assert.match(markup, /This 9Router version has limited compatibility/);
+  assert.match(markup, /Provider Router runtime is unavailable/);
+  assert.match(markup, /Provider Router credentials were rejected/);
+  assert.match(markup, /This Provider Router version has limited compatibility/);
 });
 
-test('degraded runtime keeps status visible but does not render ready-only detail controls', async () => {
+test('degraded runtime does not render ready-only detail controls', async () => {
   const settings = emptyRoutingSettingsView();
   settings.runtime = {
     ...settings.runtime,
@@ -166,8 +166,8 @@ test('degraded runtime keeps status visible but does not render ready-only detai
 
   const markup = await renderRoutingView(settings);
 
-  assert.match(markup, /Degraded/);
-  assert.match(markup, /Runtime health check failed/);
+  assert.equal(/9Router/i.test(markup), false);
+  assert.equal(markup.includes('Runtime health check failed'), false);
   assert.equal(markup.includes('Advisory alerts'), false);
   assert.equal(markup.includes('Create API-key account'), false);
   assert.equal(markup.includes('Create route'), false);

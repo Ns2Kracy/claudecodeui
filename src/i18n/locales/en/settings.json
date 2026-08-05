@@ -113,7 +113,7 @@
     "notifications": "Notifications",
     "plugins": "Plugins",
     "about": "About",
-    "routing": "9Router"
+    "routing": "Providers"
   },
   "notifications": {
     "title": "Notifications",
@@ -577,37 +577,37 @@
     "runningStatus": "running"
   },
   "nineRouter": {
-    "title": "9Router",
-    "description": "Route new Claude, Codex, and OpenCode sessions through the built-in 9Router runtime without extra endpoint or credential setup.",
-    "loading": "Loading 9Router settings...",
+    "title": "Provider Router",
+    "description": "Route new Claude, Codex, and OpenCode sessions through the built-in Provider Router runtime without extra endpoint or credential setup.",
+    "loading": "Loading provider settings...",
     "alerts": {
       "secureStorage": {
         "title": "Secure storage is unavailable",
-        "description": "Set a valid ROUTING_SECRET_KEY on the server before saving write-only 9Router credentials."
+        "description": "Set a valid ROUTING_SECRET_KEY on the server before saving write-only provider credentials."
       },
       "offline": {
-        "title": "9Router is offline",
+        "title": "Provider Router is offline",
         "description": "CloudCLI could not reach the configured endpoint. Native agent login remains available."
       },
       "unauthorized": {
-        "title": "9Router credentials were rejected",
+        "title": "Provider Router credentials were rejected",
         "description": "Check the admin password and data-plane API key. Existing native agent credentials were not changed."
       },
       "incompatible": {
-        "title": "This 9Router version has limited compatibility",
+        "title": "This Provider Router version has limited compatibility",
         "description": "Only capabilities reported by this version are enabled. CloudCLI does not guess unsupported management APIs."
       },
       "operation": {
-        "title": "9Router operation failed"
+        "title": "Provider Router operation failed"
       },
       "runtimeUnavailable": {
-        "title": "Built-in 9Router runtime is unavailable",
-        "description": "CloudCLI could not start the embedded runtime. Native agent login remains available. Restart the runtime to try again."
+        "title": "Provider Router runtime is unavailable",
+        "description": "CloudCLI could not start the embedded router runtime. Native agent login remains available. Restart the runtime to try again."
       }
     },
     "connection": {
       "title": "Connection",
-      "description": "All browser requests stay on CloudCLI. The server connects to the approved 9Router origin.",
+      "description": "All browser requests stay on CloudCLI. The server connects to the approved provider router origin.",
       "endpoint": "Endpoint",
       "endpointHelp": "Use a remote HTTPS origin. Loopback HTTP requires an explicit server deployment opt-in.",
       "adminPassword": "Admin password",
@@ -638,7 +638,7 @@
     },
     "management": {
       "title": "Upstreams and routes",
-      "description": "Manage the 9Router accounts and ordered model routes used by routed sessions.",
+      "description": "Manage the provider accounts and ordered model routes used by routed sessions.",
       "disclosure": "Manage upstreams and routes",
       "summary": {
         "accounts_one": "{{count}} account",
@@ -648,8 +648,8 @@
         "routes_one": "{{count}} route",
         "routes_other": "{{count}} routes"
       },
-      "connectFirst": "The built-in 9Router runtime must be ready before accounts and routes can load.",
-      "unavailable": "This 9Router version does not expose supported account or route management APIs.",
+      "connectFirst": "The built-in Provider Router runtime must be ready before accounts and routes can load.",
+      "unavailable": "This Provider Router version does not expose supported account or route management APIs.",
       "loading": "Loading upstream accounts and routes...",
       "loadFailed": "Could not load upstream accounts and routes.",
       "actions": {
@@ -665,7 +665,7 @@
       },
       "accounts": {
         "title": "Upstream accounts",
-        "description": "Accounts remain authoritative in 9Router. CloudCLI displays only safe status fields.",
+        "description": "Accounts remain authoritative in the Provider Router. CloudCLI displays only safe status fields.",
         "add": "Add API key",
         "addTitle": "Add upstream account",
         "apiKeyOnly": "API-key accounts only are supported for creation in this release.",
@@ -675,7 +675,7 @@
         "apiKey": "API key",
         "priority": "Priority",
         "noProviders": "No provider catalog is available for a new account.",
-        "empty": "No upstream accounts were returned by 9Router.",
+        "empty": "No upstream accounts were returned by the Provider Router.",
         "disabled": "Disabled",
         "defaultPriority": "Default",
         "expires": "Expires",
@@ -683,7 +683,7 @@
         "replacementKey": "Replacement API key",
         "keepKey": "Leave blank to keep configured",
         "confirmDelete": "Delete {{name}}?",
-        "unavailable": "Account details are unavailable for this 9Router version.",
+        "unavailable": "Account details are unavailable for this Provider Router version.",
         "status": {
           "healthy": "Healthy",
           "cooling": "Cooling",
@@ -694,7 +694,7 @@
       },
       "routes": {
         "title": "Routes",
-        "description": "Order models by preference. 9Router applies the route when a supported agent starts a new session.",
+        "description": "Order models by preference. The Provider Router applies the route when a supported agent starts a new session.",
         "add": "Add route",
         "name": "Route name",
         "nameHelp": "Use letters, numbers, underscores, periods, and hyphens only.",
@@ -703,7 +703,7 @@
         "addModel": "Add model",
         "searchModels": "Search models",
         "noMatchingModels": "No matching models are available.",
-        "empty": "No routes were returned by 9Router.",
+        "empty": "No routes were returned by the Provider Router.",
         "inUse": "In use",
         "modelCount_one": "{{count}} model",
         "modelCount_other": "{{count}} models",
@@ -713,11 +713,11 @@
         "editLabel": "Edit {{name}}",
         "confirmDelete": "Delete {{name}}?",
         "boundWarning": "This route is selected by an agent. Switch that agent to Native login or another route to avoid failed sessions.",
-        "unavailable": "Route details are unavailable for this 9Router version."
+        "unavailable": "Route details are unavailable for this Provider Router version."
       }
     },
     "runtime": {
-      "title": "Built-in 9Router runtime",
+      "title": "Built-in Provider Router runtime",
       "version": "Version",
       "unknown": "Unknown",
       "restart": "Restart runtime",

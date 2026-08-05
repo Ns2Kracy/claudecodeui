@@ -95,7 +95,7 @@
     "notifications": "通知",
     "plugins": "外掛",
     "about": "關於",
-    "routing": "9Router"
+    "routing": "提供商"
   },
   "notifications": {
     "title": "通知",
@@ -484,37 +484,37 @@
     "runningStatus": "執行中"
   },
   "nineRouter": {
-    "title": "9Router",
-    "description": "透過內建 9Router 執行階段路由新的 Claude、Codex 和 OpenCode 工作階段，無需額外端點或憑證設定。",
-    "loading": "正在載入 9Router 設定...",
+    "title": "提供商路由器",
+    "description": "透過內建提供商路由器執行階段路由新的 Claude、Codex 和 OpenCode 工作階段，無需額外端點或憑證設定。",
+    "loading": "正在載入提供商路由器設定...",
     "alerts": {
       "secureStorage": {
         "title": "安全儲存空間無法使用",
-        "description": "請先在伺服器設定有效的 ROUTING_SECRET_KEY，再儲存唯寫的 9Router 憑證。"
+        "description": "請先在伺服器設定有效的 ROUTING_SECRET_KEY，再儲存唯寫的提供商路由器憑證。"
       },
       "offline": {
-        "title": "9Router 已離線",
+        "title": "提供商路由器已離線",
         "description": "CloudCLI 無法連線至設定的端點。原生代理程式登入仍然可用。"
       },
       "unauthorized": {
-        "title": "9Router 憑證遭到拒絕",
+        "title": "提供商路由器憑證遭到拒絕",
         "description": "請檢查管理員密碼和資料平面 API 金鑰。現有原生代理程式憑證未被更改。"
       },
       "incompatible": {
-        "title": "此 9Router 版本的相容性有限",
+        "title": "此提供商路由器版本的相容性有限",
         "description": "僅啟用此版本明確回報的功能。CloudCLI 不會猜測不受支援的管理 API。"
       },
       "operation": {
-        "title": "9Router 操作失敗"
+        "title": "提供商路由器操作失敗"
       },
       "runtimeUnavailable": {
-        "title": "內建 9Router 執行階段無法使用",
+        "title": "內建提供商路由器執行階段無法使用",
         "description": "CloudCLI 無法啟動內建執行階段。原生代理登入仍可使用。請重新啟動執行階段後再試。"
       }
     },
     "connection": {
       "title": "連線",
-      "description": "所有瀏覽器請求都保留在 CloudCLI 同源服務中，由伺服器連線至已核准的 9Router 來源。",
+      "description": "所有瀏覽器請求都保留在 CloudCLI 同源服務中，由伺服器連線至已核准的提供商路由器來源。",
       "endpoint": "端點",
       "endpointHelp": "遠端位址必須使用 HTTPS。回送 HTTP 需要伺服器部署明確啟用。",
       "adminPassword": "管理員密碼",
@@ -545,15 +545,15 @@
     },
     "management": {
       "title": "上游帳戶和路由",
-      "description": "管理路由工作階段所使用的 9Router 帳戶和有序模型路由。",
+      "description": "管理路由工作階段所使用的提供商路由器帳戶和有序模型路由。",
       "disclosure": "管理上游帳戶和路由",
       "summary": {
         "accounts": "{{count}} 個帳戶",
         "degraded": "{{count}} 個需要處理",
         "routes": "{{count}} 條路由"
       },
-      "connectFirst": "內建 9Router 執行階段就緒後，才能載入上游帳戶和路由。",
-      "unavailable": "此 9Router 版本未提供受支援的帳戶或路由管理 API。",
+      "connectFirst": "內建提供商路由器執行階段就緒後，才能載入上游帳戶和路由。",
+      "unavailable": "此提供商路由器版本未提供受支援的帳戶或路由管理 API。",
       "loading": "正在載入上游帳戶和路由...",
       "loadFailed": "無法載入上游帳戶和路由。",
       "actions": {
@@ -569,7 +569,7 @@
       },
       "accounts": {
         "title": "上游帳戶",
-        "description": "帳戶仍由 9Router 權威管理。CloudCLI 僅顯示安全的狀態欄位。",
+        "description": "帳戶仍由提供商路由器權威管理。CloudCLI 僅顯示安全的狀態欄位。",
         "add": "新增 API 金鑰",
         "addTitle": "新增上游帳戶",
         "apiKeyOnly": "此版本僅支援建立 API 金鑰帳戶。",
@@ -579,7 +579,7 @@
         "apiKey": "API 金鑰",
         "priority": "優先順序",
         "noProviders": "目前沒有可用於新帳戶的提供者目錄。",
-        "empty": "9Router 未傳回任何上游帳戶。",
+        "empty": "提供商路由器未傳回任何上游帳戶。",
         "disabled": "已停用",
         "defaultPriority": "預設",
         "expires": "到期時間",
@@ -587,7 +587,7 @@
         "replacementKey": "替換 API 金鑰",
         "keepKey": "留空以保留現有設定",
         "confirmDelete": "刪除 {{name}}？",
-        "unavailable": "此 9Router 版本無法提供帳戶詳細資料。",
+        "unavailable": "此提供商路由器版本無法提供帳戶詳細資料。",
         "status": {
           "healthy": "正常",
           "cooling": "冷卻中",
@@ -598,7 +598,7 @@
       },
       "routes": {
         "title": "路由",
-        "description": "依偏好順序排列模型。受支援的代理程式建立新工作階段時，9Router 會套用該路由。",
+        "description": "依偏好順序排列模型。受支援的代理程式建立新工作階段時，提供商路由器會套用該路由。",
         "add": "新增路由",
         "name": "路由名稱",
         "nameHelp": "僅可使用字母、數字、底線、句點和連字號。",
@@ -607,7 +607,7 @@
         "addModel": "新增模型",
         "searchModels": "搜尋模型",
         "noMatchingModels": "沒有可用的相符模型。",
-        "empty": "9Router 未傳回任何路由。",
+        "empty": "提供商路由器未傳回任何路由。",
         "inUse": "使用中",
         "modelCount": "{{count}} 個模型",
         "moveUp": "上移 {{model}}",
@@ -616,11 +616,11 @@
         "editLabel": "編輯 {{name}}",
         "confirmDelete": "刪除 {{name}}？",
         "boundWarning": "某個代理程式已選擇此路由。請先將該代理程式切換至原生登入或其他路由，以免新工作階段失敗。",
-        "unavailable": "此 9Router 版本無法提供路由詳細資料。"
+        "unavailable": "此提供商路由器版本無法提供路由詳細資料。"
       }
     },
     "runtime": {
-      "title": "內建 9Router 執行階段",
+      "title": "內建提供商路由器執行階段",
       "version": "版本",
       "unknown": "未知",
       "restart": "重新啟動執行階段",

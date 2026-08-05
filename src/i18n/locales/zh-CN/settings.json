@@ -113,7 +113,7 @@
     "notifications": "通知",
     "plugins": "插件",
     "about": "关于",
-    "routing": "9Router"
+    "routing": "提供商"
   },
   "notifications": {
     "title": "通知",
@@ -571,37 +571,37 @@
     "runningStatus": "运行中"
   },
   "nineRouter": {
-    "title": "9Router",
-    "description": "通过内置 9Router 运行时路由新的 Claude、Codex 和 OpenCode 会话，无需额外端点或凭据设置。",
-    "loading": "正在加载 9Router 设置...",
+    "title": "提供商路由器",
+    "description": "通过内置提供商路由器运行时路由新的 Claude、Codex 和 OpenCode 会话，无需额外端点或凭据设置。",
+    "loading": "正在加载提供商路由器设置...",
     "alerts": {
       "secureStorage": {
         "title": "安全存储不可用",
-        "description": "请先在服务器设置有效的 ROUTING_SECRET_KEY，再保存只写的 9Router 凭据。"
+        "description": "请先在服务器设置有效的 ROUTING_SECRET_KEY，再保存只写的提供商路由器凭据。"
       },
       "offline": {
-        "title": "9Router 已离线",
+        "title": "提供商路由器已离线",
         "description": "CloudCLI 无法访问配置的端点。原生智能体登录仍然可用。"
       },
       "unauthorized": {
-        "title": "9Router 凭据被拒绝",
+        "title": "提供商路由器凭据被拒绝",
         "description": "请检查管理员密码和数据平面 API 密钥。现有原生智能体凭据未被更改。"
       },
       "incompatible": {
-        "title": "此 9Router 版本的兼容性有限",
+        "title": "此提供商路由器版本的兼容性有限",
         "description": "仅启用此版本明确报告的能力。CloudCLI 不会猜测不受支持的管理 API。"
       },
       "operation": {
-        "title": "9Router 操作失败"
+        "title": "提供商路由器操作失败"
       },
       "runtimeUnavailable": {
-        "title": "内置 9Router 运行时不可用",
+        "title": "内置提供商路由器运行时不可用",
         "description": "CloudCLI 无法启动内置运行时。原生代理登录仍可使用。请重启运行时后重试。"
       }
     },
     "connection": {
       "title": "连接",
-      "description": "所有浏览器请求都保留在 CloudCLI 同源服务中，由服务器连接到已批准的 9Router 来源。",
+      "description": "所有浏览器请求都保留在 CloudCLI 同源服务中，由服务器连接到已批准的提供商路由器来源。",
       "endpoint": "端点",
       "endpointHelp": "远程地址必须使用 HTTPS。回环 HTTP 需要服务器部署显式启用。",
       "adminPassword": "管理员密码",
@@ -632,15 +632,15 @@
     },
     "management": {
       "title": "上游账户和路由",
-      "description": "管理路由会话所使用的 9Router 账户和有序模型路由。",
+      "description": "管理路由会话所使用的提供商路由器账户和有序模型路由。",
       "disclosure": "管理上游账户和路由",
       "summary": {
         "accounts": "{{count}} 个账户",
         "degraded": "{{count}} 个需要处理",
         "routes": "{{count}} 条路由"
       },
-      "connectFirst": "内置 9Router 运行时就绪后，才能加载上游账户和路由。",
-      "unavailable": "此 9Router 版本未提供受支持的账户或路由管理 API。",
+      "connectFirst": "内置提供商路由器运行时就绪后，才能加载上游账户和路由。",
+      "unavailable": "此提供商路由器版本未提供受支持的账户或路由管理 API。",
       "loading": "正在加载上游账户和路由...",
       "loadFailed": "无法加载上游账户和路由。",
       "actions": {
@@ -656,7 +656,7 @@
       },
       "accounts": {
         "title": "上游账户",
-        "description": "账户仍由 9Router 权威管理。CloudCLI 仅显示安全的状态字段。",
+        "description": "账户仍由提供商路由器权威管理。CloudCLI 仅显示安全的状态字段。",
         "add": "添加 API 密钥",
         "addTitle": "添加上游账户",
         "apiKeyOnly": "此版本仅支持创建 API 密钥账户。",
@@ -666,7 +666,7 @@
         "apiKey": "API 密钥",
         "priority": "优先级",
         "noProviders": "当前没有可用于新账户的提供商目录。",
-        "empty": "9Router 未返回任何上游账户。",
+        "empty": "提供商路由器未返回任何上游账户。",
         "disabled": "已停用",
         "defaultPriority": "默认",
         "expires": "到期时间",
@@ -674,7 +674,7 @@
         "replacementKey": "替换 API 密钥",
         "keepKey": "留空以保留现有配置",
         "confirmDelete": "删除 {{name}}？",
-        "unavailable": "此 9Router 版本无法提供账户详情。",
+        "unavailable": "此提供商路由器版本无法提供账户详情。",
         "status": {
           "healthy": "正常",
           "cooling": "冷却中",
@@ -685,7 +685,7 @@
       },
       "routes": {
         "title": "路由",
-        "description": "按优先顺序排列模型。受支持的智能体创建新会话时，9Router 会应用该路由。",
+        "description": "按优先顺序排列模型。受支持的智能体创建新会话时，提供商路由器会应用该路由。",
         "add": "添加路由",
         "name": "路由名称",
         "nameHelp": "仅可使用字母、数字、下划线、句点和连字符。",
@@ -694,7 +694,7 @@
         "addModel": "添加模型",
         "searchModels": "搜索模型",
         "noMatchingModels": "没有可用的匹配模型。",
-        "empty": "9Router 未返回任何路由。",
+        "empty": "提供商路由器未返回任何路由。",
         "inUse": "使用中",
         "modelCount": "{{count}} 个模型",
         "moveUp": "上移 {{model}}",
@@ -703,11 +703,11 @@
         "editLabel": "编辑 {{name}}",
         "confirmDelete": "删除 {{name}}？",
         "boundWarning": "某个智能体已选择此路由。请先将该智能体切换到原生登录或其他路由，以免新会话失败。",
-        "unavailable": "此 9Router 版本无法提供路由详情。"
+        "unavailable": "此提供商路由器版本无法提供路由详情。"
       }
     },
     "runtime": {
-      "title": "内置 9Router 运行时",
+      "title": "内置提供商路由器运行时",
       "version": "版本",
       "unknown": "未知",
       "restart": "重启运行时",

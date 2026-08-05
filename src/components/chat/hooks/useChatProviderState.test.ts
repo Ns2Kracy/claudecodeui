@@ -36,7 +36,7 @@ test('preserves a disappeared 9router session model as visibly unavailable', () 
     ...options,
     {
       value: '9router:anthropic/removed-model',
-      label: 'anthropic/removed-model (Unavailable)',
+      label: 'anthropic/removed-model (Provider unavailable)',
       source: '9router',
     },
   ]);
