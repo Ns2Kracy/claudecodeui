@@ -16,6 +16,19 @@ import {
   toProviderEffortOptions,
 } from '../constants/providerEffort';
 
+export function withUnavailableSelectedModel(
+  options: ProviderModelOption[],
+  selectedModel: string,
+): ProviderModelOption[] {
+  if (!selectedModel.startsWith('9router:') || options.some((option) => option.value === selectedModel)) {
+    return options;
+  }
+  return [
+    ...options,
+    { value: selectedModel, label: `${selectedModel.slice('9router:'.length)} (Unavailable)`, source: '9router' },
+  ];
+}
+
 const FALLBACK_DEFAULT_MODEL: Record<LLMProvider, string> = {
   claude: 'default',
   cursor: 'gpt-5.3-codex',
@@ -298,10 +311,10 @@ export function useChatProviderState({ selectedSession, selectedProject: _select
     def: ProviderModelsDefinition,
   ): string => {
     const stored = localStorage.getItem(storageKey);
-    if (stored && def.OPTIONS.some((o) => o.value === stored)) {
+    if (stored && (stored.startsWith('9router:') || def.OPTIONS.some((o) => o.value === stored))) {
       return stored;
     }
-    if (current && def.OPTIONS.some((o) => o.value === current)) {
+    if (current && (current.startsWith('9router:') || def.OPTIONS.some((o) => o.value === current))) {
       return current;
     }
     return def.DEFAULT;
@@ -606,9 +619,12 @@ export function useChatProviderState({ selectedSession, selectedProject: _select
       providerEfforts[provider] ?? DEFAULT_EFFORT_VALUE,
     );
   }, [currentProviderModel, provider, providerEfforts, reconcileStoredEffort]);
+  const currentProviderModelAvailable = Boolean(
+    providerModelCatalog[provider]?.OPTIONS.some((option) => option.value === currentProviderModel),
+  );
   const currentProviderModelOptions = useMemo(
-    () => providerModelCatalog[provider]?.OPTIONS ?? [],
-    [provider, providerModelCatalog],
+    () => withUnavailableSelectedModel(providerModelCatalog[provider]?.OPTIONS ?? [], currentProviderModel),
+    [currentProviderModel, provider, providerModelCatalog],
   );
 
   return {
@@ -623,6 +639,7 @@ export function useChatProviderState({ selectedSession, selectedProject: _select
     currentProviderEffort,
     currentProviderEffortOptions,
     currentProviderModel,
+    currentProviderModelAvailable,
     currentProviderModelOptions,
     opencodeModel,
     setOpenCodeModel,

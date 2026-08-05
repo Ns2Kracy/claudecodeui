@@ -46,13 +46,6 @@ function createProvider(id: LLMProvider, runtime: IProviderRuntime): IProvider {
 
 function createService(
   providers: IProvider[],
-  resolveRoutingForRun: (
-    userId: number,
-    sessionId: string,
-    provider: LLMProvider,
-  ) => Promise<RuntimeRoutingConfiguration> = async () => ({
-    source: 'native',
-  }),
   resolveRoutingForModel: (model: string) => Promise<RuntimeRoutingConfiguration> = async () => ({
     source: 'native',
   }),
@@ -81,7 +74,6 @@ function createService(
         },
       };
     },
-    resolveRoutingForRun,
     resolveRoutingForModel,
   });
 }
@@ -130,7 +122,7 @@ test('dispatches runs and aborts through the runtime owned by providerRegistry',
   ]);
 });
 
-test('namespaced 9router model routes by selected model and bypasses legacy bindings', async () => {
+test('namespaced 9router model routes only by the selected model', async () => {
   const calls: unknown[][] = [];
   let receivedRouting: unknown;
   const runtime = createRuntime({
@@ -141,10 +133,6 @@ test('namespaced 9router model routes by selected model and bypasses legacy bind
   });
   const service = createService(
     [createProvider('codex', runtime)],
-    async (...args) => {
-      calls.push(['legacy', ...args]);
-      return { source: 'native' };
-    },
     async (model) => {
       calls.push(['model', model]);
       return {
@@ -174,97 +162,6 @@ test('namespaced 9router model routes by selected model and bypasses legacy bind
     routeName: 'openai/gpt-5',
     model: 'openai/gpt-5',
   });
-});
-
-test('resolves per-run routing only from writer identity and the app session id', async () => {
-  const resolutionCalls: unknown[][] = [];
-  let receivedRouting: unknown;
-  const runtime = createRuntime({
-    async run(_command, _options, _writer, context) {
-      receivedRouting = context.routing;
-      return 'complete';
-    },
-  });
-  const service = createService(
-    [createProvider('claude', runtime)],
-    async (...args) => {
-      resolutionCalls.push(args);
-      return {
-        source: '9router',
-        baseUrl: 'https://router.example',
-        openAiBaseUrl: 'https://router.example/v1',
-        apiKey: 'runtime-secret',
-        routeId: 'route-1',
-        routeName: 'quality-first',
-      };
-    },
-  );
-
-  await service.run(
-    'claude',
-    'hello',
-    { sessionId: 'app-session-1', userId: 999 },
-    { userId: 7, send() {} },
-  );
-
-  assert.deepEqual(resolutionCalls, [[7, 'app-session-1', 'claude']]);
-  assert.deepEqual(receivedRouting, {
-    source: '9router',
-    baseUrl: 'https://router.example',
-    openAiBaseUrl: 'https://router.example/v1',
-    apiKey: 'runtime-secret',
-    routeId: 'route-1',
-    routeName: 'quality-first',
-  });
-});
-
-test('missing writer identity produces native routing and ignores client userId options', async () => {
-  let resolverCalled = false;
-  let receivedRouting: unknown;
-  const runtime = createRuntime({
-    async run(_command, _options, _writer, context) {
-      receivedRouting = context.routing;
-    },
-  });
-  const service = createService(
-    [createProvider('codex', runtime)],
-    async () => {
-      resolverCalled = true;
-      return { source: 'native' };
-    },
-  );
-
-  await service.run(
-    'codex',
-    'hello',
-    { sessionId: 'app-session-1', userId: 999 },
-    { send() {} },
-  );
-
-  assert.equal(resolverCalled, false);
-  assert.deepEqual(receivedRouting, { source: 'native' });
-});
-
-test('missing app session id produces native routing without consulting bindings', async () => {
-  let resolverCalled = false;
-  let receivedRouting: unknown;
-  const runtime = createRuntime({
-    async run(_command, _options, _writer, context) {
-      receivedRouting = context.routing;
-    },
-  });
-  const service = createService(
-    [createProvider('opencode', runtime)],
-    async () => {
-      resolverCalled = true;
-      return { source: 'native' };
-    },
-  );
-
-  await service.run('opencode', 'hello', { userId: 999 }, { userId: 7, send() {} });
-
-  assert.equal(resolverCalled, false);
-  assert.deepEqual(receivedRouting, { source: 'native' });
 });
 
 test('routes permission decisions through provider-owned runtime capabilities', () => {

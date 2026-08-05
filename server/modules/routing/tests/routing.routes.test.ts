@@ -97,6 +97,44 @@ test('typed account and route mutations reach service', async () => {
   });
 });
 
+test('same-origin browser mutations survive a development proxy host rewrite', async () => {
+  let called = false;
+  await withRoutingServer({
+    createRoute: async () => {
+      called = true;
+      return { id: 'r1', name: 'quality', kind: null, models: [] };
+    },
+  }, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/routing/routes`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        origin: 'http://localhost:5173',
+        'sec-fetch-site': 'same-origin',
+      },
+      body: JSON.stringify({ name: 'quality', models: [] }),
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(called, true);
+  });
+});
+
+test('cross-site browser mutations remain rejected even with a trusted-looking origin', async () => {
+  await withRoutingServer({}, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/routing/routes`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        origin: baseUrl,
+        'sec-fetch-site': 'cross-site',
+      },
+      body: JSON.stringify({ name: 'quality', models: [] }),
+    });
+    assert.equal(response.status, 403);
+  });
+});
+
 
 test('provider detail, model, and provider-node routes are thin authenticated service calls', async () => {
   const calls: string[] = [];

@@ -6,23 +6,6 @@ import { createRoutingService } from '../routing.service.js';
 
 function createHarness(state: 'ready' | 'unavailable' = 'ready') {
   const calls: string[] = [];
-  const repository = {
-    getConnection: () => null,
-    upsertConnection: () => undefined,
-    deleteConnectionAndSettings: () => undefined,
-    listConnectionUserIds: () => [],
-    getProviderDefaults: () => [],
-    getProviderDefault: () => null,
-    setProviderDefault: (_userId: number, provider: 'claude', binding: { source: 'native' | '9router'; routeId?: string | null; routeName?: string | null }) => {
-      calls.push(`${provider}:${binding.source}:${binding.routeId ?? ''}`);
-    },
-    snapshotSessionBinding: () => ({ provider: 'claude' as const, source: 'native' as const, routeId: null, routeName: null }),
-    getSessionBinding: () => null,
-    deleteSessionBinding: () => undefined,
-    listAlerts: () => [],
-    upsertAlert: () => undefined,
-    markAlertNotified: () => undefined,
-  };
   const client = {
     validateConnection: async () => { throw new Error('unused'); },
     listModels: async () => [{ id: 'm1', provider: 'openai', name: 'M1' }],
@@ -52,7 +35,7 @@ function createHarness(state: 'ready' | 'unavailable' = 'ready') {
     getStatus: () => ({ state, origin: 'http://127.0.0.1:20128', version: '0.5.45', lastError: state === 'ready' ? null : { code: 'ROUTING_STARTUP_TIMEOUT' as const, message: 'startup timed out', retryable: true } }),
     getInternalCredentials: () => ({ jwtSecret: 'jwt', initialPassword: 'admin', apiKeySecret: 'hmac-secret', dataPlaneKey: 'sk-cloudcli-abc123-deadbeef', machineIdSalt: 'salt', dataDir: '/db/9router' }),
   };
-  const service = createRoutingService({ repository, runtime, clientFactory: () => { calls.push('client'); return client; }, now: () => new Date('2026-08-04T00:00:00.000Z') });
+  const service = createRoutingService({ runtime, clientFactory: () => { calls.push('client'); return client; }, now: () => new Date('2026-08-04T00:00:00.000Z') });
   return { service, calls };
 }
 

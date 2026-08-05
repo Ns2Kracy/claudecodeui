@@ -1,13 +1,6 @@
 import type { IncomingMessage } from 'node:http';
 import type { Readable } from 'node:stream';
 
-import type {
-  RoutingAgent,
-  RoutingCapabilities,
-  RoutingModelSource,
-  RoutingUsageAlertPeriod,
-} from '../../shared/routing.js';
-
 //----------------- HTTP RESPONSE SHAPES ------------
 /**
  * Canonical success envelope used by backend APIs that return a structured payload.
@@ -96,90 +89,6 @@ export type RuntimeRoutingConfiguration =
       routeName: string;
       model?: string;
     };
-
-/**
- * Encrypted routing connection metadata returned by the database repository.
- *
- * Ciphertext values may be opened only by routing services for the owning user.
- * They are persistence records and must never be returned from HTTP routes.
- */
-export type RoutingStoredConnection = {
-  userId: number;
-  baseUrl: string;
-  adminSecretCiphertext: string;
-  dataPlaneKeyCiphertext: string;
-  upstreamVersion: string | null;
-  capabilities: RoutingCapabilities | null;
-  lastCheckedAt: string | null;
-  lastErrorCode: string | null;
-};
-
-/**
- * Connection fields accepted by the database repository after remote
- * validation and encryption have succeeded.
- */
-export type RoutingConnectionPersistenceInput = Omit<RoutingStoredConnection, 'userId'>;
-
-/**
- * Provider-default or sticky session model-source record stored by CloudCLI.
- * Route IDs are authoritative while route names are display-only snapshots.
- */
-export type RoutingStoredBinding = {
-  provider: RoutingAgent;
-  source: RoutingModelSource;
-  routeId: string | null;
-  routeName: string | null;
-};
-
-/**
- * Binding fields accepted by the repository. Native writes clear route fields;
- * routing services validate 9router IDs before persistence.
- */
-export type RoutingBindingPersistenceInput = {
-  source: RoutingModelSource;
-  routeId?: string | null;
-  routeName?: string | null;
-};
-
-
-/**
- * Legacy advisory usage threshold record kept for database compatibility only.
- * Task 3 removes product-facing usage monitor semantics, but existing stored
- * records remain readable so migrations and repository tests do not lose data.
- */
-export type RoutingStoredAlert = {
-  period: RoutingUsageAlertPeriod;
-  thresholdMicrousd: number;
-  enabled: boolean;
-  lastNotifiedPeriodKey: string | null;
-};
-/**
- * Complete persistence boundary consumed by routing application/runtime
- * services and implemented by the database module's `routingDb` repository.
- */
-export type RoutingRepository = {
-  getConnection(userId: number): RoutingStoredConnection | null;
-  upsertConnection(userId: number, connection: RoutingConnectionPersistenceInput): void;
-  deleteConnectionAndSettings(userId: number): void;
-  listConnectionUserIds(): number[];
-  getProviderDefaults(userId: number): RoutingStoredBinding[];
-  getProviderDefault(userId: number, provider: RoutingAgent): RoutingStoredBinding | null;
-  setProviderDefault(
-    userId: number,
-    provider: RoutingAgent,
-    binding: RoutingBindingPersistenceInput,
-  ): void;
-  snapshotSessionBinding(
-    userId: number,
-    sessionId: string,
-    provider: RoutingAgent,
-  ): RoutingStoredBinding;
-  getSessionBinding(userId: number, sessionId: string): RoutingStoredBinding | null;
-  deleteSessionBinding(userId: number, sessionId: string): void;
-  listAlerts(userId: number): RoutingStoredAlert[];
-  upsertAlert(userId: number, alert: Omit<RoutingStoredAlert, 'lastNotifiedPeriodKey'>): void;
-  markAlertNotified(userId: number, period: RoutingUsageAlertPeriod, periodKey: string): void;
-};
 
 /**
  * Decrypted credentials supplied only while constructing an in-memory

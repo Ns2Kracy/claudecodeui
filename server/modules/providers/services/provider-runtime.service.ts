@@ -23,11 +23,6 @@ type ProviderRuntimeServiceDependencies = {
     requestedModel?: string | null,
   ): Promise<string | undefined>;
   getProviderModels: typeof providerModelsService.getProviderModels;
-  resolveRoutingForRun(
-    userId: number,
-    sessionId: string,
-    provider: LLMProvider,
-  ): Promise<RuntimeRoutingConfiguration>;
   resolveRoutingForModel(model: string): Promise<RuntimeRoutingConfiguration>;
 };
 
@@ -38,20 +33,8 @@ const defaultDependencies: ProviderRuntimeServiceDependencies = {
   resolveResumeModel: (provider, sessionId, requestedModel) =>
     providerModelsService.resolveResumeModel(provider, sessionId, requestedModel),
   getProviderModels: (provider, options) => providerModelsService.getProviderModels(provider, options),
-  resolveRoutingForRun: (userId, sessionId, provider) =>
-    routingRuntimeService.resolveForRun(userId, sessionId, provider),
   resolveRoutingForModel: (model) => routingRuntimeService.resolveForModel(model),
 };
-
-function writerUserId(writer: ProviderRuntimeWriter): number | null {
-  const value = Number(writer.userId);
-  return Number.isSafeInteger(value) && value > 0 ? value : null;
-}
-
-function appSessionId(options: AnyRecord): string | null {
-  const value = typeof options.sessionId === 'string' ? options.sessionId.trim() : '';
-  return value || null;
-}
 
 /**
  * Creates the application-facing provider runtime dispatcher.
@@ -93,14 +76,10 @@ export function createProviderRuntimeService(
     writer: ProviderRuntimeWriter,
   ): Promise<unknown> => {
     const provider = dependencies.resolveProvider(providerName);
-    const userId = writerUserId(writer);
-    const sessionId = appSessionId(options);
     const requestedModel = typeof options.model === 'string' ? options.model : '';
     const routing = requestedModel.startsWith('9router:')
       ? await dependencies.resolveRoutingForModel(requestedModel)
-      : userId && sessionId
-        ? await dependencies.resolveRoutingForRun(userId, sessionId, providerName)
-        : { source: 'native' as const };
+      : { source: 'native' as const };
     return provider.runtime.run(
       command,
       options,

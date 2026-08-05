@@ -48,55 +48,6 @@ CREATE TABLE IF NOT EXISTS user_notification_preferences (
 );
 `;
 
-// Used by database initialization and migrations to persist one encrypted 9router connection per user.
-export const ROUTING_CONNECTIONS_TABLE_SCHEMA_SQL = `
-CREATE TABLE IF NOT EXISTS routing_connections (
-    user_id INTEGER PRIMARY KEY,
-    base_url TEXT NOT NULL,
-    admin_secret_ciphertext TEXT NOT NULL,
-    data_plane_key_ciphertext TEXT NOT NULL,
-    upstream_version TEXT,
-    capabilities_json TEXT,
-    last_checked_at DATETIME,
-    last_error_code TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-`;
-
-// Used by database initialization and migrations to persist sticky provider and session routing choices.
-export const ROUTING_BINDINGS_TABLE_SCHEMA_SQL = `
-CREATE TABLE IF NOT EXISTS routing_bindings (
-    user_id INTEGER NOT NULL,
-    provider TEXT NOT NULL CHECK(provider IN ('claude','codex','cursor','opencode')),
-    scope TEXT NOT NULL CHECK(scope IN ('provider','session')),
-    scope_id TEXT NOT NULL DEFAULT '',
-    source TEXT NOT NULL CHECK(source IN ('native','9router')),
-    route_id TEXT,
-    route_name TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (user_id, provider, scope, scope_id),
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-`;
-
-// Used by database initialization and migrations to persist advisory usage thresholds per user.
-export const ROUTING_USAGE_ALERTS_TABLE_SCHEMA_SQL = `
-CREATE TABLE IF NOT EXISTS routing_usage_alerts (
-    user_id INTEGER NOT NULL,
-    period TEXT NOT NULL CHECK(period IN ('daily','30d')),
-    threshold_microusd INTEGER NOT NULL CHECK(threshold_microusd >= 0),
-    enabled BOOLEAN NOT NULL DEFAULT 0,
-    last_notified_period_key TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (user_id, period),
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-`;
-
 export const VAPID_KEYS_TABLE_SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS vapid_keys (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -208,14 +159,6 @@ CREATE INDEX IF NOT EXISTS idx_user_credentials_active ON user_credentials(is_ac
 
 ${USER_NOTIFICATION_PREFERENCES_TABLE_SCHEMA_SQL}
 CREATE INDEX IF NOT EXISTS idx_user_notification_preferences_user_id ON user_notification_preferences(user_id);
-
-${ROUTING_CONNECTIONS_TABLE_SCHEMA_SQL}
-
-${ROUTING_BINDINGS_TABLE_SCHEMA_SQL}
-CREATE INDEX IF NOT EXISTS idx_routing_bindings_route_id ON routing_bindings(user_id, route_id);
-CREATE INDEX IF NOT EXISTS idx_routing_bindings_session_lookup ON routing_bindings(user_id, scope, scope_id);
-
-${ROUTING_USAGE_ALERTS_TABLE_SCHEMA_SQL}
 
 ${VAPID_KEYS_TABLE_SCHEMA_SQL}
 

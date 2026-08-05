@@ -8,7 +8,7 @@ const routingModuleSource = readFileSync(path.join(process.cwd(), 'server/module
 
 test('9router client uses the configured sidecar origin without loopback-only child-process policy', () => {
   const clientFactory = routingModuleSource.indexOf('const clientFactory');
-  const requestCall = routingModuleSource.indexOf('request: (input) => requestNineRouterJson(input)', clientFactory);
+  const requestCall = routingModuleSource.indexOf('request: (input) => requestConfiguredSidecar(input)', clientFactory);
   const loopbackPolicy = routingModuleSource.indexOf('allowLoopbackHttp: true', clientFactory);
   const fixedHost = routingModuleSource.indexOf("allowedHosts: ['127.0.0.1']", clientFactory);
   const serviceFactory = routingModuleSource.indexOf('function routingServiceClientForRuntime', clientFactory);

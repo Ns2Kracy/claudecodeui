@@ -1,15 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {
-  ROUTING_AGENTS,
-  ROUTING_SUPPORTED_AGENTS,
-  emptyRoutingSettingsView,
-} from '../../../../shared/routing.js';
+import { emptyRoutingSettingsView } from '../../../../shared/routing.js';
 
-test('routing contracts keep agent identity separate from model source', () => {
-  assert.deepEqual(ROUTING_AGENTS, ['claude', 'codex', 'cursor', 'opencode']);
-  assert.deepEqual(ROUTING_SUPPORTED_AGENTS, ['claude', 'codex', 'opencode']);
+test('routing settings contain no obsolete model-source bindings', () => {
   assert.equal('bindings' in emptyRoutingSettingsView(), false);
 });
 

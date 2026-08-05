@@ -71,6 +71,7 @@ function ChatInterface({
     currentProviderEffort,
     currentProviderEffortOptions,
     currentProviderModel,
+    currentProviderModelAvailable,
     currentProviderModelOptions,
     opencodeModel,
     setOpenCodeModel,
@@ -407,6 +408,7 @@ function ChatInterface({
           availableEffortOptions={currentProviderEffortOptions}
           onSelectEffort={(nextEffort) => setStoredProviderEffort(provider, nextEffort)}
           model={currentProviderModel}
+          modelAvailable={currentProviderModelAvailable}
           availableModelOptions={currentProviderModelOptions}
           onSelectModel={handleSelectComposerModel}
           modelsLoading={providerModelsLoading}

@@ -8,14 +8,11 @@ services:
       SERVER_PORT: "3001"
       NINE_ROUTER_BASE_URL: http://9router:20128
       NINE_ROUTER_ADMIN_PASSWORD: ${NINE_ROUTER_ADMIN_PASSWORD:?Set NINE_ROUTER_ADMIN_PASSWORD for CloudCLI and 9router}
-      ROUTING_SECRET_KEY_FILE: /run/secrets/routing-key
     ports:
       - "3001:3001"
     depends_on:
       9router:
         condition: service_healthy
-    secrets:
-      - routing-key
     networks:
       - cloudcli-private
 
@@ -42,10 +39,6 @@ services:
       retries: 3
     networks:
       - cloudcli-private
-
-secrets:
-  routing-key:
-    environment: ROUTING_SECRET_KEY
 
 volumes:
   9router-data:

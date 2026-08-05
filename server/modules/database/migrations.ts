@@ -6,9 +6,6 @@ import {
   NOTIFICATION_CHANNEL_ENDPOINTS_TABLE_SCHEMA_SQL,
   PROJECTS_TABLE_SCHEMA_SQL,
   PUSH_SUBSCRIPTIONS_TABLE_SCHEMA_SQL,
-  ROUTING_BINDINGS_TABLE_SCHEMA_SQL,
-  ROUTING_CONNECTIONS_TABLE_SCHEMA_SQL,
-  ROUTING_USAGE_ALERTS_TABLE_SCHEMA_SQL,
   SESSIONS_TABLE_SCHEMA_SQL,
   USER_NOTIFICATION_PREFERENCES_TABLE_SCHEMA_SQL,
   VAPID_KEYS_TABLE_SCHEMA_SQL,
@@ -461,16 +458,6 @@ export const runMigrations = (db: Database) => {
     db.exec(NOTIFICATION_CHANNEL_ENDPOINTS_TABLE_SCHEMA_SQL);
     db.exec('CREATE INDEX IF NOT EXISTS idx_notification_channel_endpoints_user_channel ON notification_channel_endpoints(user_id, channel)');
     db.exec('CREATE INDEX IF NOT EXISTS idx_notification_channel_endpoints_enabled ON notification_channel_endpoints(enabled)');
-
-    db.exec(ROUTING_CONNECTIONS_TABLE_SCHEMA_SQL);
-    db.exec(ROUTING_BINDINGS_TABLE_SCHEMA_SQL);
-    db.exec(ROUTING_USAGE_ALERTS_TABLE_SCHEMA_SQL);
-    db.exec(
-      'CREATE INDEX IF NOT EXISTS idx_routing_bindings_route_id ON routing_bindings(user_id, route_id)'
-    );
-    db.exec(
-      'CREATE INDEX IF NOT EXISTS idx_routing_bindings_session_lookup ON routing_bindings(user_id, scope, scope_id)'
-    );
 
     db.exec(PROJECTS_TABLE_SCHEMA_SQL);
     rebuildProjectsTableWithPrimaryKeySchema(db);

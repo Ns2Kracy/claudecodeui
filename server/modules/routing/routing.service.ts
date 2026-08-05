@@ -1,7 +1,6 @@
 import type { IRoutingNineRouterClient } from '@/shared/interfaces.js';
 import type {
   RoutingClientCredentials,
-  RoutingRepository,
   RoutingSettingsDetails,
 } from '@/shared/types.js';
 import { AppError } from '@/shared/utils.js';
@@ -10,7 +9,6 @@ import type {
   CreateRoutingApiKeyAccountInput,
   CreateRoutingProviderNodeInput,
   CreateRoutingRouteInput,
-  RoutingCapabilities,
   RoutingAccountView,
   RoutingOAuthPollingStateView,
   RoutingRuntimeView,
@@ -31,7 +29,6 @@ type RuntimeCredentialsProvider = {
 };
 
 type RoutingServiceDependencies = {
-  repository: RoutingRepository;
   runtime: RuntimeCredentialsProvider;
   clientFactory(credentials: RoutingClientCredentials): IRoutingNineRouterClient;
   oauth?: ReturnType<typeof createRoutingOAuthService>;

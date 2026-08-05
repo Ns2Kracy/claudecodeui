@@ -1,12 +1,8 @@
-import type { IRoutingNineRouterClient } from '@/shared/interfaces.js';
 import type {
   RoutingClientCredentials,
-  RoutingRepository,
   RuntimeRoutingConfiguration,
 } from '@/shared/types.js';
 import { AppError } from '@/shared/utils.js';
-
-import type { RoutingAgent } from '../../../shared/routing.js';
 
 import type { NineRouterInternalCredentials, NineRouterSidecarStatus } from './nine-router-sidecar.service.js';
 
@@ -16,14 +12,8 @@ type RuntimeCredentialsProvider = {
 };
 
 type RoutingRuntimeServiceDependencies = {
-  repository: RoutingRepository;
   runtime: RuntimeCredentialsProvider;
-  clientFactory(credentials: RoutingClientCredentials): Pick<IRoutingNineRouterClient, 'getRoute'>;
 };
-
-function runtimeUnsupported(): AppError {
-  return new AppError('This agent cannot use 9router', { code: 'ROUTING_RUNTIME_UNSUPPORTED', statusCode: 400 });
-}
 
 function runtimeUnavailable(): AppError {
   return new AppError('The embedded 9router runtime is unavailable', { code: 'ROUTING_RUNTIME_UNAVAILABLE', statusCode: 409 });
@@ -57,16 +47,7 @@ export function createRoutingRuntimeService(dependencies: RoutingRuntimeServiceD
     };
   }
 
-  function runtimeClient(): { client: Pick<IRoutingNineRouterClient, 'getRoute'>; credentials: RoutingClientCredentials } {
-    const credentials = runtimeCredentials();
-    return { client: dependencies.clientFactory(credentials), credentials };
-  }
-
   return {
-    async snapshotSessionBinding(userId: number, sessionId: string, provider: RoutingAgent): Promise<void> {
-      dependencies.repository.snapshotSessionBinding(userId, sessionId, provider);
-    },
-
     async resolveForModel(model: string): Promise<RuntimeRoutingConfiguration> {
       const officialModelId = model.startsWith('9router:') ? model.slice('9router:'.length).trim() : '';
       if (!officialModelId) return { source: 'native' };
@@ -80,28 +61,6 @@ export function createRoutingRuntimeService(dependencies: RoutingRuntimeServiceD
           apiKey: credentials.dataPlaneKey,
           routeName: officialModelId,
           model: officialModelId,
-        };
-      } catch (error) {
-        throw safeRuntimeError(error);
-      }
-    },
-
-    async resolveForRun(userId: number, sessionId: string, provider: RoutingAgent): Promise<RuntimeRoutingConfiguration> {
-      const binding = dependencies.repository.getSessionBinding(userId, sessionId);
-      if (!binding || binding.provider !== provider || binding.source === 'native') return { source: 'native' };
-      if (provider === 'cursor') throw runtimeUnsupported();
-      if (!binding.routeId) throw runtimeUnavailable();
-
-      try {
-        const { client, credentials } = runtimeClient();
-        const route = await client.getRoute(binding.routeId);
-        return {
-          source: '9router',
-          baseUrl: credentials.baseUrl,
-          openAiBaseUrl: `${credentials.baseUrl}/v1`,
-          apiKey: credentials.dataPlaneKey,
-          routeId: route.id,
-          routeName: route.name,
         };
       } catch (error) {
         throw safeRuntimeError(error);

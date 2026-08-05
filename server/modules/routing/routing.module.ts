@@ -1,4 +1,5 @@
-import { appConfigDb, routingDb } from '@/modules/database/index.js';
+import { appConfigDb } from '@/modules/database/index.js';
+
 import { NineRouterClient } from './nine-router-client.js';
 import { requestNineRouterJson } from './nine-router-http.js';
 import { createNineRouterSidecarService, type NineRouterSidecarStatus } from './nine-router-sidecar.service.js';
@@ -7,7 +8,6 @@ import { createRoutingOAuthService } from './routing-oauth.service.js';
 import { createRoutingRouter } from './routing.routes.js';
 import { createRoutingRuntimeService } from './routing-runtime.service.js';
 import { createRoutingService } from './routing.service.js';
-import { tryAutoConnect } from './routing-auto-connect.js';
 
 const sidecarSecretKeys = {
   initialPassword: 'nine_router_initial_password',
@@ -53,7 +53,6 @@ const routingOAuthService = createRoutingOAuthService({
 
 /** Used by the routing HTTP router to execute authenticated application workflows. */
 export const routingService = createRoutingService({
-  repository: routingDb,
   runtime: {
     getStatus: () => getNineRouterSidecar().getStatus(),
     getInternalCredentials: () => getNineRouterSidecar().getInternalCredentials(),
@@ -64,12 +63,10 @@ export const routingService = createRoutingService({
 
 /** Used by provider session creation and run dispatch for sticky per-session routing. */
 export const routingRuntimeService = createRoutingRuntimeService({
-  repository: routingDb,
   runtime: {
     getStatus: () => getNineRouterSidecar().getStatus(),
     getInternalCredentials: () => getNineRouterSidecar().getInternalCredentials(),
   },
-  clientFactory,
 });
 
 /** Used by server composition to mount unauthenticated static OAuth callback acks before protected routing routes. */
@@ -234,5 +231,3 @@ export async function refreshNineRouterSidecar() {
 export function getNineRouterSidecarStatus(): NineRouterSidecarStatus {
   return getNineRouterSidecar().getStatus();
 }
-
-export { tryAutoConnect };

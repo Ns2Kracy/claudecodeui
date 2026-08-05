@@ -5,7 +5,6 @@ export {
   routingRuntimeService,
   refreshNineRouterSidecar,
   getNineRouterSidecarStatus,
-  tryAutoConnect,
 } from './routing.module.js';
 
 // Routing composition consumes this factory through the module barrel so callers

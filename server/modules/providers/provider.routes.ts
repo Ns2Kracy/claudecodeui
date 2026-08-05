@@ -1,10 +1,9 @@
-import express, { type Request, type RequestHandler, type Response } from 'express';
+import express, { type Request, type Response } from 'express';
 
 import { providerAuthService } from '@/modules/providers/services/provider-auth.service.js';
 import { providerCapabilitiesService } from '@/modules/providers/services/provider-capabilities.service.js';
 import { providerMcpService } from '@/modules/providers/services/mcp.service.js';
 import { providerModelsService } from '@/modules/providers/services/provider-models.service.js';
-import { providerSessionRoutingService } from '@/modules/providers/services/provider-session-routing.service.js';
 import { providerTokenUsageService } from '@/modules/providers/services/provider-token-usage.service.js';
 import { providerSkillsService } from '@/modules/providers/services/skills.service.js';
 import { sessionConversationsSearchService } from '@/modules/providers/services/session-conversations-search.service.js';
@@ -20,22 +19,6 @@ import type {
 import { AppError, asyncHandler, createApiSuccessResponse } from '@/shared/utils.js';
 
 const router = express.Router();
-
-type ProviderSessionRouteDependencies = {
-  createAppSession: typeof providerSessionRoutingService.createAppSession;
-};
-
-function authenticatedUserId(request: Request): number {
-  const userId = Number((request as Request & { user?: { id?: unknown } }).user?.id);
-  if (!Number.isSafeInteger(userId) || userId <= 0) {
-    throw new AppError('Authentication is required.', {
-      code: 'AUTH_REQUIRED',
-      statusCode: 401,
-    });
-  }
-
-  return userId;
-}
 
 const readPathParam = (value: unknown, name: string): string => {
   if (typeof value === 'string') {
@@ -389,30 +372,6 @@ const parseSessionModelPayload = (payload: unknown): string => {
   return model;
 };
 
-/**
- * Parses authenticated session creation requests and delegates the allocation
- * plus routing snapshot application workflow to the provider service layer.
- * Provider route tests inject a fake application service through this factory.
- */
-export function createProviderSessionRouteHandler(
-  dependencies: ProviderSessionRouteDependencies,
-): RequestHandler {
-  return asyncHandler(async (req: Request, res: Response) => {
-    const body = (req.body ?? {}) as Record<string, unknown>;
-    const provider = parseProvider(body.provider);
-    const projectPath = typeof body.projectPath === 'string' ? body.projectPath : '';
-    const userId = authenticatedUserId(req);
-    const result = await dependencies.createAppSession(userId, provider, projectPath);
-
-    res.status(201).json(createApiSuccessResponse(result));
-  });
-}
-
-const providerSessionRouteHandler = createProviderSessionRouteHandler({
-  createAppSession: (userId, provider, projectPath) =>
-    providerSessionRoutingService.createAppSession(userId, provider, projectPath),
-});
-
 router.get(
   '/:provider/auth/status',
   asyncHandler(async (req: Request, res: Response) => {
@@ -589,7 +548,13 @@ router.get(
  */
 router.post(
   '/sessions',
-  providerSessionRouteHandler,
+  asyncHandler(async (req: Request, res: Response) => {
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const provider = parseProvider(body.provider);
+    const projectPath = typeof body.projectPath === 'string' ? body.projectPath : '';
+    const result = sessionsService.createAppSession(provider, projectPath);
+    res.status(201).json(createApiSuccessResponse(result));
+  }),
 );
 
 router.get(

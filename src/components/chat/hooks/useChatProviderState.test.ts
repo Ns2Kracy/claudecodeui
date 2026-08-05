@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { readProviderModelsApiData } from './useChatProviderState.js';
+import { readProviderModelsApiData, withUnavailableSelectedModel } from './useChatProviderState.js';
 
 test('provider model response parsing preserves 9router source metadata as model metadata only', () => {
   const data = readProviderModelsApiData({
@@ -27,4 +27,18 @@ test('provider model response parsing preserves 9router source metadata as model
     { value: 'claude-sonnet-4-5', label: 'Claude Sonnet', source: 'native' },
     { value: '9router:anthropic/claude-opus', label: 'Anthropic · Claude Opus', source: '9router' },
   ]);
+});
+
+test('preserves a disappeared 9router session model as visibly unavailable', () => {
+  const options = [{ value: 'claude-sonnet-4-5', label: 'Claude Sonnet', source: 'native' as const }];
+
+  assert.deepEqual(withUnavailableSelectedModel(options, '9router:anthropic/removed-model'), [
+    ...options,
+    {
+      value: '9router:anthropic/removed-model',
+      label: 'anthropic/removed-model (Unavailable)',
+      source: '9router',
+    },
+  ]);
+  assert.strictEqual(withUnavailableSelectedModel(options, 'claude-sonnet-4-5'), options);
 });

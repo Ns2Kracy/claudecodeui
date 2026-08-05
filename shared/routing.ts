@@ -1,11 +1,7 @@
 export const ROUTING_AGENTS = ['claude', 'codex', 'cursor', 'opencode'] as const;
-export const ROUTING_SUPPORTED_AGENTS = ['claude', 'codex', 'opencode'] as const;
 export const ROUTING_ROUTE_NAME_PATTERN = /^[a-zA-Z0-9_.-]+$/;
 
 export type RoutingAgent = (typeof ROUTING_AGENTS)[number];
-export type RoutingSupportedAgent = (typeof ROUTING_SUPPORTED_AGENTS)[number];
-export type RoutingModelSource = 'native' | '9router';
-export type RoutingUsageAlertPeriod = 'daily' | '30d';
 export type RoutingRuntimeStatus = 'starting' | 'ready' | 'degraded' | 'unavailable';
 
 export type RoutingSafeError = {

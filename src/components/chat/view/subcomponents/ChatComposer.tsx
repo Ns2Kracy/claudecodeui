@@ -72,6 +72,7 @@ interface ChatComposerProps {
   availableEffortOptions: NonNullable<ProviderModelOption['effort']>['values'];
   onSelectEffort: (effort: string) => void;
   model: string;
+  modelAvailable: boolean;
   availableModelOptions: ProviderModelOption[];
   onSelectModel: (model: string) => void;
   modelsLoading: boolean;
@@ -136,6 +137,7 @@ export default function ChatComposer({
   availableEffortOptions,
   onSelectEffort,
   model,
+  modelAvailable,
   availableModelOptions,
   onSelectModel,
   modelsLoading,
@@ -312,7 +314,13 @@ export default function ChatComposer({
         />
 
         <PromptInput
-          onSubmit={onSubmit as (event: FormEvent<HTMLFormElement>) => void}
+          onSubmit={(event) => {
+            if (!modelAvailable) {
+              event.preventDefault();
+              return;
+            }
+            onSubmit(event);
+          }}
           status={isLoading ? 'streaming' : 'ready'}
           className={[
             isTextareaExpanded ? 'chat-input-expanded' : '',
@@ -471,7 +479,7 @@ export default function ChatComposer({
                     ? false
                     : isTranscribing
                       ? true
-                      : !input.trim() && attachedFiles.length === 0
+                      : !modelAvailable || (!input.trim() && attachedFiles.length === 0)
               }
               aria-label={submitAriaLabel}
               title={submitAriaLabel}

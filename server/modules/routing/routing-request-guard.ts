@@ -97,8 +97,18 @@ function requestOrigin(request: Request): string | null {
 export function createRoutingMutationGuard(): RequestHandler {
   const trustedOrigins = configuredTrustedOrigins();
   return (request: Request, _response: Response, next: NextFunction): void => {
-    if (request.header('sec-fetch-site')?.toLowerCase() === 'cross-site') {
+    const fetchSite = request.header('sec-fetch-site')?.toLowerCase();
+    if (fetchSite === 'cross-site') {
       next(crossOriginRejected());
+      return;
+    }
+
+    // Browsers own Sec-Fetch-Site, so application JavaScript cannot spoof it.
+    // A relative request passing through Vite or a reverse proxy can retain the
+    // browser origin while the proxy rewrites Host. Treat the browser's
+    // same-origin classification as authoritative before comparing proxy hosts.
+    if (fetchSite === 'same-origin') {
+      next();
       return;
     }
 
