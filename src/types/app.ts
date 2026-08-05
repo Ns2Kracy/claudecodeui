@@ -3,6 +3,7 @@ export type LLMProvider = 'claude' | 'cursor' | 'codex' | 'opencode';
 export type ProviderModelOption = {
   value: string;
   label: string;
+  source?: 'native' | '9router';
   description?: string;
   effort?: {
     default?: string;

@@ -4,6 +4,7 @@ import path from 'node:path';
 
 import { sessionsDb } from '@/modules/database/index.js';
 import { providerRegistry } from '@/modules/providers/provider.registry.js';
+import { routingService, type RoutingModelView } from '@/modules/routing/index.js';
 import type { IProvider } from '@/shared/interfaces.js';
 import type {
   LLMProvider,
@@ -26,6 +27,7 @@ type ProviderModelsSessionStore = {
 
 type ProviderModelsServiceDependencies = {
   resolveProvider?: (provider: LLMProvider) => Pick<IProvider, 'models'>;
+  listRoutingModels?: () => Promise<RoutingModelView[]>;
   cachePath?: string;
   sessions?: ProviderModelsSessionStore;
   now?: () => number;
@@ -141,6 +143,7 @@ const writeProviderModelsCacheFile = async (
  */
 export const createProviderModelsService = (dependencies: ProviderModelsServiceDependencies = {}) => {
   const resolveProvider = dependencies.resolveProvider ?? providerRegistry.resolveProvider;
+  const listRoutingModels = dependencies.listRoutingModels ?? (() => routingService.listModels(0));
   const cachePath = dependencies.cachePath ?? getProviderModelsCachePath();
   const sessions = dependencies.sessions ?? sessionsDb;
   const now = dependencies.now ?? (() => Date.now());
@@ -219,6 +222,49 @@ export const createProviderModelsService = (dependencies: ProviderModelsServiceD
     return entry;
   };
 
+  const toTitle = (value: string): string => value
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map((part) => `${part.slice(0, 1).toUpperCase()}${part.slice(1)}`)
+    .join(' ');
+
+  const routingModelLabel = (model: RoutingModelView): string => {
+    const provider = model.provider.trim();
+    const name = model.name.trim();
+    return provider ? `${toTitle(provider)} · ${name}` : name;
+  };
+
+  const withUnifiedModelCatalog = async (
+    models: ProviderModelsDefinition,
+  ): Promise<ProviderModelsDefinition> => {
+    let routingModels: RoutingModelView[];
+    try {
+      routingModels = await listRoutingModels();
+    } catch {
+      return models;
+    }
+
+    const nativeOptions = models.OPTIONS.map((option) => ({
+      ...option,
+      source: option.source ?? 'native' as const,
+    }));
+    const existingValues = new Set(nativeOptions.map((option) => option.value));
+    const sidecarOptions = routingModels.flatMap((model) => {
+      const id = model.id.trim();
+      const name = model.name.trim();
+      const value = `9router:${id}`;
+      if (!id || !name || existingValues.has(value)) return [];
+      existingValues.add(value);
+      return [{ value, label: routingModelLabel({ ...model, id, name }), source: '9router' as const }];
+    });
+
+    if (sidecarOptions.length === 0) return models;
+    return {
+      ...models,
+      OPTIONS: [...nativeOptions, ...sidecarOptions],
+    };
+  };
+
   const loadAndCacheModels = (
     provider: LLMProvider,
   ): Promise<ProviderModelsResult> => {
@@ -226,7 +272,7 @@ export const createProviderModelsService = (dependencies: ProviderModelsServiceD
       .then(async (models) => {
         const entry = await setCacheEntry(provider, models);
         return {
-          models,
+          models: await withUnifiedModelCatalog(models),
           cache: toProviderModelsCacheInfo(entry, 'fresh'),
         };
       })
@@ -242,10 +288,11 @@ export const createProviderModelsService = (dependencies: ProviderModelsServiceD
     provider: LLMProvider,
   ): Promise<ProviderModelsResult> => {
     const request = resolveProvider(provider).models.getSupportedModels()
-      .then((models) => {
+      .then(async (models) => {
+        const unifiedModels = await withUnifiedModelCatalog(models);
         const currentTime = now();
         return {
-          models,
+          models: unifiedModels,
           cache: {
             updatedAt: new Date(currentTime).toISOString(),
             expiresAt: new Date(currentTime).toISOString(),
@@ -285,7 +332,7 @@ export const createProviderModelsService = (dependencies: ProviderModelsServiceD
 
     const cachedModels = pruneExpiredMemoryEntry(provider, now(), 'memory');
     if (cachedModels) {
-      return cachedModels;
+      return { ...cachedModels, models: await withUnifiedModelCatalog(cachedModels.models) };
     }
 
     const pendingRequest = pendingRequests.get(provider);
@@ -297,7 +344,7 @@ export const createProviderModelsService = (dependencies: ProviderModelsServiceD
 
     const persistedModels = pruneExpiredMemoryEntry(provider, now(), 'disk');
     if (persistedModels) {
-      return persistedModels;
+      return { ...persistedModels, models: await withUnifiedModelCatalog(persistedModels.models) };
     }
 
     const postLoadPendingRequest = pendingRequests.get(provider);

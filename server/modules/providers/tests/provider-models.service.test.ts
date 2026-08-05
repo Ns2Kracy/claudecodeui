@@ -87,6 +87,55 @@ test('provider models service returns each provider adapter result without rewri
   assert.deepEqual(models.models, expectedModels);
 });
 
+test('provider models service appends sanitized 9router catalog entries with collision-free values', async () => {
+  const service = createProviderModelsService({
+    cachePath: createEphemeralCachePath(),
+    resolveProvider: () => ({
+      models: {
+        getSupportedModels: async () => ({
+          OPTIONS: [{ value: 'claude-sonnet-4-5', label: 'Claude Sonnet', source: 'native' }],
+          DEFAULT: 'claude-sonnet-4-5',
+        }),
+        getCurrentActiveModel: async () => createCurrentActiveModel('claude-sonnet-4-5'),
+      },
+    }),
+    listRoutingModels: async () => [
+      { id: 'anthropic/claude-opus', provider: 'anthropic', name: 'Claude Opus' },
+      { id: 'claude-sonnet-4-5', provider: 'anthropic', name: 'Native Collision' },
+      { id: '', provider: 'anthropic', name: 'Invalid' },
+    ],
+  });
+
+  const models = await service.getProviderModels('claude', { bypassCache: true });
+
+  assert.deepEqual(models.models.OPTIONS, [
+    { value: 'claude-sonnet-4-5', label: 'Claude Sonnet', source: 'native' },
+    { value: '9router:anthropic/claude-opus', label: 'Anthropic · Claude Opus', source: '9router' },
+    { value: '9router:claude-sonnet-4-5', label: 'Anthropic · Native Collision', source: '9router' },
+  ]);
+  assert.equal(models.models.DEFAULT, 'claude-sonnet-4-5');
+});
+
+test('provider models service leaves native catalog unchanged when 9router is unavailable', async () => {
+  const nativeModels = createModels('codex-native');
+  const service = createProviderModelsService({
+    cachePath: createEphemeralCachePath(),
+    resolveProvider: () => ({
+      models: {
+        getSupportedModels: async () => nativeModels,
+        getCurrentActiveModel: async () => createCurrentActiveModel('codex-native'),
+      },
+    }),
+    listRoutingModels: async () => {
+      throw new Error('sidecar unavailable');
+    },
+  });
+
+  const models = await service.getProviderModels('codex', { bypassCache: true });
+
+  assert.deepEqual(models.models, nativeModels);
+});
+
 test('provider models are cached for the three-day ttl', async () => {
   const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'provider-model-cache-ttl-'));
   let currentTime = 1_000;

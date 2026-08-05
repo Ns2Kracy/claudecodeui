@@ -77,6 +77,13 @@ type ProviderModelsApiResponse = {
   };
 };
 
+export function readProviderModelsApiData(body: ProviderModelsApiResponse): ProviderModelsApiResponse['data'] | null {
+  if (!body.success || !body.data?.models || !body.data?.cache) {
+    return null;
+  }
+  return body.data;
+}
+
 type SessionModelApiResponse = {
   success?: boolean;
   data?: {
@@ -191,11 +198,12 @@ export function useChatProviderState({ selectedSession, selectedProject: _select
           const queryString = params.toString();
           const response = await authenticatedFetch(`/api/providers/${p}/models${queryString ? `?${queryString}` : ''}`);
           const body = (await response.json()) as ProviderModelsApiResponse;
-          if (!body.success || !body.data?.models || !body.data?.cache) {
+          const data = readProviderModelsApiData(body);
+          if (!data) {
             return null;
           }
 
-          return body.data;
+          return data;
         }),
       );
 

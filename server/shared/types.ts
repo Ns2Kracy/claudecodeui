@@ -207,6 +207,13 @@ export type RoutingSettingsDetails = {
 export type ProviderModelOption = {
   value: string;
   label: string;
+  /**
+   * Internal catalog provenance used by backend/frontend model handling to keep
+   * native provider entries distinct from 9router sidecar entries. This is not a
+   * user-facing provider selector; 9router rows remain normal model options with
+   * collision-free `9router:<official-model-id>` values.
+   */
+  source?: 'native' | '9router';
   description?: string;
   effort?: {
     default?: string;
