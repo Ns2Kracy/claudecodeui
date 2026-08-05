@@ -38,16 +38,29 @@ export const appConfigDb = {
   },
 
   /**
+   * Returns an application secret for a config key, generating and persisting
+   * one if it does not already exist. Used by internal runtime integrations
+   * that need stable installation-local hex secrets across restarts.
+   */
+  getOrCreateSecret(key: string, bytes = 32): string {
+    if (!key.trim() || !Number.isSafeInteger(bytes) || bytes < 16 || bytes > 128) {
+      throw new Error('Invalid application secret configuration');
+    }
+
+    let secret = appConfigDb.get(key);
+    if (!secret) {
+      secret = crypto.randomBytes(bytes).toString('hex');
+      appConfigDb.set(key, secret);
+    }
+    return secret;
+  },
+
+  /**
    * Returns the JWT signing secret, generating and persisting one
    * if it does not already exist. This ensures the secret survives
    * server restarts while being created automatically on first boot.
    */
   getOrCreateJwtSecret(): string {
-    let secret = appConfigDb.get('jwt_secret');
-    if (!secret) {
-      secret = crypto.randomBytes(64).toString('hex');
-      appConfigDb.set('jwt_secret', secret);
-    }
-    return secret;
+    return appConfigDb.getOrCreateSecret('jwt_secret', 64);
   },
 };
