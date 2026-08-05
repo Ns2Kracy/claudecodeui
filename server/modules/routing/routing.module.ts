@@ -94,6 +94,23 @@ const embeddedNineRouterSecretKeys = {
 
 type EmbeddedNineRouterRuntime = ReturnType<typeof createNineRouterRuntimeService>;
 type EmbeddedNineRouterFactory = () => EmbeddedNineRouterRuntime;
+const MAX_HEALTH_PAYLOAD_BYTES = 512;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+async function boundedJson(response: Response): Promise<unknown> {
+  const contentLength = response.headers.get('content-length');
+  if (contentLength !== null && Number(contentLength) > MAX_HEALTH_PAYLOAD_BYTES) return null;
+  const body = await response.text();
+  if (Buffer.byteLength(body, 'utf8') > MAX_HEALTH_PAYLOAD_BYTES) return null;
+  try {
+    return JSON.parse(body) as unknown;
+  } catch {
+    return null;
+  }
+}
 
 function createPortAvailability(): NineRouterRuntimeServiceDependencies['portAvailability'] {
   return {
@@ -120,13 +137,33 @@ function createBoundedLoopbackHealthChecker(): NineRouterRuntimeServiceDependenc
         fetch(`${baseUrl}/api/version`, { signal: timeout }),
       ]);
       if (!healthResponse.ok || !versionResponse.ok) return { ok: false };
-      const healthJson = await healthResponse.json().catch(() => null) as { status?: unknown; origin?: unknown } | null;
-      const versionJson = await versionResponse.json().catch(() => null) as { version?: unknown } | null;
+      const healthJson = await boundedJson(healthResponse);
+      const versionJson = await boundedJson(versionResponse);
+      if (!isRecord(healthJson) || healthJson.ok !== true || !isRecord(versionJson)) return { ok: false };
+      const currentVersion = versionJson.currentVersion;
+      if (typeof currentVersion !== 'string' || currentVersion.length === 0 || currentVersion.length > 64) {
+        return { ok: false };
+      }
       return {
-        ok: healthJson?.status === 'ok' || healthJson?.status === 'healthy' || healthResponse.ok,
-        origin: typeof healthJson?.origin === 'string' ? healthJson.origin : '9router',
-        version: typeof versionJson?.version === 'string' ? versionJson.version : undefined,
+        ok: true,
+        origin: '9router',
+        version: currentVersion,
       };
+    },
+  };
+}
+
+/** Used by routing module tests to exercise the same strict health adapter used by the production embedded runtime. */
+export function createBoundedLoopbackHealthCheckerForTesting(): NineRouterRuntimeServiceDependencies['health'] {
+  return createBoundedLoopbackHealthChecker();
+}
+
+/** Used by the production embedded runtime and routing module tests to create and permission its private data directory. */
+export function createProductionFilesystemAdapter(): NineRouterRuntimeServiceDependencies['filesystem'] {
+  return {
+    async ensureDataDir(dataDir, mode) {
+      await fsPromises.mkdir(dataDir, { recursive: true, mode });
+      await fsPromises.chmod(dataDir, mode);
     },
   };
 }
@@ -140,9 +177,7 @@ function createDefaultEmbeddedNineRouterRuntime(): EmbeddedNineRouterRuntime {
       machineIdSalt: appConfigDb.getOrCreateSecret(embeddedNineRouterSecretKeys.machineIdSalt, 32),
     },
     databasePath: getDatabasePath(),
-    filesystem: {
-      ensureDataDir: (dataDir, mode) => fsPromises.mkdir(dataDir, { recursive: true, mode }).then(() => undefined),
-    },
+    filesystem: createProductionFilesystemAdapter(),
     packageResolver: {
       async resolveOfficialServerPath() {
         try {
