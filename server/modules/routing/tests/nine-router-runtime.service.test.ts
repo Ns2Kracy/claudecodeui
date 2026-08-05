@@ -182,6 +182,21 @@ test('start resolves the official custom server, spawns node non-interactively, 
   });
 });
 
+test('start selects the next loopback port when the preferred port is occupied', async () => {
+  const harness = createHarness();
+  harness.portChecks.push(false, true);
+  harness.healthChecks.push({ ok: true, origin: 'http://127.0.0.1:20129', version: '0.5.45' });
+
+  const startPromise = harness.service.start();
+  await flushAsyncStart();
+  assert.equal(harness.spawnCalls.length, 1);
+  assert.equal(harness.spawnCalls[0].options.env.PORT, '20129');
+  assert.equal(harness.spawnCalls[0].options.env.BASE_URL, 'http://127.0.0.1:20129');
+  harness.runNextTimer();
+  await startPromise;
+  assert.equal(harness.service.getStatus().state, 'ready');
+});
+
 test('health transport errors during readiness are transient and polling continues until ready', async () => {
   const statusEvents: string[] = [];
   const harness = createHarness({ onStatusChange: (status) => statusEvents.push(status.state) });
@@ -331,12 +346,12 @@ test('package missing, occupied port, and readiness timeout produce safe typed s
   assert.equal(missing.spawnCalls.length, 0);
 
   const occupied = createHarness();
-  occupied.portChecks.push(false);
+  occupied.portChecks.push(...Array.from({ length: 32 }, () => false));
   await occupied.service.start();
   assert.equal(occupied.service.getStatus().state, 'unavailable');
   assert.deepEqual(occupied.service.getStatus().lastError, {
     code: 'ROUTING_PORT_OCCUPIED',
-    message: 'Port 127.0.0.1:20128 is already occupied',
+    message: 'No available 9router port on 127.0.0.1:20128-20159',
     retryable: true,
   });
   assert.equal(occupied.spawnCalls.length, 0);

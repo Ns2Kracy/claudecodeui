@@ -2,8 +2,8 @@ import type { ChildProcess } from 'node:child_process';
 import path from 'node:path';
 
 const HOSTNAME = '127.0.0.1';
-const PORT = 20128;
-const BASE_URL = `http://${HOSTNAME}:${PORT}`;
+const PREFERRED_PORT = 20128;
+const PORT_CANDIDATE_COUNT = 32;
 const HEALTH_POLL_MS = 100;
 const READINESS_TIMEOUT_MS = 10_000;
 const STOP_KILL_DEADLINE_MS = 5_000;
@@ -135,20 +135,21 @@ function safeHealthField(value: string | undefined): string | null {
   return /^[\w .:@/-]+$/.test(value) ? value : null;
 }
 
-function buildEnv(source: NodeJS.ProcessEnv, credentials: InternalRuntimeCredentials): NodeJS.ProcessEnv {
+function buildEnv(source: NodeJS.ProcessEnv, credentials: InternalRuntimeCredentials, port: number): NodeJS.ProcessEnv {
+  const baseUrl = `http://${HOSTNAME}:${port}`;
   const env: NodeJS.ProcessEnv = {};
   for (const key of ALLOWED_ENV_KEYS) {
     if (source[key] !== undefined) env[key] = source[key];
   }
-  env.PORT = String(PORT);
+  env.PORT = String(port);
   env.HOSTNAME = HOSTNAME;
   env.DATA_DIR = credentials.dataDir;
   env.JWT_SECRET = credentials.jwtSecret;
   env.INITIAL_PASSWORD = credentials.initialPassword;
   env.API_KEY_SECRET = credentials.apiKeySecret;
   env.MACHINE_ID_SALT = credentials.machineIdSalt;
-  env.BASE_URL = BASE_URL;
-  env.NEXT_PUBLIC_BASE_URL = BASE_URL;
+  env.BASE_URL = baseUrl;
+  env.NEXT_PUBLIC_BASE_URL = baseUrl;
   env.NODE_ENV = source.NODE_ENV ?? 'production';
   return env;
 }
@@ -262,13 +263,13 @@ export function createNineRouterRuntimeService(dependencies: NineRouterRuntimeDe
     handleTerminal(currentChild, unknownErrorMessage(error), true);
   }
 
-  async function pollUntilReady(generation: number, currentChild: ChildProcess, deadlineMs: number): Promise<void> {
+  async function pollUntilReady(generation: number, currentChild: ChildProcess, baseUrl: string, deadlineMs: number): Promise<void> {
     const started = dependencies.clock.now().getTime();
     while (dependencies.clock.now().getTime() - started <= deadlineMs) {
       if (!captured(generation) || child !== currentChild) return;
       let health: { ok: boolean; origin?: string; version?: string };
       try {
-        health = await dependencies.health.check(BASE_URL);
+        health = await dependencies.health.check(baseUrl);
       } catch (error) {
         health = { ok: false };
       }
@@ -276,7 +277,7 @@ export function createNineRouterRuntimeService(dependencies: NineRouterRuntimeDe
       if (health.ok) {
         if (dependencies.dataPlaneKeyProvisioner) {
           try {
-            await dependencies.dataPlaneKeyProvisioner.provision(BASE_URL, runtimeCredentials(dependencies));
+            await dependencies.dataPlaneKeyProvisioner.provision(baseUrl, runtimeCredentials(dependencies));
           } catch (error) {
             if (!captured(generation) || child !== currentChild) return;
             setUnavailable(routingError('ROUTING_PROCESS_FAILED', `Unable to provision 9router data-plane key: ${unknownErrorMessage(error)}`, true, runtimeCredentials(dependencies)));
@@ -323,18 +324,25 @@ export function createNineRouterRuntimeService(dependencies: NineRouterRuntimeDe
       return status;
     }
 
-    let portFree: boolean;
+    let selectedPort: number | null = null;
     try {
-      portFree = await dependencies.portAvailability.isAvailable(HOSTNAME, PORT);
+      for (let offset = 0; offset < PORT_CANDIDATE_COUNT; offset += 1) {
+        const candidate = PREFERRED_PORT + offset;
+        if (await dependencies.portAvailability.isAvailable(HOSTNAME, candidate)) {
+          selectedPort = candidate;
+          break;
+        }
+      }
     } catch (error) {
       setUnavailable(processError(error));
       return status;
     }
     if (!captured(generation)) return status;
-    if (!portFree) {
-      setUnavailable(routingError('ROUTING_PORT_OCCUPIED', `Port ${HOSTNAME}:${PORT} is already occupied`, true, runtimeCredentials(dependencies)));
+    if (selectedPort === null) {
+      setUnavailable(routingError('ROUTING_PORT_OCCUPIED', `No available 9router port on ${HOSTNAME}:${PREFERRED_PORT}-${PREFERRED_PORT + PORT_CANDIDATE_COUNT - 1}`, true, runtimeCredentials(dependencies)));
       return status;
     }
+    const baseUrl = `http://${HOSTNAME}:${selectedPort}`;
 
     const credentials = runtimeCredentials(dependencies);
     try {
@@ -352,7 +360,7 @@ export function createNineRouterRuntimeService(dependencies: NineRouterRuntimeDe
       if (!captured(generation)) return status;
       currentChild = dependencies.processSpawner.spawn(process.execPath, [serverPath], {
         detached: false,
-        env: buildEnv(dependencies.env ?? process.env, credentials),
+        env: buildEnv(dependencies.env ?? process.env, credentials, selectedPort),
         stdio: ['ignore', 'ignore', 'pipe'],
       });
     } catch (error) {
@@ -371,7 +379,7 @@ export function createNineRouterRuntimeService(dependencies: NineRouterRuntimeDe
     });
     currentChild.on('error', (error: unknown) => handleChildError(currentChild, error));
     currentChild.on('exit', (code: number | null, signal: NodeJS.Signals | null) => handleExit(currentChild, code, signal));
-    await pollUntilReady(generation, currentChild, READINESS_TIMEOUT_MS);
+    await pollUntilReady(generation, currentChild, baseUrl, READINESS_TIMEOUT_MS);
     return status;
   }
 
