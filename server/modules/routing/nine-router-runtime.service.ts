@@ -6,18 +6,32 @@ const BASE_URL = `http://${HOSTNAME}:${PORT}`;
 const HEALTH_POLL_MS = 100;
 const READINESS_TIMEOUT_MS = 10_000;
 const STOP_KILL_DEADLINE_MS = 5_000;
-const MAX_RESTARTS = 3;
+const MAX_RAPID_CRASHES = 3;
 const MAX_RESTART_DELAY_MS = 30_000;
+const STABLE_RESTART_WINDOW_MS = 60_000;
 const STDERR_LIMIT = 1024;
+const MAX_HEALTH_FIELD_LENGTH = 128;
 const ALLOWED_ENV_KEYS = ['HOME', 'PATH', 'TMPDIR', 'TEMP', 'TMP', 'NODE_ENV'] as const;
 
 type RuntimeState = 'stopped' | 'starting' | 'ready' | 'degraded' | 'unavailable';
+
+type RoutingSafeErrorCode =
+  | 'ROUTING_PACKAGE_MISSING'
+  | 'ROUTING_PORT_OCCUPIED'
+  | 'ROUTING_STARTUP_TIMEOUT'
+  | 'ROUTING_PROCESS_FAILED';
+
+type RoutingSafeError = {
+  code: RoutingSafeErrorCode;
+  message: string;
+  retryable: boolean;
+};
 
 type RuntimeStatus = {
   state: RuntimeState;
   origin: string | null;
   version: string | null;
-  lastError: string | null;
+  lastError: RoutingSafeError | null;
 };
 
 type InternalCredentials = {
@@ -66,7 +80,7 @@ function initialStatus(): RuntimeStatus {
   return { state: 'stopped', origin: null, version: null, lastError: null };
 }
 
-function safeError(message: string): string {
+function safeMessage(message: string): string {
   return message.length > STDERR_LIMIT ? message.slice(message.length - STDERR_LIMIT) : message;
 }
 
@@ -75,7 +89,21 @@ function redact(message: string, secrets: InternalCredentials): string {
   for (const secret of Object.values(secrets)) {
     if (secret) result = result.split(secret).join('[redacted]');
   }
-  return safeError(result);
+  return safeMessage(result);
+}
+
+function routingError(code: RoutingSafeErrorCode, message: string, retryable: boolean, secrets: InternalCredentials): RoutingSafeError {
+  return { code, message: redact(message, secrets), retryable };
+}
+
+function unknownErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function safeHealthField(value: string | undefined): string | null {
+  if (!value) return null;
+  if (value.length > MAX_HEALTH_FIELD_LENGTH) return null;
+  return /^[\w .:@/-]+$/.test(value) ? value : null;
 }
 
 function buildEnv(source: NodeJS.ProcessEnv, credentials: InternalCredentials): NodeJS.ProcessEnv {
@@ -109,9 +137,11 @@ export function createNineRouterRuntimeService(dependencies: NineRouterRuntimeDe
   let status = initialStatus();
   let child: ChildProcess | null = null;
   let stopping = false;
-  let restartAttempts = 0;
+  let readinessGeneration = 0;
+  let rapidCrashCount = 0;
   const timers = new Set<unknown>();
   const stopWaiters: StopWaiter[] = [];
+  const readinessWaiters = new Set<() => void>();
 
   function setTimer(callback: () => void, delayMs: number): unknown {
     const timer = dependencies.clock.setTimeout(() => {
@@ -122,83 +152,153 @@ export function createNineRouterRuntimeService(dependencies: NineRouterRuntimeDe
     return timer;
   }
 
-  function setUnavailable(error: string): void {
-    status = { state: 'unavailable', origin: null, version: null, lastError: redact(error, dependencies.credentials) };
+  function sleep(delayMs: number): Promise<void> {
+    return new Promise<void>((resolve) => {
+      const done = () => {
+        readinessWaiters.delete(done);
+        resolve();
+      };
+      readinessWaiters.add(done);
+      setTimer(done, delayMs);
+    });
   }
 
-  function handleExit(code: number | null, signal: NodeJS.Signals | null): void {
-    child = null;
+  function cancelReadiness(): void {
+    for (const resolve of [...readinessWaiters]) resolve();
+  }
+
+  function setUnavailable(error: RoutingSafeError): void {
+    status = { state: 'unavailable', origin: null, version: null, lastError: error };
+  }
+
+  function processError(error: unknown): RoutingSafeError {
+    return routingError('ROUTING_PROCESS_FAILED', unknownErrorMessage(error), true, dependencies.credentials);
+  }
+
+  function resolveStopWaiters(): void {
     for (const waiter of stopWaiters.splice(0)) {
       dependencies.clock.clearTimeout(waiter.timer);
       timers.delete(waiter.timer);
       waiter.resolve();
     }
+  }
+
+  function handleExit(code: number | null, signal: NodeJS.Signals | null): void {
+    child = null;
+    readinessGeneration += 1;
+    cancelReadiness();
+    resolveStopWaiters();
     if (stopping) return;
 
     const reason = `9router exited unexpectedly: code=${code ?? 'null'} signal=${signal ?? 'null'}`;
-    if (restartAttempts >= MAX_RESTARTS) {
-      setUnavailable(reason);
+    if (rapidCrashCount + 1 >= MAX_RAPID_CRASHES) {
+      rapidCrashCount += 1;
+      setUnavailable(routingError('ROUTING_PROCESS_FAILED', reason, true, dependencies.credentials));
       return;
     }
-    restartAttempts += 1;
-    const delay = Math.min(2 ** (restartAttempts - 1) * 1_000, MAX_RESTART_DELAY_MS);
-    status = { ...status, state: 'degraded', lastError: redact(reason, dependencies.credentials) };
+    rapidCrashCount += 1;
+    const delay = Math.min(2 ** (rapidCrashCount - 1) * 1_000, MAX_RESTART_DELAY_MS);
+    status = { state: 'degraded', origin: null, version: null, lastError: routingError('ROUTING_PROCESS_FAILED', reason, true, dependencies.credentials) };
     setTimer(() => {
       void start();
     }, delay);
   }
 
-  async function pollUntilReady(deadlineMs: number): Promise<void> {
+  function handleChildError(error: unknown): void {
+    readinessGeneration += 1;
+    status = { state: child ? 'degraded' : 'unavailable', origin: null, version: null, lastError: processError(error) };
+  }
+
+  async function pollUntilReady(generation: number, currentChild: ChildProcess, deadlineMs: number): Promise<void> {
     const started = dependencies.clock.now().getTime();
     while (dependencies.clock.now().getTime() - started <= deadlineMs) {
-      const health = await dependencies.health.check(BASE_URL);
-      if (health.ok) {
-        restartAttempts = 0;
-        status = {
-          state: 'ready',
-          origin: health.origin ?? null,
-          version: health.version ?? null,
-          lastError: null,
-        };
+      if (generation !== readinessGeneration || child !== currentChild || stopping) return;
+      let health: { ok: boolean; origin?: string; version?: string };
+      try {
+        health = await dependencies.health.check(BASE_URL);
+      } catch (error) {
+        if (generation === readinessGeneration && child === currentChild && !stopping) setUnavailable(processError(error));
+        await stopManaged(true);
         return;
       }
-      await new Promise<void>((resolve) => setTimer(resolve, HEALTH_POLL_MS));
+      if (generation !== readinessGeneration || child !== currentChild || stopping) return;
+      if (health.ok) {
+        status = {
+          state: 'ready',
+          origin: safeHealthField(health.origin),
+          version: safeHealthField(health.version),
+          lastError: null,
+        };
+        setTimer(() => {
+          if (child === currentChild && status.state === 'ready') rapidCrashCount = 0;
+        }, STABLE_RESTART_WINDOW_MS);
+        return;
+      }
+      await sleep(HEALTH_POLL_MS);
     }
-    setUnavailable('9router readiness timed out');
+    if (generation !== readinessGeneration || child !== currentChild || stopping) return;
+    setUnavailable(routingError('ROUTING_STARTUP_TIMEOUT', '9router readiness timed out', true, dependencies.credentials));
     await stopManaged(true);
   }
 
   async function start(): Promise<RuntimeStatus> {
     if (status.state === 'starting' || status.state === 'ready') return status;
     stopping = false;
+    const generation = readinessGeneration + 1;
+    readinessGeneration = generation;
     status = { state: 'starting', origin: null, version: null, lastError: null };
 
-    const serverPath = await dependencies.packageResolver.resolveOfficialServerPath();
-    if (!serverPath) {
-      setUnavailable('9router package app/custom-server.js was not found');
+    let serverPath: string | null;
+    try {
+      serverPath = await dependencies.packageResolver.resolveOfficialServerPath();
+    } catch (error) {
+      setUnavailable(processError(error));
       return status;
     }
-    const portFree = await dependencies.portAvailability.isAvailable(HOSTNAME, PORT);
-    if (!portFree) {
-      setUnavailable(`Port ${HOSTNAME}:${PORT} is already occupied`);
+    if (!serverPath) {
+      setUnavailable(routingError('ROUTING_PACKAGE_MISSING', '9router package app/custom-server.js was not found', false, dependencies.credentials));
       return status;
     }
 
-    child = dependencies.processSpawner.spawn(process.execPath, [serverPath], {
-      detached: false,
-      env: buildEnv(dependencies.env ?? process.env, dependencies.credentials),
-      stdio: ['ignore', 'ignore', 'pipe'],
+    let portFree: boolean;
+    try {
+      portFree = await dependencies.portAvailability.isAvailable(HOSTNAME, PORT);
+    } catch (error) {
+      setUnavailable(processError(error));
+      return status;
+    }
+    if (!portFree) {
+      setUnavailable(routingError('ROUTING_PORT_OCCUPIED', `Port ${HOSTNAME}:${PORT} is already occupied`, true, dependencies.credentials));
+      return status;
+    }
+
+    let currentChild: ChildProcess;
+    try {
+      currentChild = dependencies.processSpawner.spawn(process.execPath, [serverPath], {
+        detached: false,
+        env: buildEnv(dependencies.env ?? process.env, dependencies.credentials),
+        stdio: ['ignore', 'ignore', 'pipe'],
+      });
+    } catch (error) {
+      setUnavailable(processError(error));
+      return status;
+    }
+
+    child = currentChild;
+    currentChild.stderr?.on('data', (chunk: Buffer) => {
+      const message = redact(String(chunk), dependencies.credentials);
+      status = { ...status, lastError: routingError('ROUTING_PROCESS_FAILED', message, true, { dataDir: '', jwtSecret: '', initialPassword: '', apiKeySecret: '', machineIdSalt: '' }) };
     });
-    child.stderr?.on('data', (chunk: Buffer) => {
-      status = { ...status, lastError: redact(String(chunk), dependencies.credentials) };
-    });
-    child.on('exit', handleExit);
-    await pollUntilReady(READINESS_TIMEOUT_MS);
+    currentChild.on('error', handleChildError);
+    currentChild.on('exit', handleExit);
+    await pollUntilReady(generation, currentChild, READINESS_TIMEOUT_MS);
     return status;
   }
 
   async function stopManaged(preserveStatus: boolean): Promise<void> {
     stopping = true;
+    readinessGeneration += 1;
+    cancelReadiness();
     clearAll(dependencies.clock, timers);
     const current = child;
     if (!current) {
@@ -208,6 +308,7 @@ export function createNineRouterRuntimeService(dependencies: NineRouterRuntimeDe
     await new Promise<void>((resolve) => {
       const timer = setTimer(() => {
         current.kill('SIGKILL');
+        resolveStopWaiters();
       }, STOP_KILL_DEADLINE_MS);
       stopWaiters.push({ resolve, timer });
       current.kill('SIGTERM');
@@ -229,7 +330,7 @@ export function createNineRouterRuntimeService(dependencies: NineRouterRuntimeDe
       return start();
     },
     getStatus(): RuntimeStatus {
-      return { ...status };
+      return { ...status, lastError: status.lastError ? { ...status.lastError } : null };
     },
     getInternalCredentials(): InternalCredentials {
       return { ...dependencies.credentials };
@@ -237,14 +338,4 @@ export function createNineRouterRuntimeService(dependencies: NineRouterRuntimeDe
   };
 }
 
-/**
- * Consumed by routing/index.ts so future startup wiring can type injected
- * supervisor instances without deep-importing this implementation file.
- */
-export type NineRouterRuntimeService = ReturnType<typeof createNineRouterRuntimeService>;
-
-/**
- * Consumed by tests and future module wiring to provide explicit supervisor
- * adapters and credentials while keeping one-use adapter contracts local here.
- */
 export type NineRouterRuntimeServiceDependencies = NineRouterRuntimeDependencies;

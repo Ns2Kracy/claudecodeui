@@ -6,10 +6,11 @@ import { createNineRouterRuntimeService, type NineRouterRuntimeServiceDependenci
 
 type FakeChild = {
   pid: number;
-  stderr: { on(event: string, listener: (chunk: Buffer) => void): unknown };
-  on(event: string, listener: (...args: unknown[]) => void): unknown;
+  stderr: { on(event: string, listener: (chunk: Buffer) => unknown): unknown };
+  on(event: string, listener: (...args: unknown[]) => unknown): unknown;
   kill(signal?: NodeJS.Signals | number): boolean;
   emitExit(code: number | null, signal: NodeJS.Signals | null): void;
+  emitError(error: Error): void;
   pushStderr(chunk: string): void;
   killedSignals: NodeJS.Signals[];
 };
@@ -17,18 +18,18 @@ type FakeChild = {
 type TimerEntry = { id: number; delayMs: number; callback: () => void };
 
 function createFakeChild(pid = 9876): FakeChild {
-  const listeners = new Map<string, Array<(...args: unknown[]) => void>>();
-  const stderrListeners: Array<(chunk: Buffer) => void> = [];
+  const listeners = new Map<string, Array<(...args: unknown[]) => unknown>>();
+  const stderrListeners: Array<(chunk: Buffer) => unknown> = [];
   return {
     pid,
     killedSignals: [],
     stderr: {
-      on(event: string, listener: (chunk: Buffer) => void) {
+      on(event: string, listener: (chunk: Buffer) => unknown) {
         if (event === 'data') stderrListeners.push(listener);
         return this;
       },
-    } as FakeChild['stderr'],
-    on(event: string, listener: (...args: unknown[]) => void) {
+    },
+    on(event: string, listener: (...args: unknown[]) => unknown) {
       listeners.set(event, [...(listeners.get(event) ?? []), listener]);
       return this;
     },
@@ -38,6 +39,9 @@ function createFakeChild(pid = 9876): FakeChild {
     },
     emitExit(code: number | null, signal: NodeJS.Signals | null) {
       for (const listener of listeners.get('exit') ?? []) listener(code, signal);
+    },
+    emitError(error: Error) {
+      for (const listener of listeners.get('error') ?? []) listener(error);
     },
     pushStderr(chunk: string) {
       for (const listener of stderrListeners) listener(Buffer.from(chunk));
@@ -50,14 +54,15 @@ async function flushAsyncStart(): Promise<void> {
 }
 
 function createHarness(overrides: Partial<NineRouterRuntimeServiceDependencies> = {}) {
-  const child = createFakeChild();
+  const children: FakeChild[] = [];
   const timers: TimerEntry[] = [];
   let timerId = 0;
+  let nextPid = 9876;
   let nowMs = Date.parse('2026-08-05T03:00:00.000Z');
   const clearedTimers: number[] = [];
   const spawnCalls: Array<{ command: string; args: string[]; options: { detached: boolean; env: NodeJS.ProcessEnv; stdio: string[] } }> = [];
   const portChecks: boolean[] = [];
-  const healthChecks: Array<{ ok: boolean; origin?: string; version?: string }> = [];
+  const healthChecks: Array<{ ok: boolean; origin?: string; version?: string } | Error> = [];
   const dependencies: NineRouterRuntimeServiceDependencies = {
     credentials: {
       dataDir: '/state/9router',
@@ -71,6 +76,8 @@ function createHarness(overrides: Partial<NineRouterRuntimeServiceDependencies> 
     },
     processSpawner: {
       spawn: (command, args, options) => {
+        const child = createFakeChild(nextPid++);
+        children.push(child);
         spawnCalls.push({ command, args, options });
         return child as unknown as ChildProcess;
       },
@@ -79,7 +86,11 @@ function createHarness(overrides: Partial<NineRouterRuntimeServiceDependencies> 
       isAvailable: async () => portChecks.shift() ?? true,
     },
     health: {
-      check: async () => healthChecks.shift() ?? { ok: false },
+      check: async () => {
+        const next = healthChecks.shift() ?? { ok: false };
+        if (next instanceof Error) throw next;
+        return next;
+      },
     },
     clock: {
       now: () => new Date(nowMs),
@@ -103,7 +114,8 @@ function createHarness(overrides: Partial<NineRouterRuntimeServiceDependencies> 
   };
   const service = createNineRouterRuntimeService(dependencies);
   const runNextTimer = () => {
-    const timer = timers.shift();
+    let timer = timers.shift();
+    while (timer && clearedTimers.includes(timer.id)) timer = timers.shift();
     assert.ok(timer, 'expected timer to be scheduled');
     nowMs += timer.delayMs;
     timer.callback();
@@ -116,7 +128,7 @@ function createHarness(overrides: Partial<NineRouterRuntimeServiceDependencies> 
     }
     assert.fail(`predicate was not reached after ${maxTimers} timers`);
   };
-  return { child, timers, clearedTimers, spawnCalls, portChecks, healthChecks, service, runNextTimer, runTimersUntil };
+  return { get child() { return children.at(-1)!; }, children, timers, clearedTimers, spawnCalls, portChecks, healthChecks, service, runNextTimer, runTimersUntil };
 }
 
 test('start resolves the official custom server, spawns node non-interactively, and becomes ready only after health passes', async () => {
@@ -153,73 +165,158 @@ test('package missing, occupied port, and readiness timeout produce safe typed s
   const missing = createHarness({ packageResolver: { resolveOfficialServerPath: async () => null } });
   await missing.service.start();
   assert.equal(missing.service.getStatus().state, 'unavailable');
-  assert.match(missing.service.getStatus().lastError ?? '', /package/);
+  assert.deepEqual(missing.service.getStatus().lastError, {
+    code: 'ROUTING_PACKAGE_MISSING',
+    message: '9router package app/custom-server.js was not found',
+    retryable: false,
+  });
   assert.equal(missing.spawnCalls.length, 0);
 
   const occupied = createHarness();
   occupied.portChecks.push(false);
   await occupied.service.start();
   assert.equal(occupied.service.getStatus().state, 'unavailable');
-  assert.match(occupied.service.getStatus().lastError ?? '', /occupied/);
+  assert.deepEqual(occupied.service.getStatus().lastError, {
+    code: 'ROUTING_PORT_OCCUPIED',
+    message: 'Port 127.0.0.1:20128 is already occupied',
+    retryable: true,
+  });
   assert.equal(occupied.spawnCalls.length, 0);
-  assert.deepEqual(occupied.child.killedSignals, []);
 
   const timeout = createHarness();
   const startPromise = timeout.service.start();
   await flushAsyncStart();
   await timeout.runTimersUntil(() => timeout.service.getStatus().state === 'unavailable');
-  timeout.child.emitExit(null, 'SIGTERM');
+  timeout.runNextTimer();
   await startPromise;
   assert.deepEqual(timeout.service.getStatus(), {
     state: 'unavailable',
     origin: null,
     version: null,
-    lastError: '9router readiness timed out',
+    lastError: { code: 'ROUTING_STARTUP_TIMEOUT', message: '9router readiness timed out', retryable: true },
   });
-  assert.deepEqual(timeout.child.killedSignals, ['SIGTERM']);
+  assert.deepEqual(timeout.child.killedSignals, ['SIGTERM', 'SIGKILL']);
   assert.equal(timeout.spawnCalls.length, 1);
 });
 
-test('stop terminates the managed child with SIGTERM and SIGKILL after the deadline, then clears timers', async () => {
+test('stop during startup cancels readiness polling and resolves the in-flight start promise', async () => {
+  const harness = createHarness();
+  const startPromise = harness.service.start();
+  await flushAsyncStart();
+  assert.equal(harness.service.getStatus().state, 'starting');
+
+  const stopPromise = harness.service.stop();
+  await harness.runTimersUntil(() => harness.child.killedSignals.includes('SIGKILL'));
+  await Promise.all([startPromise, stopPromise]);
+
+  assert.equal(harness.service.getStatus().state, 'stopped');
+  assert.deepEqual(harness.child.killedSignals, ['SIGTERM', 'SIGKILL']);
+});
+
+test('stop resolves at SIGKILL deadline even when child never emits exit', async () => {
   const harness = createHarness();
   harness.healthChecks.push({ ok: true, origin: '9router', version: '0.5.45' });
-  await harness.service.start();
+  const startPromise = harness.service.start();
+  await flushAsyncStart();
+  harness.runNextTimer();
+  await startPromise;
 
   const stopPromise = harness.service.stop();
   assert.deepEqual(harness.child.killedSignals, ['SIGTERM']);
   harness.runNextTimer();
-  assert.deepEqual(harness.child.killedSignals, ['SIGTERM', 'SIGKILL']);
-  harness.child.emitExit(null, 'SIGTERM');
   await stopPromise;
 
+  assert.deepEqual(harness.child.killedSignals, ['SIGTERM', 'SIGKILL']);
   assert.equal(harness.service.getStatus().state, 'stopped');
-  assert.equal(harness.timers.every((timer) => harness.clearedTimers.includes(timer.id)), true);
 });
 
-test('unexpected exits restart with capped exponential backoff and open the circuit breaker', async () => {
+test('unexpected exit cancels stale readiness polling and stale health cannot mark the dead child ready', async () => {
+  const harness = createHarness();
+  harness.healthChecks.push({ ok: false }, { ok: true, origin: 'evil-origin-with-a-very-long-string', version: 'bad-version' });
+  const startPromise = harness.service.start();
+  await flushAsyncStart();
+  harness.child.emitExit(1, null);
+  harness.runNextTimer();
+  await startPromise;
+
+  assert.equal(harness.service.getStatus().state, 'degraded');
+  assert.equal(harness.service.getStatus().origin, null);
+  assert.equal(harness.spawnCalls.length, 1);
+});
+
+test('unexpected exits restart distinct children, count rapid crash cycles, and reset only after stable window', async () => {
   const harness = createHarness();
   harness.healthChecks.push({ ok: true, origin: '9router', version: '0.5.45' });
-  await harness.service.start();
-
-  for (let attempt = 0; attempt < 4; attempt += 1) {
-    harness.child.emitExit(1, null);
+  const firstStart = harness.service.start();
+  await flushAsyncStart();
+  harness.runNextTimer();
+  await firstStart;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const crashed = harness.child;
+    crashed.emitExit(1, null);
     const status = harness.service.getStatus();
-    assert.notEqual(status.lastError?.includes('jwt-secret-value'), true);
-    const restartTimer = harness.timers.at(-1);
+    assert.notEqual(JSON.stringify(status).includes('jwt-secret-value'), true);
     if (attempt < 3) {
       assert.equal(status.state, 'degraded');
-      assert.ok(restartTimer);
-      assert.ok(restartTimer.delayMs <= 30_000);
+      harness.healthChecks.push({ ok: true, origin: '9router', version: `0.5.${45 + attempt}` });
+      harness.runNextTimer();
+      await flushAsyncStart();
+      harness.runNextTimer();
+      await flushAsyncStart();
+      assert.notEqual(harness.child.pid, crashed.pid);
+      assert.equal(harness.service.getStatus().state, 'ready');
     } else {
       assert.equal(status.state, 'unavailable');
     }
   }
+  assert.equal(harness.spawnCalls.length, 4);
+});
+
+test('adapter throws and child error events become safe unavailable/degraded process failures', async () => {
+  const resolver = createHarness({ packageResolver: { resolveOfficialServerPath: async () => { throw new Error('resolver jwt-secret-value failed'); } } });
+  await resolver.service.start();
+  assert.equal(resolver.service.getStatus().state, 'unavailable');
+  assert.deepEqual(resolver.service.getStatus().lastError, {
+    code: 'ROUTING_PROCESS_FAILED',
+    message: 'resolver [redacted] failed',
+    retryable: true,
+  });
+
+  const health = createHarness();
+  health.healthChecks.push(new Error('health jwt-secret-value failed'));
+  const healthStart = health.service.start();
+  await flushAsyncStart();
+  health.runNextTimer();
+  await healthStart;
+  assert.equal(health.service.getStatus().state, 'unavailable');
+  assert.deepEqual(health.service.getStatus().lastError, {
+    code: 'ROUTING_PROCESS_FAILED',
+    message: 'health [redacted] failed',
+    retryable: true,
+  });
+
+  const childError = createHarness();
+  childError.healthChecks.push({ ok: true, origin: '9router', version: '0.5.45' });
+  const childStart = childError.service.start();
+  await flushAsyncStart();
+  childError.runNextTimer();
+  await childStart;
+  childError.child.emitError(new Error('spawn jwt-secret-value failed'));
+  assert.equal(childError.service.getStatus().state, 'degraded');
+  assert.deepEqual(childError.service.getStatus().lastError, {
+    code: 'ROUTING_PROCESS_FAILED',
+    message: 'spawn [redacted] failed',
+    retryable: true,
+  });
 });
 
 test('getInternalCredentials returns injected secrets while status and redacted stderr never expose them', async () => {
   const harness = createHarness();
   harness.healthChecks.push({ ok: true, origin: '9router', version: '0.5.45' });
-  await harness.service.start();
+  const startPromise = harness.service.start();
+  await flushAsyncStart();
+  harness.runNextTimer();
+  await startPromise;
   harness.child.pushStderr(`failed jwt-secret-value initial-password-value api-key-secret-value ${'x'.repeat(5000)}`);
 
   assert.deepEqual(harness.service.getInternalCredentials(), {
