@@ -114,7 +114,7 @@ test('unconfigured and unsupported versions never imply that usage is zero', asy
     usage: null,
   }));
 
-  assert.match(connectMarkup, /Connect 9Router to view usage/);
+  assert.match(connectMarkup, /runtime must be ready before usage and advisory limits can load/i);
   assert.match(unsupportedMarkup, /does not expose compatible usage data/i);
   assert.equal(`${connectMarkup}${unsupportedMarkup}`.includes('$0.00'), false);
 });
