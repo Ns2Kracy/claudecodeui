@@ -1,0 +1,54 @@
+services:
+  cloudcli:
+    image: node:22-bookworm-slim
+    working_dir: /app
+    command: npm run server
+    environment:
+      HOST: 0.0.0.0
+      SERVER_PORT: "3001"
+      NINE_ROUTER_BASE_URL: http://9router:20128
+      ROUTING_SECRET_KEY_FILE: /run/secrets/routing-key
+    volumes:
+      - ./:/app
+    ports:
+      - "3001:3001"
+    depends_on:
+      9router:
+        condition: service_healthy
+    secrets:
+      - routing-key
+    networks:
+      - cloudcli-private
+
+  9router:
+    build:
+      context: ./docker/9router
+    restart: unless-stopped
+    environment:
+      DATA_DIR: /data
+    expose:
+      - "20128"
+    volumes:
+      - 9router-data:/data
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:20128/api/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+    networks:
+      - cloudcli-private
+
+secrets:
+  routing-key:
+    environment: ROUTING_SECRET_KEY
+
+volumes:
+  9router-data:
+
+networks:
+  cloudcli-private:

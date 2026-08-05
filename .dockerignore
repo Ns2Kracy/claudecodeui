@@ -1,0 +1,15 @@
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+node_modules
+dist
+dist-server
+release
+.desktop-build
+database
+*.log
+findings.md
+progress.md
+task_plan.md
