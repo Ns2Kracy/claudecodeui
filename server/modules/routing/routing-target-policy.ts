@@ -15,6 +15,7 @@ type RoutingTargetPolicyOptions = {
   lookup?: RoutingDnsLookup;
   allowLoopbackHttp?: boolean;
   allowedHosts?: string[];
+  allowedHttpHosts?: string[];
   allowedCidrs?: string[];
 };
 
@@ -256,6 +257,7 @@ export async function validateRoutingTarget(
   const allowedCidrValues =
     options.allowedCidrs ?? environmentList('ROUTING_ALLOWED_CIDRS');
   const allowedHosts = new Set(allowedHostValues.map(normalizeAllowedHost));
+  const allowedHttpHosts = new Set((options.allowedHttpHosts ?? []).map(normalizeAllowedHost));
   const allowedCidrs = allowedCidrValues.map(parseCidr);
   const allowLoopbackHttp =
     options.allowLoopbackHttp ??
@@ -299,7 +301,11 @@ export async function validateRoutingTarget(
     }
   }
 
-  if (parsed.protocol === 'http:' && (!allLoopback || !allowLoopbackHttp)) {
+  if (
+    parsed.protocol === 'http:'
+    && (!allLoopback || !allowLoopbackHttp)
+    && !allowedHttpHosts.has(parsed.hostname)
+  ) {
     throw targetBlocked();
   }
 

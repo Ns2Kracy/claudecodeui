@@ -45,6 +45,11 @@ test('compose runs 9router as an internal persisted sidecar for CloudCLI', () =>
   assert.match(compose, /cloudcli-private:/);
   assert.doesNotMatch(compose, /internal:\s+true/);
   assert.match(compose, /9router-data:/);
+  assert.match(compose, /dockerfile:\s+docker\/cloudcli\/Dockerfile/);
+  const cloudcliDockerfile = readProjectFile('docker/cloudcli/Dockerfile');
+  assert.match(cloudcliDockerfile, /npm ci --ignore-scripts --include=dev/);
+  assert.match(cloudcliDockerfile, /npm rebuild better-sqlite3 bcrypt node-pty/);
+  assert.match(cloudcliDockerfile, /RUN npm run build/);
 });
 
 test('Docker build context ignores local dependencies, builds, and secrets', () => {

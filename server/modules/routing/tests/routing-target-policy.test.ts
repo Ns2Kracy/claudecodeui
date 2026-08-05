@@ -87,6 +87,24 @@ test('permits loopback HTTP only with explicit deployment configuration', async 
   assert.equal(target.loopback, true);
 });
 
+test('allows private HTTP only for an explicitly designated sidecar host', async () => {
+  const lookup = async () => [{ address: '172.20.0.4', family: 4 as const }];
+
+  await assert.rejects(
+    () => validateRoutingTarget('http://9router:20128', { lookup, allowedHosts: ['9router'] }),
+    (error: unknown) => error instanceof AppError && error.code === 'ROUTING_TARGET_BLOCKED',
+  );
+
+  const target = await validateRoutingTarget('http://9router:20128', {
+    lookup,
+    allowedHosts: ['9router'],
+    allowedHttpHosts: ['9router'],
+  });
+  assert.equal(target.hostname, '9router');
+  assert.equal(target.protocol, 'http:');
+  assert.equal(target.pinnedAddress, '172.20.0.4');
+});
+
 test('reads loopback HTTP opt-in from the server environment', async () => {
   const previous = process.env.ROUTING_ALLOW_LOOPBACK_HTTP;
   process.env.ROUTING_ALLOW_LOOPBACK_HTTP = 'true';

@@ -19,11 +19,18 @@ const clientFactory = (credentials: {
   baseUrl: string;
   adminPassword: string;
   dataPlaneKey: string;
-}) =>
-  new NineRouterClient({
+}) => {
+  const sidecarHostname = new URL(credentials.baseUrl).hostname;
+  return new NineRouterClient({
     ...credentials,
-    request: (input) => requestNineRouterJson(input),
+    request: (input) => requestNineRouterJson(input, {
+      targetPolicy: {
+        allowedHosts: [sidecarHostname],
+        allowedHttpHosts: [sidecarHostname],
+      },
+    }),
   });
+};
 
 function routingServiceClientForRuntime() {
   const sidecar = getNineRouterSidecar();
