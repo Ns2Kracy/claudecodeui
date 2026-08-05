@@ -4,11 +4,14 @@ import { AppError, asyncHandler, createApiSuccessResponse } from '@/shared/utils
 
 import type {
   CreateRoutingApiKeyAccountInput,
+  CreateRoutingProviderNodeInput,
   CreateRoutingRouteInput,
   RoutingAgent,
   RoutingUsageAlertPeriod,
   RoutingUsagePeriod,
   UpdateRoutingAccountInput,
+  UpdateRoutingProviderNodeInput,
+  ValidateRoutingProviderNodeInput,
   UpdateRoutingBindingInput,
   UpdateRoutingRouteInput,
   UpdateRoutingUsageAlertInput,
@@ -149,6 +152,43 @@ function stringArray(value: unknown, fieldName: string): string[] {
   return value.map((item) => requiredString(item, fieldName, 1024));
 }
 
+
+function providerNodeCreateInput(request: Request): CreateRoutingProviderNodeInput {
+  const body = bodyRecord(request);
+  const input: CreateRoutingProviderNodeInput = {
+    name: requiredString(body.name, 'name', 256),
+    baseUrl: requiredString(body.baseUrl, 'baseUrl', 2048),
+  };
+  const apiKey = optionalNonEmptyString(body.apiKey, 'apiKey', 16_384);
+  const active = optionalBoolean(body.active, 'active');
+  if (apiKey !== undefined) input.apiKey = apiKey;
+  if (active !== undefined) input.active = active;
+  return input;
+}
+
+function providerNodeUpdateInput(request: Request): UpdateRoutingProviderNodeInput {
+  const body = bodyRecord(request);
+  const input: UpdateRoutingProviderNodeInput = {};
+  const name = optionalNonEmptyString(body.name, 'name', 256);
+  const baseUrl = optionalNonEmptyString(body.baseUrl, 'baseUrl', 2048);
+  const apiKey = optionalNonEmptyString(body.apiKey, 'apiKey', 16_384);
+  const active = optionalBoolean(body.active, 'active');
+  if (name !== undefined) input.name = name;
+  if (baseUrl !== undefined) input.baseUrl = baseUrl;
+  if (apiKey !== undefined) input.apiKey = apiKey;
+  if (active !== undefined) input.active = active;
+  if (Object.keys(input).length === 0) throw invalidRequest();
+  return input;
+}
+
+function providerNodeValidateInput(request: Request): ValidateRoutingProviderNodeInput {
+  const body = bodyRecord(request);
+  const input: ValidateRoutingProviderNodeInput = { baseUrl: requiredString(body.baseUrl, 'baseUrl', 2048) };
+  const apiKey = optionalNonEmptyString(body.apiKey, 'apiKey', 16_384);
+  if (apiKey !== undefined) input.apiKey = apiKey;
+  return input;
+}
+
 function routeName(value: unknown): string {
   const name = requiredString(value, 'name', 256);
   if (!ROUTING_ROUTE_NAME_PATTERN.test(name)) {
@@ -278,6 +318,54 @@ export function createRoutingRouter(
           await service.restartRuntime(),
         ),
       );
+    }),
+  );
+
+  router.get(
+    '/accounts/:id',
+    asyncHandler(async (request, response) => {
+      response.json(createApiSuccessResponse(await service.getProvider(userId(request), resourceId(request))));
+    }),
+  );
+  router.get(
+    '/accounts/:id/models',
+    asyncHandler(async (request, response) => {
+      response.json(createApiSuccessResponse(await service.listProviderModels(userId(request), resourceId(request))));
+    }),
+  );
+  router.get(
+    '/provider-nodes',
+    asyncHandler(async (request, response) => {
+      response.json(createApiSuccessResponse(await service.listProviderNodes(userId(request))));
+    }),
+  );
+  router.post(
+    '/provider-nodes',
+    ...writeGuards,
+    asyncHandler(async (request, response) => {
+      response.json(createApiSuccessResponse(await service.createProviderNode(userId(request), providerNodeCreateInput(request))));
+    }),
+  );
+  router.post(
+    '/provider-nodes/validations',
+    ...writeGuards,
+    asyncHandler(async (request, response) => {
+      response.json(createApiSuccessResponse(await service.validateProviderNode(userId(request), providerNodeValidateInput(request))));
+    }),
+  );
+  router.put(
+    '/provider-nodes/:id',
+    ...writeGuards,
+    asyncHandler(async (request, response) => {
+      response.json(createApiSuccessResponse(await service.updateProviderNode(userId(request), resourceId(request), providerNodeUpdateInput(request))));
+    }),
+  );
+  router.delete(
+    '/provider-nodes/:id',
+    ...writeGuards,
+    asyncHandler(async (request, response) => {
+      await service.deleteProviderNode(userId(request), resourceId(request));
+      response.json(createApiSuccessResponse({ deleted: true }));
     }),
   );
   router.post(

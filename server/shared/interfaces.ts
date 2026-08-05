@@ -22,14 +22,23 @@ import type {
 import type {
   CreateRoutingApiKeyAccountInput,
   CreateRoutingRouteInput,
+  CreateRoutingProviderNodeInput,
   RoutingAccountView,
   RoutingCapabilities,
   RoutingModelView,
+  RoutingOAuthPollingStateView,
+  RoutingOAuthStartView,
+  RoutingDeviceCodeChallengeView,
+  RoutingProviderModelsView,
+  RoutingProviderNodeValidationView,
+  RoutingProviderNodeView,
   RoutingRouteView,
   RoutingUsagePeriod,
   RoutingUsageView,
   UpdateRoutingAccountInput,
   UpdateRoutingRouteInput,
+  UpdateRoutingProviderNodeInput,
+  ValidateRoutingProviderNodeInput,
 } from '../../shared/routing.js';
 
 //----------------- PROVIDER CONTRACT INTERFACES ------------
@@ -194,6 +203,42 @@ export interface IProviderSessionSynchronizer {
 }
 
 // ---------------------------
+
+
+/** Server-only OAuth authorize result from 9router. Service code must store codeVerifier and expose only safe fields to browsers. */
+export type RoutingNineRouterOAuthStartInternalResult = RoutingOAuthStartView & { codeVerifier: string };
+
+/** Server-only device-code result from 9router. Service code must store deviceCode, codeVerifier, and extraData and expose only safe fields to browsers. */
+export type RoutingNineRouterDeviceCodeInternalResult = RoutingDeviceCodeChallengeView & { deviceCode: string; codeVerifier: string; extraData?: unknown };
+
+/**
+ * Server-only OAuth authorization-code exchange payload for 9router.
+ *
+ * Only routing services may construct this value after Task 8 adds durable
+ * state/PKCE storage. It must never be exposed as a browser DTO because it
+ * carries verifier material and redirect details required by upstream.
+ */
+export type RoutingNineRouterOAuthExchangeInternalInput = {
+  code: string;
+  redirectUri: string;
+  codeVerifier: string;
+  state: string;
+};
+
+/**
+ * Server-only OAuth device-code polling payload for 9router.
+ *
+ * Only routing services may construct this value from server-side device-code
+ * state. Browser routes must use opaque transaction handles in Task 8 rather
+ * than exposing deviceCode, codeVerifier, or upstream extraData fields.
+ */
+export type RoutingNineRouterOAuthPollInternalInput = {
+  deviceCode: string;
+  codeVerifier: string;
+  extraData?: unknown;
+};
+
+// ---------------------------
 //----------------- ROUTING CLIENT INTERFACE ------------
 /**
  * Versioned 9router adapter contract implemented by `NineRouterClient`.
@@ -210,6 +255,17 @@ export interface IRoutingNineRouterClient {
   }>;
   listModels(): Promise<RoutingModelView[]>;
   listAccounts(): Promise<RoutingAccountView[]>;
+  getProvider(id: string): Promise<RoutingAccountView>;
+  listProviderModels(id: string): Promise<RoutingProviderModelsView>;
+  startOAuth(provider: string, redirectUri: string): Promise<RoutingNineRouterOAuthStartInternalResult>;
+  exchangeOAuth(provider: string, input: RoutingNineRouterOAuthExchangeInternalInput): Promise<RoutingAccountView>;
+  startDeviceCode(provider: string): Promise<RoutingNineRouterDeviceCodeInternalResult>;
+  pollDeviceCode(provider: string, input: RoutingNineRouterOAuthPollInternalInput): Promise<RoutingOAuthPollingStateView>;
+  listProviderNodes(): Promise<RoutingProviderNodeView[]>;
+  createProviderNode(input: CreateRoutingProviderNodeInput): Promise<RoutingProviderNodeView>;
+  validateProviderNode(input: ValidateRoutingProviderNodeInput): Promise<RoutingProviderNodeValidationView>;
+  updateProviderNode(id: string, input: UpdateRoutingProviderNodeInput): Promise<RoutingProviderNodeView>;
+  deleteProviderNode(id: string): Promise<void>;
   createApiKeyAccount(input: CreateRoutingApiKeyAccountInput): Promise<RoutingAccountView>;
   updateAccount(id: string, input: UpdateRoutingAccountInput): Promise<RoutingAccountView>;
   deleteAccount(id: string): Promise<void>;

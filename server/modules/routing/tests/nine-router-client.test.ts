@@ -188,6 +188,15 @@ async function withFakeRouter(
         return;
       }
       const accountMatch = path.match(/^\/api\/providers\/([^/]+)$/);
+
+      if (accountMatch && request.method === 'GET') {
+        sendJson(response, 200, { connection: { ...accounts[0], accessToken: 'hidden-token' } });
+        return;
+      }
+      if (path.match(/^\/api\/providers\/[^/]+\/models$/) && request.method === 'GET') {
+        sendJson(response, 200, { provider: 'openai', connectionId: 'account-1', models: [{ provider: 'openai', model: 'gpt-4o', fullModel: 'openai/gpt-4o', apiKey: 'hidden' }] });
+        return;
+      }
       if (accountMatch && request.method === 'PUT') {
         const body = await readJsonBody(request);
         state.receivedBodies.push({ path, body });
@@ -248,6 +257,28 @@ async function withFakeRouter(
         return;
       }
 
+
+      if (request.method === 'GET' && path === '/api/provider-nodes') {
+        sendJson(response, 200, { nodes: [{ id: 'node-1', name: 'Node', baseUrl: 'https://node.test', apiKey: 'hidden' }] });
+        return;
+      }
+      if (request.method === 'POST' && path === '/api/provider-nodes') {
+        const body = await readJsonBody(request); state.receivedBodies.push({ path, body });
+        sendJson(response, 201, { node: { id: 'node-2', ...(body as object) } });
+        return;
+      }
+      if (request.method === 'POST' && path === '/api/provider-nodes/validate') {
+        const body = await readJsonBody(request); state.receivedBodies.push({ path, body });
+        sendJson(response, 200, { valid: true, error: 'hidden detail' });
+        return;
+      }
+      const nodeMatch = path.match(/^\/api\/provider-nodes\/([^/]+)$/);
+      if (nodeMatch && request.method === 'PUT') {
+        const body = await readJsonBody(request); state.receivedBodies.push({ path, body });
+        sendJson(response, 200, { node: { id: decodeURIComponent(nodeMatch[1]), name: 'Node', baseUrl: 'https://node.test', ...(body as object), apiKey: 'hidden' } });
+        return;
+      }
+      if (nodeMatch && request.method === 'DELETE') { sendJson(response, 200, { success: true }); return; }
       if (request.method === 'GET' && path === '/api/usage/stats') {
         sendJson(response, 200, {
           totalRequests: 12,
@@ -568,5 +599,20 @@ test('sends only pinned write fields and returns sanitized mutation results', as
         body: { name: 'renamed-route', models: ['anthropic/claude-sonnet'] },
       },
     ]);
+  });
+});
+
+
+test('maps provider detail, provider models, and provider nodes into safe DTOs', async () => {
+  await withFakeRouter({}, async ({ baseUrl, request, state }) => {
+    const client = new NineRouterClient({ baseUrl, adminPassword: 'admin-password', dataPlaneKey: 'data-plane-key', request });
+    assert.equal((await client.getProvider('account/1')).id, 'account-1');
+    assert.equal((await client.listProviderModels('account/1')).models[0].id, 'openai/gpt-4o');
+    assert.equal((await client.listProviderNodes())[0].baseUrl, 'https://node.test');
+    assert.equal((await client.createProviderNode({ name: 'Node', baseUrl: 'https://node.test', apiKey: 'secret' })).id, 'node-2');
+    assert.equal((await client.validateProviderNode({ baseUrl: 'https://node.test', apiKey: 'secret' })).message, null);
+    assert.equal((await client.updateProviderNode('node/1', { active: false })).id, 'node/1');
+    await client.deleteProviderNode('node/1');
+    assert.equal(JSON.stringify(state.receivedBodies).includes('secret'), true);
   });
 });

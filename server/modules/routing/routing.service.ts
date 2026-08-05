@@ -1,4 +1,4 @@
-import type { IRoutingNineRouterClient } from '@/shared/interfaces.js';
+import type { IRoutingNineRouterClient, RoutingNineRouterOAuthExchangeInternalInput, RoutingNineRouterOAuthPollInternalInput } from '@/shared/interfaces.js';
 import type {
   RoutingClientCredentials,
   RoutingRepository,
@@ -8,6 +8,7 @@ import { AppError } from '@/shared/utils.js';
 
 import type {
   CreateRoutingApiKeyAccountInput,
+  CreateRoutingProviderNodeInput,
   CreateRoutingRouteInput,
   RoutingAgent,
   RoutingBindingView,
@@ -17,6 +18,8 @@ import type {
   RoutingUsageAlertPeriod,
   RoutingUsagePeriod,
   UpdateRoutingAccountInput,
+  UpdateRoutingProviderNodeInput,
+  ValidateRoutingProviderNodeInput,
   UpdateRoutingBindingInput,
   UpdateRoutingRouteInput,
   UpdateRoutingUsageAlertInput,
@@ -216,6 +219,18 @@ export function createRoutingService(dependencies: RoutingServiceDependencies) {
 
     async listModels(_userId: number) { return callSafely(() => clientForRuntime().listModels()); },
     async listAccounts(_userId: number) { return callSafely(() => clientForRuntime().listAccounts()); },
+
+    async getProvider(_userId: number, id: string) { return callSafely(() => clientForRuntime().getProvider(id)); },
+    async listProviderModels(_userId: number, id: string) { return callSafely(() => clientForRuntime().listProviderModels(id)); },
+    async startOAuth(_userId: number, provider: string, redirectUri: string) { return callSafely(() => clientForRuntime().startOAuth(provider, redirectUri)); },
+    async exchangeOAuth(_userId: number, provider: string, input: RoutingNineRouterOAuthExchangeInternalInput) { return callSafely(() => clientForRuntime().exchangeOAuth(provider, input)); },
+    async startDeviceCode(_userId: number, provider: string) { return callSafely(() => clientForRuntime().startDeviceCode(provider)); },
+    async pollDeviceCode(_userId: number, provider: string, input: RoutingNineRouterOAuthPollInternalInput) { return callSafely(() => clientForRuntime().pollDeviceCode(provider, input)); },
+    async listProviderNodes(_userId: number) { return callSafely(() => clientForRuntime().listProviderNodes()); },
+    async createProviderNode(_userId: number, input: CreateRoutingProviderNodeInput) { return callSafely(() => clientForRuntime().createProviderNode(input)); },
+    async validateProviderNode(_userId: number, input: ValidateRoutingProviderNodeInput) { return callSafely(() => clientForRuntime().validateProviderNode(input)); },
+    async updateProviderNode(_userId: number, id: string, input: UpdateRoutingProviderNodeInput) { return callSafely(() => clientForRuntime().updateProviderNode(id, input)); },
+    async deleteProviderNode(_userId: number, id: string): Promise<void> { await callSafely(() => clientForRuntime().deleteProviderNode(id)); },
     async createApiKeyAccount(_userId: number, input: CreateRoutingApiKeyAccountInput) { return callSafely(() => clientForRuntime().createApiKeyAccount(input)); },
     async updateAccount(_userId: number, id: string, input: UpdateRoutingAccountInput) { return callSafely(() => clientForRuntime().updateAccount(id, input)); },
     async deleteAccount(_userId: number, id: string): Promise<void> { await callSafely(() => clientForRuntime().deleteAccount(id)); },

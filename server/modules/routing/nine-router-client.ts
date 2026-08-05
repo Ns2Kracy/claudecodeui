@@ -1,16 +1,23 @@
-import type { IRoutingNineRouterClient } from '@/shared/interfaces.js';
+import type { IRoutingNineRouterClient, RoutingNineRouterDeviceCodeInternalResult, RoutingNineRouterOAuthExchangeInternalInput, RoutingNineRouterOAuthPollInternalInput, RoutingNineRouterOAuthStartInternalResult } from '@/shared/interfaces.js';
 import { AppError } from '@/shared/utils.js';
 
 import type {
   CreateRoutingApiKeyAccountInput,
+  CreateRoutingProviderNodeInput,
   CreateRoutingRouteInput,
   RoutingAccountView,
   RoutingCapabilities,
   RoutingModelView,
+  RoutingOAuthPollingStateView,
+  RoutingProviderModelsView,
+  RoutingProviderNodeValidationView,
+  RoutingProviderNodeView,
   RoutingRouteView,
   RoutingUsagePeriod,
   RoutingUsageView,
   UpdateRoutingAccountInput,
+  UpdateRoutingProviderNodeInput,
+  ValidateRoutingProviderNodeInput,
   UpdateRoutingRouteInput,
 } from '../../../shared/routing.js';
 
@@ -142,7 +149,7 @@ function dollarsToMicrousd(value: unknown): number {
   return result;
 }
 
-function expectRecord(data: NineRouterHttpResult['data']): Record<string, unknown> {
+function expectRecord(data: unknown): Record<string, unknown> {
   if (!isRecord(data)) {
     throw invalidResponse();
   }
@@ -260,6 +267,69 @@ function sanitizeUsage(value: unknown, period: RoutingUsagePeriod): RoutingUsage
   };
 }
 
+
+function nullableBoolean(value: unknown): boolean {
+  return value === undefined ? true : value === true;
+}
+
+function sanitizeProviderModels(value: unknown): RoutingProviderModelsView {
+  const data = expectRecord(value);
+  const models = data.models;
+  if (!Array.isArray(models)) throw invalidResponse();
+  return {
+    provider: requiredString(data.provider),
+    connectionId: requiredString(data.connectionId),
+    models: models.map(sanitizeModel),
+  };
+}
+
+function sanitizeOAuthStart(provider: string, value: unknown): RoutingNineRouterOAuthStartInternalResult {
+  const data = expectRecord(value);
+  return { provider, authUrl: requiredString(data.authUrl), state: requiredString(data.state), redirectUri: requiredString(data.redirectUri), codeVerifier: requiredString(data.codeVerifier) };
+}
+
+function sanitizeDeviceCode(provider: string, value: unknown): RoutingNineRouterDeviceCodeInternalResult {
+  const data = expectRecord(value);
+  return {
+    provider,
+    deviceCode: requiredString(data.device_code),
+    codeVerifier: requiredString(data.codeVerifier),
+    extraData: data.extraData,
+    userCode: requiredString(data.user_code),
+    verificationUri: requiredString(data.verification_uri),
+    verificationUriComplete: optionalString(data.verification_uri_complete),
+    expiresIn: nullableNumber(data.expires_in),
+    interval: nullableNumber(data.interval),
+  };
+}
+
+function sanitizePoll(provider: string, value: unknown, now: Date): RoutingOAuthPollingStateView {
+  const data = expectRecord(value);
+  const account = data.connection === undefined || data.connection === null ? null : sanitizeAccount(data.connection, now);
+  return { provider, pending: data.pending === true, account };
+}
+
+function sanitizeProviderNode(value: unknown): RoutingProviderNodeView {
+  const data = expectRecord(value);
+  return {
+    id: requiredString(data.id),
+    name: requiredString(data.name),
+    baseUrl: requiredString(data.baseUrl),
+    active: nullableBoolean(data.isActive ?? data.active),
+    createdAt: optionalString(data.createdAt),
+    updatedAt: optionalString(data.updatedAt),
+  };
+}
+
+function sanitizeNodePayload(input: CreateRoutingProviderNodeInput | UpdateRoutingProviderNodeInput | ValidateRoutingProviderNodeInput): Record<string, unknown> {
+  const payload: Record<string, unknown> = {};
+  if ('name' in input && input.name !== undefined) payload.name = input.name;
+  if ('baseUrl' in input && input.baseUrl !== undefined) payload.baseUrl = input.baseUrl;
+  if ('apiKey' in input && input.apiKey !== undefined) payload.apiKey = input.apiKey;
+  if ('active' in input && input.active !== undefined) payload.isActive = input.active;
+  return payload;
+}
+
 function sanitizedAccountPayload(input: CreateRoutingApiKeyAccountInput): Record<string, unknown> {
   const payload: Record<string, unknown> = {
     provider: input.provider,
@@ -367,6 +437,65 @@ export class NineRouterClient implements IRoutingNineRouterClient {
     }
     const now = this.now();
     return connections.map((connection) => sanitizeAccount(connection, now));
+  }
+
+
+  async getProvider(id: string): Promise<RoutingAccountView> {
+    const result = await this.managementRequest({ baseUrl: this.baseUrl, operation: 'providerGet', id }, 'readAccounts', true);
+    return sanitizeAccount(expectRecord(result.data).connection, this.now());
+  }
+
+  async listProviderModels(id: string): Promise<RoutingProviderModelsView> {
+    const result = await this.managementRequest({ baseUrl: this.baseUrl, operation: 'providerModels', id }, 'readAccounts', true);
+    return sanitizeProviderModels(result.data);
+  }
+
+  async startOAuth(provider: string, redirectUri: string): Promise<RoutingNineRouterOAuthStartInternalResult> {
+    const result = await this.managementRequest({ baseUrl: this.baseUrl, operation: 'oauthAuthorize', provider, redirectUri }, 'writeApiKeyAccounts', true);
+    return sanitizeOAuthStart(provider, result.data);
+  }
+
+  async exchangeOAuth(provider: string, input: RoutingNineRouterOAuthExchangeInternalInput): Promise<RoutingAccountView> {
+    const result = await this.managementRequest({ baseUrl: this.baseUrl, operation: 'oauthExchange', provider, body: input }, 'writeApiKeyAccounts', false);
+    return sanitizeAccount(expectRecord(result.data).connection ?? result.data, this.now());
+  }
+
+  async startDeviceCode(provider: string): Promise<RoutingNineRouterDeviceCodeInternalResult> {
+    const result = await this.managementRequest({ baseUrl: this.baseUrl, operation: 'oauthDeviceCode', provider }, 'writeApiKeyAccounts', true);
+    return sanitizeDeviceCode(provider, result.data);
+  }
+
+  async pollDeviceCode(provider: string, input: RoutingNineRouterOAuthPollInternalInput): Promise<RoutingOAuthPollingStateView> {
+    const result = await this.managementRequest({ baseUrl: this.baseUrl, operation: 'oauthPoll', provider, body: input }, 'writeApiKeyAccounts', false);
+    return sanitizePoll(provider, result.data, this.now());
+  }
+
+  async listProviderNodes(): Promise<RoutingProviderNodeView[]> {
+    const result = await this.managementRequest({ baseUrl: this.baseUrl, operation: 'providerNodesList' }, 'readAccounts', true);
+    const nodes = expectRecord(result.data).nodes ?? expectRecord(result.data).providerNodes;
+    if (!Array.isArray(nodes)) throw invalidResponse();
+    return nodes.map(sanitizeProviderNode);
+  }
+
+  async createProviderNode(input: CreateRoutingProviderNodeInput): Promise<RoutingProviderNodeView> {
+    const result = await this.managementRequest({ baseUrl: this.baseUrl, operation: 'providerNodeCreate', body: sanitizeNodePayload(input) }, 'writeApiKeyAccounts', false);
+    return sanitizeProviderNode(expectRecord(result.data).node ?? expectRecord(result.data));
+  }
+
+  async validateProviderNode(input: ValidateRoutingProviderNodeInput): Promise<RoutingProviderNodeValidationView> {
+    const result = await this.managementRequest({ baseUrl: this.baseUrl, operation: 'providerNodeValidate', body: sanitizeNodePayload(input) }, 'testAccounts', false);
+    const data = expectRecord(result.data);
+    if (typeof data.valid !== 'boolean') throw invalidResponse();
+    return { valid: data.valid, message: data.valid ? null : 'The upstream provider node validation failed' };
+  }
+
+  async updateProviderNode(id: string, input: UpdateRoutingProviderNodeInput): Promise<RoutingProviderNodeView> {
+    const result = await this.managementRequest({ baseUrl: this.baseUrl, operation: 'providerNodeUpdate', id, body: sanitizeNodePayload(input) }, 'writeApiKeyAccounts', false);
+    return sanitizeProviderNode(expectRecord(result.data).node ?? expectRecord(result.data));
+  }
+
+  async deleteProviderNode(id: string): Promise<void> {
+    await this.managementRequest({ baseUrl: this.baseUrl, operation: 'providerNodeDelete', id }, 'writeApiKeyAccounts', false);
   }
 
   async createApiKeyAccount(

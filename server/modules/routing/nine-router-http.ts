@@ -16,6 +16,17 @@ type NineRouterOperation =
   | 'dataPlaneModels'
   | 'catalogModels'
   | 'accountsList'
+  | 'providerGet'
+  | 'providerModels'
+  | 'oauthAuthorize'
+  | 'oauthExchange'
+  | 'oauthDeviceCode'
+  | 'oauthPoll'
+  | 'providerNodesList'
+  | 'providerNodeCreate'
+  | 'providerNodeValidate'
+  | 'providerNodeUpdate'
+  | 'providerNodeDelete'
   | 'accountCreate'
   | 'accountUpdate'
   | 'accountDelete'
@@ -31,6 +42,8 @@ type NineRouterRequestInput = {
   baseUrl: string;
   operation: NineRouterOperation;
   id?: string;
+  provider?: string;
+  redirectUri?: string;
   period?: RoutingUsagePeriod;
   body?: unknown;
   authorization?: string;
@@ -94,6 +107,20 @@ function encodedId(input: NineRouterRequestInput): string {
   return encodeURIComponent(input.id);
 }
 
+function encodedProvider(input: NineRouterRequestInput): string {
+  if (typeof input.provider !== 'string' || !input.provider || input.provider.length > 128) {
+    throw operationFailed(input.operation, 'configured target');
+  }
+  return encodeURIComponent(input.provider);
+}
+
+function oauthAuthorizePath(input: NineRouterRequestInput): string {
+  if (typeof input.redirectUri !== 'string' || !input.redirectUri || input.redirectUri.length > 2048) {
+    throw operationFailed(input.operation, 'configured target');
+  }
+  return `/api/oauth/${encodedProvider(input)}/authorize?redirect_uri=${encodeURIComponent(input.redirectUri)}`;
+}
+
 function usagePath(input: NineRouterRequestInput): string {
   if (!input.period || !['today', '7d', '30d'].includes(input.period)) {
     throw operationFailed(input.operation, 'configured target');
@@ -109,6 +136,17 @@ const OPERATIONS: Record<NineRouterOperation, OperationDefinition> = {
   dataPlaneModels: { method: 'GET', path: fixedPath('/v1/models') },
   catalogModels: { method: 'GET', path: fixedPath('/api/models') },
   accountsList: { method: 'GET', path: fixedPath('/api/providers') },
+  providerGet: { method: 'GET', path: (input) => `/api/providers/${encodedId(input)}` },
+  providerModels: { method: 'GET', path: (input) => `/api/providers/${encodedId(input)}/models` },
+  oauthAuthorize: { method: 'GET', path: oauthAuthorizePath },
+  oauthExchange: { method: 'POST', path: (input) => `/api/oauth/${encodedProvider(input)}/exchange` },
+  oauthDeviceCode: { method: 'GET', path: (input) => `/api/oauth/${encodedProvider(input)}/device-code` },
+  oauthPoll: { method: 'POST', path: (input) => `/api/oauth/${encodedProvider(input)}/poll` },
+  providerNodesList: { method: 'GET', path: fixedPath('/api/provider-nodes') },
+  providerNodeCreate: { method: 'POST', path: fixedPath('/api/provider-nodes') },
+  providerNodeValidate: { method: 'POST', path: fixedPath('/api/provider-nodes/validate') },
+  providerNodeUpdate: { method: 'PUT', path: (input) => `/api/provider-nodes/${encodedId(input)}` },
+  providerNodeDelete: { method: 'DELETE', path: (input) => `/api/provider-nodes/${encodedId(input)}` },
   accountCreate: { method: 'POST', path: fixedPath('/api/providers') },
   accountUpdate: {
     method: 'PUT',

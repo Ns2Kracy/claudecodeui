@@ -98,6 +98,70 @@ export type RoutingSettingsView = {
   usageAlerts: RoutingUsageAlertView[];
 };
 
+
+export type RoutingProviderConnectionMethod = 'api_key' | 'oauth' | 'device_code' | 'custom';
+
+export type RoutingOAuthStartView = {
+  provider: string;
+  authUrl: string;
+  state: string;
+  redirectUri: string;
+};
+
+export type RoutingDeviceCodeChallengeView = {
+  provider: string;
+  userCode: string;
+  verificationUri: string;
+  verificationUriComplete: string | null;
+  expiresIn: number | null;
+  interval: number | null;
+};
+
+export type RoutingOAuthPollingStateView = {
+  provider: string;
+  pending: boolean;
+  account: RoutingAccountView | null;
+};
+
+export type RoutingProviderModelsView = {
+  provider: string;
+  connectionId: string;
+  models: RoutingModelView[];
+};
+
+export type RoutingProviderNodeView = {
+  id: string;
+  name: string;
+  baseUrl: string;
+  active: boolean;
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
+export type CreateRoutingProviderNodeInput = {
+  name: string;
+  baseUrl: string;
+  apiKey?: string;
+  active?: boolean;
+};
+
+export type UpdateRoutingProviderNodeInput = {
+  name?: string;
+  baseUrl?: string;
+  apiKey?: string;
+  active?: boolean;
+};
+
+export type ValidateRoutingProviderNodeInput = {
+  baseUrl: string;
+  apiKey?: string;
+};
+
+export type RoutingProviderNodeValidationView = {
+  valid: boolean;
+  message: string | null;
+};
+
 export type CreateRoutingApiKeyAccountInput = {
   provider: string;
   name: string;
