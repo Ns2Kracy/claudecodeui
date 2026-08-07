@@ -115,15 +115,6 @@ export function NineRouterSettingsTabView({
 
   return (
     <div className="space-y-8">
-      <div className="space-y-2">
-        <h2 className="text-lg font-semibold tracking-tight text-foreground">
-          {t("nineRouter.title")}
-        </h2>
-        <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-          {t("nineRouter.description")}
-        </p>
-      </div>
-
       {loading && (
         <div
           role="status"
@@ -133,25 +124,6 @@ export function NineRouterSettingsTabView({
           {t("nineRouter.loading")}
         </div>
       )}
-
-      <Alert className="border-border bg-muted/40">
-        <ShieldCheck className="h-4 w-4" />
-        <AlertTitle>{t("nineRouter.runtime.title")}</AlertTitle>
-        <AlertDescription>
-          <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="space-y-1">
-              <p>{t(`nineRouter.runtime.status.${settings.runtime.status}`)}</p>
-              <p className="text-xs text-muted-foreground">
-                {t("nineRouter.runtime.version")}:{" "}
-                {settings.runtime.version ?? t("nineRouter.runtime.unknown")}
-              </p>
-              {settings.runtime.lastError && (
-                <p>{settings.runtime.lastError.message}</p>
-              )}
-            </div>
-          </div>
-        </AlertDescription>
-      </Alert>
 
       {runtimeUnavailable && (
         <Alert variant="destructive">
