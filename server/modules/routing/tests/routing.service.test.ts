@@ -4,8 +4,12 @@ import test from 'node:test';
 import { emptyRoutingSettingsView } from '../../../../shared/routing.js';
 import { createRoutingService } from '../routing.service.js';
 
-function createHarness(state: 'ready' | 'unavailable' = 'ready') {
+function createHarness(
+  state: 'ready' | 'unavailable' = 'ready',
+  origin = 'http://127.0.0.1:20128',
+) {
   const calls: string[] = [];
+  const codexInputs: Array<{ baseUrl: string; apiKey: string }> = [];
   const client = {
     validateConnection: async () => { throw new Error('unused'); },
     listModels: async () => [{ id: 'm1', provider: 'openai', name: 'M1' }],
@@ -32,11 +36,18 @@ function createHarness(state: 'ready' | 'unavailable' = 'ready') {
     deleteRoute: async () => undefined,
   };
   const runtime = {
-    getStatus: () => ({ state, origin: 'http://127.0.0.1:20128', version: '0.5.45', lastError: state === 'ready' ? null : { code: 'ROUTING_STARTUP_TIMEOUT' as const, message: 'startup timed out', retryable: true } }),
+    getStatus: () => ({ state, origin, version: '0.5.45', lastError: state === 'ready' ? null : { code: 'ROUTING_STARTUP_TIMEOUT' as const, message: 'startup timed out', retryable: true } }),
     getInternalCredentials: () => ({ jwtSecret: 'jwt', initialPassword: 'admin', apiKeySecret: 'hmac-secret', dataPlaneKey: 'sk-cloudcli-abc123-deadbeef', machineIdSalt: 'salt', dataDir: '/db/9router' }),
   };
-  const service = createRoutingService({ runtime, clientFactory: () => { calls.push('client'); return client; }, now: () => new Date('2026-08-04T00:00:00.000Z') });
-  return { service, calls };
+  const service = createRoutingService({
+    runtime,
+    clientFactory: () => { calls.push('client'); return client; },
+    codexConfig: {
+      applyCustomProvider: async (input) => { codexInputs.push(input); return { provider: 'Custom' as const }; },
+    },
+    now: () => new Date('2026-08-04T00:00:00.000Z'),
+  });
+  return { service, calls, codexInputs };
 }
 
 test('settings report sidecar runtime without connection storage', async () => {
@@ -62,6 +73,35 @@ test('unavailable embedded runtime is safe and typed for explicit 9router operat
     () => service.listAccounts(7),
     (error: any) => error.code === 'ROUTING_RUNTIME_UNAVAILABLE' && error.statusCode === 409,
   );
+});
+
+test('applies ready sidecar credentials to Codex without returning secrets', async () => {
+  const { service, codexInputs } = createHarness('ready');
+  const result = await service.applyToCodex(7);
+  assert.deepEqual(result, { provider: 'Custom' });
+  assert.deepEqual(codexInputs, [{
+    baseUrl: 'http://127.0.0.1:20128/api/v1',
+    apiKey: 'sk-cloudcli-abc123-deadbeef',
+  }]);
+  assert.equal(JSON.stringify(result).includes('sk-cloudcli'), false);
+});
+
+test('does not write Codex config while the sidecar is unavailable', async () => {
+  const { service, codexInputs } = createHarness('unavailable');
+  await assert.rejects(
+    () => service.applyToCodex(7),
+    (error: any) => error.code === 'ROUTING_RUNTIME_UNAVAILABLE' && error.statusCode === 409,
+  );
+  assert.deepEqual(codexInputs, []);
+});
+
+test('does not invent a Codex endpoint when a ready runtime has no origin', async () => {
+  const { service, codexInputs } = createHarness('ready', '');
+  await assert.rejects(
+    () => service.applyToCodex(7),
+    (error: any) => error.code === 'ROUTING_CONFIGURATION_INVALID' && error.statusCode === 500,
+  );
+  assert.deepEqual(codexInputs, []);
 });
 
 test('provider management workflows delegate through sanitized 9router client contract', async () => {

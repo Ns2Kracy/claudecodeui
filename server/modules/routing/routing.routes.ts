@@ -313,6 +313,13 @@ export function createRoutingRouter(
     }),
   );
   router.post(
+    '/codex/applications',
+    ...writeGuards,
+    asyncHandler(async (request, response) => {
+      response.json(createApiSuccessResponse(await service.applyToCodex(userId(request))));
+    }),
+  );
+  router.post(
     '/oauth/:provider/authorize',
     ...writeGuards,
     asyncHandler(async (request, response) => {

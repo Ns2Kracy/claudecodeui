@@ -84,6 +84,30 @@ test('connection mutation routes are removed', async () => {
   });
 });
 
+test('Codex application is a guarded mutation with a secret-free response', async () => {
+  const calls: number[] = [];
+  await withRoutingServer({
+    applyToCodex: async (userId) => { calls.push(userId); return { provider: 'Custom' }; },
+  }, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/routing/codex/applications`, {
+      method: 'POST',
+      headers: { origin: baseUrl },
+    });
+    assert.equal(response.status, 200);
+    const body = await response.json() as any;
+    assert.deepEqual(body, { success: true, data: { provider: 'Custom' } });
+    assert.equal(JSON.stringify(body).includes('token'), false);
+    assert.deepEqual(calls, [7]);
+
+    const rejected = await fetch(`${baseUrl}/api/routing/codex/applications`, {
+      method: 'POST',
+      headers: { origin: baseUrl, 'sec-fetch-site': 'cross-site' },
+    });
+    assert.equal(rejected.status, 403);
+    assert.deepEqual(calls, [7]);
+  });
+});
+
 test('typed account and route mutations reach service', async () => {
   const calls: string[] = [];
   await withRoutingServer({

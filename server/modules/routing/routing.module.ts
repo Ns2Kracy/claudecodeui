@@ -1,4 +1,6 @@
 import { appConfigDb } from '@/modules/database/index.js';
+import { applyCustomCodexProvider } from '@/modules/providers/index.js';
+import { AppError } from '@/shared/utils.js';
 
 import { NineRouterClient } from './nine-router-client.js';
 import { requestNineRouterJson } from './nine-router-http.js';
@@ -16,7 +18,15 @@ const sidecarSecretKeys = {
 const CLOUDCLI_DATA_PLANE_KEY_NAME = 'CloudCLI';
 
 function requestConfiguredSidecar(input: Parameters<typeof requestNineRouterJson>[0]) {
-  const sidecarHostname = new URL(input.baseUrl).hostname;
+  let sidecarHostname: string;
+  try {
+    sidecarHostname = new URL(input.baseUrl).hostname;
+  } catch {
+    throw new AppError('The 9router sidecar configuration is invalid', {
+      code: 'ROUTING_CONFIGURATION_INVALID',
+      statusCode: 500,
+    });
+  }
   return requestNineRouterJson(input, {
     targetPolicy: {
       allowedHosts: [sidecarHostname],
@@ -58,6 +68,9 @@ export const routingService = createRoutingService({
     getInternalCredentials: () => getNineRouterSidecar().getInternalCredentials(),
   },
   clientFactory,
+  codexConfig: {
+    applyCustomProvider: ({ baseUrl, apiKey }) => applyCustomCodexProvider({ baseUrl, apiKey }),
+  },
   oauth: routingOAuthService,
 });
 

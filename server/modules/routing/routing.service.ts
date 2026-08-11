@@ -28,9 +28,14 @@ type RuntimeCredentialsProvider = {
   getInternalCredentials(): NineRouterInternalCredentials;
 };
 
+type CodexConfigPort = {
+  applyCustomProvider(input: { baseUrl: string; apiKey: string }): Promise<{ provider: 'Custom' }>;
+};
+
 type RoutingServiceDependencies = {
   runtime: RuntimeCredentialsProvider;
   clientFactory(credentials: RoutingClientCredentials): IRoutingNineRouterClient;
+  codexConfig: CodexConfigPort;
   oauth?: ReturnType<typeof createRoutingOAuthService>;
   now?: () => Date;
 };
@@ -39,6 +44,13 @@ function safeOperationFailure(): AppError {
   return new AppError('The 9router operation failed', {
     code: 'ROUTING_OPERATION_FAILED',
     statusCode: 502,
+  });
+}
+
+function configurationInvalid(): AppError {
+  return new AppError('The 9router runtime configuration is invalid', {
+    code: 'ROUTING_CONFIGURATION_INVALID',
+    statusCode: 500,
   });
 }
 
@@ -88,16 +100,21 @@ function runtimeView(status: NineRouterSidecarStatus, checkedAt: string): Routin
 export function createRoutingService(dependencies: RoutingServiceDependencies) {
   const now = dependencies.now ?? (() => new Date());
 
-  function clientForRuntime(): IRoutingNineRouterClient {
+  function runtimeCredentials(): RoutingClientCredentials {
     const status = dependencies.runtime.getStatus();
     if (status.state !== 'ready') throw runtimeUnavailable();
+    if (!status.origin) throw configurationInvalid();
+    const credentials = dependencies.runtime.getInternalCredentials();
+    return {
+      baseUrl: status.origin,
+      adminPassword: credentials.initialPassword,
+      dataPlaneKey: credentials.dataPlaneKey,
+    };
+  }
+
+  function clientForRuntime(): IRoutingNineRouterClient {
     try {
-      const credentials = dependencies.runtime.getInternalCredentials();
-      return dependencies.clientFactory({
-        baseUrl: status.origin ?? 'http://127.0.0.1:20128',
-        adminPassword: credentials.initialPassword,
-        dataPlaneKey: credentials.dataPlaneKey,
-      });
+      return dependencies.clientFactory(runtimeCredentials());
     } catch (error) {
       throw safeAppError(error);
     }
@@ -138,6 +155,16 @@ export function createRoutingService(dependencies: RoutingServiceDependencies) {
         settings.runtime.lastError = { code: safeError.code, message: safeError.message, retryable: safeError.statusCode >= 500 };
       }
       return settings;
+    },
+
+    async applyToCodex(_userId: number): Promise<{ provider: 'Custom' }> {
+      return callSafely(async () => {
+        const credentials = runtimeCredentials();
+        return dependencies.codexConfig.applyCustomProvider({
+          baseUrl: `${credentials.baseUrl}/api/v1`,
+          apiKey: credentials.dataPlaneKey,
+        });
+      });
     },
 
     async listModels(_userId: number) { return callSafely(() => clientForRuntime().listModels()); },
