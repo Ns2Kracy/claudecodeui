@@ -599,6 +599,14 @@
         "description": "CloudCLI 无法启动内置运行时。原生代理登录仍可使用。请重启运行时后重试。"
       }
     },
+    "codex": {
+      "title": "Codex 提供商",
+      "description": "在 Codex 中添加或更新 Custom 提供商。当前 Codex 提供商和模型保持不变。",
+      "apply": "应用到 Codex",
+      "applying": "正在应用到 Codex...",
+      "successTitle": "Custom 已可在 Codex 中使用",
+      "successDescription": "提供商已更新，当前 Codex 提供商和模型未被更改。"
+    },
     "connection": {
       "title": "连接",
       "description": "所有浏览器请求都保留在 CloudCLI 同源服务中，由服务器连接到已批准的提供商路由器来源。",

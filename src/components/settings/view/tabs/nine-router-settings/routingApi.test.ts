@@ -143,7 +143,13 @@ test('parses OAuth and device-code views while keeping every request same-origin
     ['/api/routing/oauth/github/poll', 'POST'],
     ['/api/routing/oauth/github/cancel', 'POST'],
   ]);
-  assert.deepEqual(JSON.parse(String(requests[2]?.init?.body)), { transactionId: 'device-transaction' });
+  let pollBody: unknown;
+  try {
+    pollBody = JSON.parse(String(requests[2]?.init?.body));
+  } catch (error) {
+    assert.fail(`Expected valid polling JSON: ${String(error)}`);
+  }
+  assert.deepEqual(pollBody, { transactionId: 'device-transaction' });
 });
 
 test('rejects malformed OAuth URLs and polling responses at the browser boundary', async () => {

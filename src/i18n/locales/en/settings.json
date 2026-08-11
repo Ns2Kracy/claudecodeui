@@ -605,6 +605,14 @@
         "description": "CloudCLI could not start the embedded router runtime. Native agent login remains available. Restart the runtime to try again."
       }
     },
+    "codex": {
+      "title": "Codex provider",
+      "description": "Add or update the Custom provider in Codex. Your current Codex provider and model stay unchanged.",
+      "apply": "Apply to Codex",
+      "applying": "Applying to Codex...",
+      "successTitle": "Custom is available in Codex",
+      "successDescription": "The provider was updated without changing your current Codex provider or model."
+    },
     "connection": {
       "title": "Connection",
       "description": "All browser requests stay on CloudCLI. The server connects to the approved provider router origin.",

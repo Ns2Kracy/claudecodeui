@@ -31,6 +31,8 @@ export type NineRouterSettingsTabViewProps = {
   error: RoutingUiError | null;
   errorContext?: RoutingErrorContext | null;
   activeMutation: string | null;
+  codexApplied: boolean;
+  onApplyToCodex: () => Promise<boolean>;
   routesLoading?: boolean;
   routesError?: boolean;
   onRetryRoutes: () => void;
@@ -77,6 +79,8 @@ export function NineRouterSettingsTabView({
   error,
   errorContext = null,
   activeMutation,
+  codexApplied,
+  onApplyToCodex,
   routesLoading = false,
   routesError = false,
   onRetryRoutes,
@@ -107,6 +111,7 @@ export function NineRouterSettingsTabView({
   const showRouteError =
     routesError && !unauthorized && !incompatible && !runtimeUnavailable;
   const runtimeReady = isNineRouterRuntimeReady(settings);
+  const applyingToCodex = activeMutation === "codex:apply";
   const knownStateError =
     unauthorized ||
     incompatible ||
@@ -165,6 +170,32 @@ export function NineRouterSettingsTabView({
         </Alert>
       )}
 
+      <section className="space-y-3 rounded-lg border border-border p-4">
+        <div className="space-y-1">
+          <h3 className="text-sm font-medium">{t("nineRouter.codex.title")}</h3>
+          <p className="text-sm text-muted-foreground">
+            {t("nineRouter.codex.description")}
+          </p>
+        </div>
+        <Button
+          type="button"
+          disabled={!runtimeReady || applyingToCodex}
+          onClick={() => void onApplyToCodex()}
+        >
+          {applyingToCodex && (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" />
+          )}
+          {t(applyingToCodex ? "nineRouter.codex.applying" : "nineRouter.codex.apply")}
+        </Button>
+        {codexApplied && (
+          <Alert role="status">
+            <ShieldCheck className="h-4 w-4" />
+            <AlertTitle>{t("nineRouter.codex.successTitle")}</AlertTitle>
+            <AlertDescription>{t("nineRouter.codex.successDescription")}</AlertDescription>
+          </Alert>
+        )}
+      </section>
+
       <UpstreamsRoutesSection
         configured={runtimeReady}
         connectionStatus={runtimeReady ? "connected" : "offline"}
@@ -211,6 +242,8 @@ export default function NineRouterSettingsTab() {
       error={controller.error}
       errorContext={controller.errorContext}
       activeMutation={controller.activeMutation}
+      codexApplied={controller.codexApplied}
+      onApplyToCodex={async () => Boolean(await controller.applyToCodex())}
       routesLoading={controller.detailStatus.routes === "loading"}
       routesError={controller.detailStatus.routes === "error"}
       onRetryRoutes={() => {

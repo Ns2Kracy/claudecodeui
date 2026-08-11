@@ -25,6 +25,8 @@ async function renderRoutingView(
     routesError?: boolean;
     upstreamDetailsError?: boolean;
     errorContext?: RoutingErrorContext | null;
+    activeMutation?: string | null;
+    codexApplied?: boolean;
   } = {},
 ): Promise<string> {
   const i18n = createInstance();
@@ -45,7 +47,9 @@ async function renderRoutingView(
       loading: false,
       error: options.error ?? null,
       errorContext: options.errorContext,
-      activeMutation: null,
+      activeMutation: options.activeMutation ?? null,
+      codexApplied: options.codexApplied ?? false,
+      onApplyToCodex: async () => true,
       routesError: options.routesError,
       upstreamDetailsError: options.upstreamDetailsError,
       onRetryRoutes: () => {},
@@ -110,6 +114,29 @@ test('ready runtime enables provider and route details without source or usage U
   assert.equal(markup.includes('Advisory alerts'), false);
   assert.equal(markup.includes('Model source'), false);
   assert.equal(markup.includes('role="tablist"'), false);
+});
+
+test('Codex provider action reflects runtime, pending, and success states', async () => {
+  const offline = emptyRoutingSettingsView();
+  const offlineMarkup = await renderRoutingView(offline);
+  assert.match(offlineMarkup, /Apply to Codex/);
+  assert.match(offlineMarkup, /disabled/);
+  assert.match(offlineMarkup, /current Codex provider and model stay unchanged/);
+
+  const ready = emptyRoutingSettingsView();
+  ready.runtime.status = 'ready';
+  const readyMarkup = await renderRoutingView(ready);
+  assert.match(readyMarkup, /Apply to Codex/);
+  const applyButton = readyMarkup.match(/<button[^>]*>Apply to Codex<\/button>/)?.[0];
+  assert.ok(applyButton);
+  assert.equal(/\sdisabled(?:=|>)/.test(applyButton), false);
+
+  const pendingMarkup = await renderRoutingView(ready, { activeMutation: 'codex:apply' });
+  assert.match(pendingMarkup, /Applying to Codex/);
+  assert.match(pendingMarkup, /disabled/);
+
+  const successMarkup = await renderRoutingView(ready, { codexApplied: true });
+  assert.match(successMarkup, /Custom is available in Codex/);
 });
 
 test('renders unavailable, unauthorized, and incompatible runtime states inline', async () => {
