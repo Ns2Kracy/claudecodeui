@@ -119,8 +119,9 @@ test('ready runtime enables provider and route details without source or usage U
 test('Codex provider action reflects runtime, pending, and success states', async () => {
   const offline = emptyRoutingSettingsView();
   const offlineMarkup = await renderRoutingView(offline);
-  assert.match(offlineMarkup, /Apply to Codex/);
-  assert.match(offlineMarkup, /disabled/);
+  const offlineButton = offlineMarkup.match(/<button[^>]*>Apply to Codex<\/button>/)?.[0];
+  assert.ok(offlineButton);
+  assert.match(offlineButton, /\sdisabled(?:=|>)/);
   assert.match(offlineMarkup, /current Codex provider and model stay unchanged/);
 
   const ready = emptyRoutingSettingsView();
@@ -132,10 +133,13 @@ test('Codex provider action reflects runtime, pending, and success states', asyn
   assert.equal(/\sdisabled(?:=|>)/.test(applyButton), false);
 
   const pendingMarkup = await renderRoutingView(ready, { activeMutation: 'codex:apply' });
-  assert.match(pendingMarkup, /Applying to Codex/);
-  assert.match(pendingMarkup, /disabled/);
+  const pendingButton = pendingMarkup.match(/<button[^>]*>[^]*Applying to Codex[^]*<\/button>/)?.[0];
+  assert.ok(pendingButton);
+  assert.match(pendingButton, /\sdisabled(?:=|>)/);
+  assert.match(pendingButton, /lucide-loader-circle/);
 
   const successMarkup = await renderRoutingView(ready, { codexApplied: true });
+  assert.match(successMarkup, /role="status"/);
   assert.match(successMarkup, /Custom is available in Codex/);
 });
 
