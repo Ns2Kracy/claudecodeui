@@ -1,10 +1,8 @@
 import {
-  ROUTING_AGENTS,
   type CreateRoutingProviderNodeInput,
   type CreateRoutingApiKeyAccountInput,
   type CreateRoutingRouteInput,
   type RoutingAccountView,
-  type RoutingAgent,
   type RoutingCapabilities,
   type RoutingRuntimeView,
   type RoutingModelView,
@@ -264,6 +262,11 @@ function parseProviderNodeValidation(value: unknown, status?: number): RoutingPr
   return { valid: requiredBoolean(item.valid, status), message: nullableString(item.message, status) };
 }
 
+function parseCodexApplication(value: unknown, status?: number): { provider: 'Custom' } {
+  const item = record(value, status);
+  return { provider: oneOf(item.provider, ['Custom'] as const, status) };
+}
+
 function parseCancelled(value: unknown, status?: number): { cancelled: true } {
   const item = record(value, status);
   if (item.cancelled !== true) invalidResponse(status);
@@ -360,6 +363,9 @@ export function createRoutingApiClient(fetcher: RoutingFetch) {
   return {
     getSettings(details: RoutingSettingsDetails = {}) {
       return request(detailQuery(details), parseSettings);
+    },
+    applyToCodex() {
+      return request('/codex/applications', parseCodexApplication, jsonRequest('POST'));
     },
     startOAuth(provider: string) {
       return request(`/oauth/${encodeURIComponent(provider)}/authorize`, parseOAuthStart, jsonRequest('POST'));

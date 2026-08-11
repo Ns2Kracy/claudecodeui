@@ -31,6 +31,7 @@ export type RoutingState = {
   error: RoutingUiError | null;
   errorContext: RoutingErrorContext | null;
   activeMutation: string | null;
+  codexApplied: boolean;
   detailStatus: Partial<Record<RoutingDetailKey, RoutingDetailStatus>>;
 };
 
@@ -47,7 +48,7 @@ export type RoutingStateAction =
   | { type: 'detailsReset'; keys: RoutingDetailKey[] }
   | { type: 'detailsCleared' }
   | { type: 'mutationStarted'; key: string }
-  | { type: 'mutationSucceeded' }
+  | { type: 'mutationSucceeded'; key: string }
   | { type: 'mutationFailed'; error: RoutingUiError }
   | { type: 'mutationRefreshFailed'; keys: RoutingDetailKey[]; error: RoutingUiError }
   | { type: 'clearError' };
@@ -59,6 +60,7 @@ export function createInitialRoutingState(): RoutingState {
     error: null,
     errorContext: null,
     activeMutation: null,
+    codexApplied: false,
     detailStatus: {},
   };
 }
@@ -214,12 +216,19 @@ export function routingStateReducer(
           };
     }
     case 'mutationStarted':
-      return { ...state, activeMutation: action.key, error: null, errorContext: null };
+      return {
+        ...state,
+        activeMutation: action.key,
+        codexApplied: action.key === 'codex:apply' ? false : state.codexApplied,
+        error: null,
+        errorContext: null,
+      };
     case 'mutationSucceeded':
       return {
         ...state,
         loading: false,
         activeMutation: null,
+        codexApplied: action.key === 'codex:apply' ? true : state.codexApplied,
         error: null,
         errorContext: null,
       };

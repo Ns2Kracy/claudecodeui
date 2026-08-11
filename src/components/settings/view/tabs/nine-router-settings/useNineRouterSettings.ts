@@ -207,6 +207,7 @@ export function useNineRouterSettings() {
     requiredDetails: RoutingSettingsDetails = {},
     onOperationSuccess?: (result: T) => void,
     resetDetails = false,
+    refresh = true,
   ): Promise<T | null> => {
     if (mutationRef.current) return null;
     mutationRef.current = key;
@@ -229,14 +230,23 @@ export function useNineRouterSettings() {
     }
 
     try {
-      if (await refreshAfterMutation(requiredDetails, resetDetails)) {
-        dispatch({ type: 'mutationSucceeded' });
+      if (!refresh || await refreshAfterMutation(requiredDetails, resetDetails)) {
+        dispatch({ type: 'mutationSucceeded', key });
       }
     } finally {
       mutationRef.current = null;
     }
     return result;
   }, [refreshAfterMutation]);
+
+  const applyToCodex = useCallback(() => runMutation(
+    'codex:apply',
+    () => routingApi.applyToCodex(),
+    {},
+    undefined,
+    false,
+    false,
+  ), [runMutation]);
 
   const createAccount = useCallback((input: CreateRoutingApiKeyAccountInput = accountDraft) => runMutation(
     'account:create',
@@ -309,6 +319,7 @@ export function useNineRouterSettings() {
     ensureRouteDetails,
     retryUpstreamDetails,
     retryRouteDetails,
+    applyToCodex,
     createAccount,
     updateAccount,
     testAccount,
