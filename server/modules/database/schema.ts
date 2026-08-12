@@ -113,6 +113,9 @@ CREATE TABLE IF NOT EXISTS sessions (
     -- session and on every send, so reopening a session restores the model it
     -- was last used with instead of falling back to the catalog default.
     model TEXT,
+    -- Internal provenance for model dispatch. NULL on legacy sessions until a
+    -- current catalog lookup or a new selection establishes the source.
+    model_source TEXT CHECK (model_source IS NULL OR model_source IN ('native', '9router')),
     isArchived BOOLEAN DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
