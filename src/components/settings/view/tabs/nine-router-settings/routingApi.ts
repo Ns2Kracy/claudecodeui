@@ -1,7 +1,6 @@
 import {
 	type CreateRoutingProviderNodeInput,
 	type CreateRoutingApiKeyAccountInput,
-	type CreateRoutingRouteInput,
 	type RoutingAccountView,
 	type RoutingCapabilities,
 	type RoutingRuntimeView,
@@ -12,10 +11,8 @@ import {
 	type RoutingOAuthStartView,
 	type RoutingProviderNodeValidationView,
 	type RoutingProviderNodeView,
-	type RoutingRouteView,
 	type RoutingSettingsView,
 	type UpdateRoutingAccountInput,
-	type UpdateRoutingRouteInput,
 	type ValidateRoutingProviderNodeInput,
 } from "../../../../../../shared/routing.js";
 
@@ -27,7 +24,6 @@ type RoutingFetch = (
 export type RoutingSettingsDetails = {
 	accounts?: boolean;
 	models?: boolean;
-	routes?: boolean;
 };
 
 export type RoutingAccountTestResult = {
@@ -190,31 +186,15 @@ function parseModel(value: unknown, status?: number): RoutingModelView {
 	};
 }
 
-function parseRoute(value: unknown, status?: number): RoutingRouteView {
-	const item = record(value, status);
-	return {
-		id: requiredString(item.id, status),
-		name: requiredString(item.name, status),
-		kind: nullableString(item.kind, status),
-		models: array(
-			item.models,
-			(model) => requiredString(model, status),
-			status,
-		),
-	};
-}
-
 function parseSettings(value: unknown, status?: number): RoutingSettingsView {
 	const item = record(value, status);
 	const accountSummary = record(item.accountSummary, status);
-	const routeSummary = record(item.routeSummary, status);
 	const settings: RoutingSettingsView = {
 		runtime: parseRuntime(item.runtime, status),
 		accountSummary: {
 			total: requiredNumber(accountSummary.total, status),
 			degraded: requiredNumber(accountSummary.degraded, status),
 		},
-		routeSummary: { total: requiredNumber(routeSummary.total, status) },
 	};
 	if (item.accounts !== undefined) {
 		settings.accounts = array(
@@ -227,13 +207,6 @@ function parseSettings(value: unknown, status?: number): RoutingSettingsView {
 		settings.models = array(
 			item.models,
 			(model) => parseModel(model, status),
-			status,
-		);
-	}
-	if (item.routes !== undefined) {
-		settings.routes = array(
-			item.routes,
-			(route) => parseRoute(route, status),
 			status,
 		);
 	}
@@ -414,7 +387,6 @@ function detailQuery(details: RoutingSettingsDetails): string {
 	const names: string[] = [];
 	if (details.accounts) names.push("accounts");
 	if (details.models) names.push("models");
-	if (details.routes) names.push("routes");
 	if (names.length === 0) return "";
 	const query = new URLSearchParams({ details: names.join(",") });
 	return `?${query.toString()}`;
@@ -533,23 +505,6 @@ export function createRoutingApiClient(fetcher: RoutingFetch) {
 		deleteAccount(id: string) {
 			return request(
 				`/accounts/${encodeURIComponent(id)}`,
-				parseDeleted,
-				jsonRequest("DELETE"),
-			);
-		},
-		createRoute(input: CreateRoutingRouteInput) {
-			return request("/routes", parseRoute, jsonRequest("POST", input));
-		},
-		updateRoute(id: string, input: UpdateRoutingRouteInput) {
-			return request(
-				`/routes/${encodeURIComponent(id)}`,
-				parseRoute,
-				jsonRequest("PUT", input),
-			);
-		},
-		deleteRoute(id: string) {
-			return request(
-				`/routes/${encodeURIComponent(id)}`,
 				parseDeleted,
 				jsonRequest("DELETE"),
 			);

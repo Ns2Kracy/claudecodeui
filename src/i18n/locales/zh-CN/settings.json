@@ -639,18 +639,17 @@
       }
     },
     "management": {
-      "title": "上游账户和路由",
-      "description": "管理路由会话所使用的提供商路由器账户和有序模型路由。",
-      "disclosure": "管理上游账户和路由",
+      "title": "提供商账户",
+      "description": "管理已配置的提供商账户，并加载这些账户可用的模型。",
+      "disclosure": "管理提供商账户",
       "summary": {
         "accounts": "{{count}} 个账户",
-        "degraded": "{{count}} 个需要处理",
-        "routes": "{{count}} 条路由"
+        "degraded": "{{count}} 个需要处理"
       },
-      "connectFirst": "内置提供商路由器运行时就绪后，才能加载上游账户和路由。",
-      "unavailable": "此提供商路由器版本未提供受支持的账户或路由管理 API。",
-      "loading": "正在加载上游账户和路由...",
-      "loadFailed": "无法加载上游账户和路由。",
+      "connectFirst": "内置提供商路由器运行时就绪后，才能加载提供商账户。",
+      "unavailable": "此提供商路由器版本未提供受支持的账户管理 API。",
+      "loading": "正在加载提供商账户和模型...",
+      "loadFailed": "无法加载提供商账户和模型。",
       "actions": {
         "retry": "重试",
         "save": "保存",
@@ -691,28 +690,7 @@
           "unknown": "未知"
         }
       },
-      "routes": {
-        "title": "路由",
-        "description": "按优先顺序排列模型。受支持的智能体创建新会话时，提供商路由器会应用该路由。",
-        "add": "添加路由",
-        "name": "路由名称",
-        "nameHelp": "仅可使用字母、数字、下划线、句点和连字符。",
-        "orderedModels": "有序模型",
-        "noSelectedModels": "请至少向此路由添加一个模型。",
-        "addModel": "添加模型",
-        "searchModels": "搜索模型",
-        "noMatchingModels": "没有可用的匹配模型。",
-        "empty": "提供商路由器未返回任何路由。",
-        "inUse": "使用中",
-        "modelCount": "{{count}} 个模型",
-        "moveUp": "上移 {{model}}",
-        "moveDown": "下移 {{model}}",
-        "removeModel": "移除 {{model}}",
-        "editLabel": "编辑 {{name}}",
-        "confirmDelete": "删除 {{name}}？",
-        "boundWarning": "某个智能体已选择此路由。请先将该智能体切换到原生登录或其他路由，以免新会话失败。",
-        "unavailable": "此提供商路由器版本无法提供路由详情。"
-      },
+      "connectProvider": "连接提供商",
       "providerConnectionMethodHelp": "选择提供商路由器运行时支持的连接方式。"
     },
     "runtime": {

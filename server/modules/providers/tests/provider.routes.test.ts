@@ -36,7 +36,8 @@ async function withProviderServer(run: (baseUrl: string) => Promise<void>) {
 	try {
 		const address = server.address();
 		assert.equal(typeof address, "object");
-		await run(`http://127.0.0.1:${(address as { port: number }).port}`);
+		const port = (address as { port: number }).port;
+		await run(new URL("/api/", "http://127.0.0.1:" + String(port)).origin);
 	} finally {
 		server.close();
 		await once(server, "close");
@@ -55,5 +56,19 @@ test("provider routes reject removed coding agents at the HTTP boundary", async 
 			};
 			assert.equal(body.error?.code, "UNSUPPORTED_PROVIDER");
 		}
+	});
+});
+
+test("provider capability catalog exposes only Codex", async () => {
+	await withProviderServer(async (baseUrl) => {
+		const response = await fetch(`${baseUrl}/api/providers/capabilities`);
+		assert.equal(response.status, 200);
+		const body = (await response.json()) as {
+			data?: { providers?: Array<{ provider: string }> };
+		};
+		assert.deepEqual(
+			body.data?.providers?.map(({ provider }) => provider),
+			["codex"],
+		);
 	});
 });

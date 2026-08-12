@@ -135,28 +135,6 @@ function createHarness(
 		}),
 		deleteAccount: async () => undefined,
 		testAccount: async () => ({ healthy: true, error: null, refreshed: false }),
-		listRoutes: async () => [
-			{ id: "r1", name: "quality-first", kind: "fallback", models: ["m1"] },
-		],
-		getRoute: async (id: string) => ({
-			id,
-			name: "quality-first",
-			kind: "fallback",
-			models: ["m1"],
-		}),
-		createRoute: async (input: any) => ({
-			id: "r2",
-			name: input.name,
-			kind: input.kind ?? null,
-			models: input.models,
-		}),
-		updateRoute: async (id: string, input: any) => ({
-			id,
-			name: input.name ?? "quality-first",
-			kind: input.kind ?? null,
-			models: input.models ?? ["m1"],
-		}),
-		deleteRoute: async () => undefined,
 	};
 	const runtime = {
 		getStatus: () => ({
@@ -203,14 +181,12 @@ test("settings report sidecar runtime without connection storage", async () => {
 	const settings = await service.getSettings(7, {
 		accounts: true,
 		models: true,
-		routes: true,
 	});
 	assert.equal(settings.runtime.mode, "sidecar");
 	assert.equal(settings.runtime.status, "ready");
 	assert.equal(settings.runtime.version, "0.5.45");
 	assert.equal("connection" in settings, false);
 	assert.equal(settings.accounts?.length, 1);
-	assert.equal(settings.routes?.length, 1);
 	assert.equal(settings.models?.length, 1);
 	assert.deepEqual(settings.runtime.capabilities.cursorRuntime, false);
 	assert.equal(calls.includes("client"), true);

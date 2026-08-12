@@ -73,7 +73,9 @@ test("Codex models come only from the configured 9Router catalog", async () => {
 		],
 	});
 
-	const result = await service.getProviderModels("codex", { bypassCache: true });
+	const result = await service.getProviderModels("codex", {
+		bypassCache: true,
+	});
 
 	assert.equal(nativeLookups, 0);
 	assert.deepEqual(result.models, {

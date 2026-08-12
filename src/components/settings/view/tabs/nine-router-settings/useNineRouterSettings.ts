@@ -2,10 +2,8 @@ import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 
 import type {
 	CreateRoutingApiKeyAccountInput,
-	CreateRoutingRouteInput,
 	RoutingSettingsView,
 	UpdateRoutingAccountInput,
-	UpdateRoutingRouteInput,
 } from "../../../../../../shared/routing.js";
 
 import {
@@ -25,11 +23,7 @@ import {
 	type RoutingUiError,
 } from "./routingState.js";
 
-const UPSTREAM_DETAIL_KEYS: RoutingDetailKey[] = [
-	"accounts",
-	"models",
-	"routes",
-];
+const UPSTREAM_DETAIL_KEYS: RoutingDetailKey[] = ["accounts", "models"];
 
 function safeUiError(error: unknown): RoutingUiError {
 	if (error instanceof RoutingApiError) {
@@ -60,7 +54,6 @@ function loadedDetails(
 		(includeLoading && state.detailStatus[key] === "loading");
 	if (requested("accounts")) details.accounts = true;
 	if (requested("models")) details.models = true;
-	if (requested("routes")) details.routes = true;
 	return details;
 }
 
@@ -68,7 +61,6 @@ function detailKeysFor(details: RoutingSettingsDetails): RoutingDetailKey[] {
 	const keys: RoutingDetailKey[] = [];
 	if (details.accounts) keys.push("accounts");
 	if (details.models) keys.push("models");
-	if (details.routes) keys.push("routes");
 	return keys;
 }
 
@@ -168,13 +160,7 @@ export function useNineRouterSettings() {
 			ensureDetails(UPSTREAM_DETAIL_KEYS, {
 				accounts: true,
 				models: true,
-				routes: true,
 			}),
-		[ensureDetails],
-	);
-
-	const ensureRouteDetails = useCallback(
-		() => ensureDetails(["routes"], { routes: true }),
 		[ensureDetails],
 	);
 
@@ -192,13 +178,7 @@ export function useNineRouterSettings() {
 			retryDetails(UPSTREAM_DETAIL_KEYS, {
 				accounts: true,
 				models: true,
-				routes: true,
 			}),
-		[retryDetails],
-	);
-
-	const retryRouteDetails = useCallback(
-		() => retryDetails(["routes"], { routes: true }),
 		[retryDetails],
 	);
 
@@ -290,7 +270,7 @@ export function useNineRouterSettings() {
 			runMutation(
 				"account:create",
 				() => routingApi.createAccount(input),
-				{ accounts: true, models: true, routes: true },
+				{ accounts: true, models: true },
 				() =>
 					setAccountDraft((current) =>
 						accountDraftAfterMutation(current, true),
@@ -304,7 +284,7 @@ export function useNineRouterSettings() {
 			runMutation(
 				`account:update:${id}`,
 				() => routingApi.updateAccount(id, input),
-				{ accounts: true, models: true, routes: true },
+				{ accounts: true, models: true },
 			),
 		[runMutation],
 	);
@@ -325,40 +305,7 @@ export function useNineRouterSettings() {
 					await routingApi.deleteAccount(id);
 					return true;
 				},
-				{ accounts: true, models: true, routes: true },
-			),
-		[runMutation],
-	);
-
-	const createRoute = useCallback(
-		(input: CreateRoutingRouteInput) =>
-			runMutation("route:create", () => routingApi.createRoute(input), {
-				accounts: true,
-				models: true,
-				routes: true,
-			}),
-		[runMutation],
-	);
-
-	const updateRoute = useCallback(
-		(id: string, input: UpdateRoutingRouteInput) =>
-			runMutation(
-				`route:update:${id}`,
-				() => routingApi.updateRoute(id, input),
-				{ accounts: true, models: true, routes: true },
-			),
-		[runMutation],
-	);
-
-	const deleteRoute = useCallback(
-		(id: string) =>
-			runMutation(
-				`route:delete:${id}`,
-				async () => {
-					await routingApi.deleteRoute(id);
-					return true;
-				},
-				{ accounts: true, models: true, routes: true },
+				{ accounts: true, models: true },
 			),
 		[runMutation],
 	);
@@ -386,17 +333,12 @@ export function useNineRouterSettings() {
 		setAccountField,
 		loadSettings,
 		ensureUpstreamDetails,
-		ensureRouteDetails,
 		retryUpstreamDetails,
-		retryRouteDetails,
 		applyToCodex,
 		createAccount,
 		updateAccount,
 		testAccount,
 		deleteAccount,
-		createRoute,
-		updateRoute,
-		deleteRoute,
 		clearError,
 		isMutating,
 	};

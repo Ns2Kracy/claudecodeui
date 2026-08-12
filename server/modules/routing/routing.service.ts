@@ -8,7 +8,6 @@ import { AppError } from "@/shared/utils.js";
 import type {
 	CreateRoutingApiKeyAccountInput,
 	CreateRoutingProviderNodeInput,
-	CreateRoutingRouteInput,
 	RoutingAccountView,
 	RoutingOAuthPollingStateView,
 	RoutingRuntimeView,
@@ -16,7 +15,6 @@ import type {
 	UpdateRoutingAccountInput,
 	UpdateRoutingProviderNodeInput,
 	ValidateRoutingProviderNodeInput,
-	UpdateRoutingRouteInput,
 } from "../../../shared/routing.js";
 import { emptyRoutingSettingsView } from "../../../shared/routing.js";
 
@@ -142,7 +140,7 @@ export function createRoutingService(dependencies: RoutingServiceDependencies) {
 
 	return {
 		async getSettings(
-			userId: number,
+			_userId: number,
 			details: RoutingSettingsDetails = {},
 		): Promise<RoutingSettingsView> {
 			const settings = emptyRoutingSettingsView();
@@ -152,27 +150,19 @@ export function createRoutingService(dependencies: RoutingServiceDependencies) {
 			);
 
 			const capabilities = settings.runtime.capabilities;
-			if (!capabilities.readAccounts && !capabilities.readRoutes)
-				return settings;
+			if (!capabilities.readAccounts) return settings;
 
 			try {
 				const client = clientForRuntime();
-				if (capabilities.readAccounts) {
-					const accounts = await client.listAccounts();
-					settings.accountSummary = {
-						total: accounts.length,
-						degraded: accounts.filter((account) =>
-							["cooling", "limited", "failed"].includes(account.status),
-						).length,
-					};
-					if (details.accounts) settings.accounts = accounts;
-				}
-				if (capabilities.readRoutes) {
-					const routes = await client.listRoutes();
-					settings.routeSummary = { total: routes.length };
-					if (details.routes) settings.routes = routes;
-					if (details.models) settings.models = await client.listModels();
-				}
+				const accounts = await client.listAccounts();
+				settings.accountSummary = {
+					total: accounts.length,
+					degraded: accounts.filter((account) =>
+						["cooling", "limited", "failed"].includes(account.status),
+					).length,
+				};
+				if (details.accounts) settings.accounts = accounts;
+				if (details.models) settings.models = await client.listModels(accounts);
 			} catch (error) {
 				const safeError = safeAppError(error);
 				settings.runtime.status =
@@ -290,25 +280,6 @@ export function createRoutingService(dependencies: RoutingServiceDependencies) {
 		},
 		async testAccount(_userId: number, id: string) {
 			return callSafely(() => clientForRuntime().testAccount(id));
-		},
-		async listRoutes(_userId: number) {
-			return callSafely(() => clientForRuntime().listRoutes());
-		},
-		async getRoute(_userId: number, id: string) {
-			return callSafely(() => clientForRuntime().getRoute(id));
-		},
-		async createRoute(_userId: number, input: CreateRoutingRouteInput) {
-			return callSafely(() => clientForRuntime().createRoute(input));
-		},
-		async updateRoute(
-			_userId: number,
-			id: string,
-			input: UpdateRoutingRouteInput,
-		) {
-			return callSafely(() => clientForRuntime().updateRoute(id, input));
-		},
-		async deleteRoute(_userId: number, id: string): Promise<void> {
-			await callSafely(() => clientForRuntime().deleteRoute(id));
 		},
 	};
 }

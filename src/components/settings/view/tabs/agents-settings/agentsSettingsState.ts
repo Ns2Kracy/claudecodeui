@@ -1,3 +1,5 @@
-import type { AgentProvider } from '../../../types/types';
+import type { AgentProvider } from "../../../types/types";
 
-export const SETTINGS_AGENTS = ['codex'] as const satisfies readonly AgentProvider[];
+export const SETTINGS_AGENTS = [
+	"codex",
+] as const satisfies readonly AgentProvider[];

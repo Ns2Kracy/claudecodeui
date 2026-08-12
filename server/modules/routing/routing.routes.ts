@@ -9,14 +9,11 @@ import {
 import type {
 	CreateRoutingApiKeyAccountInput,
 	CreateRoutingProviderNodeInput,
-	CreateRoutingRouteInput,
 	RoutingProviderNodeType,
 	UpdateRoutingAccountInput,
 	UpdateRoutingProviderNodeInput,
 	ValidateRoutingProviderNodeInput,
-	UpdateRoutingRouteInput,
 } from "../../../shared/routing.js";
-import { ROUTING_ROUTE_NAME_PATTERN } from "../../../shared/routing.js";
 
 import {
 	createRoutingMutationGuard,
@@ -155,13 +152,6 @@ function accountUpdateInput(request: Request): UpdateRoutingAccountInput {
 	return input;
 }
 
-function stringArray(value: unknown, fieldName: string): string[] {
-	if (!Array.isArray(value) || value.length > 500) {
-		throw invalidRequest(`${fieldName} must be an array`);
-	}
-	return value.map((item) => requiredString(item, fieldName, 1024));
-}
-
 function providerNodeType(value: unknown): RoutingProviderNodeType {
 	if (
 		value !== "openai-compatible" &&
@@ -256,38 +246,6 @@ function providerNodeValidateInput(
 	if (type === "custom-embedding" && modelId === undefined)
 		throw invalidRequest("modelId is required");
 	if (modelId !== undefined) input.modelId = modelId;
-	return input;
-}
-
-function routeName(value: unknown): string {
-	const name = requiredString(value, "name", 256);
-	if (!ROUTING_ROUTE_NAME_PATTERN.test(name)) {
-		throw invalidRequest("name contains unsupported characters");
-	}
-	return name;
-}
-
-function routeCreateInput(request: Request): CreateRoutingRouteInput {
-	const body = bodyRecord(request);
-	const input: CreateRoutingRouteInput = {
-		name: routeName(body.name),
-		models: stringArray(body.models, "models"),
-	};
-	const kind = optionalNullableString(body.kind, "kind", 128);
-	if (kind !== undefined) input.kind = kind;
-	return input;
-}
-
-function routeUpdateInput(request: Request): UpdateRoutingRouteInput {
-	const body = bodyRecord(request);
-	const input: UpdateRoutingRouteInput = {};
-	const name = body.name === undefined ? undefined : routeName(body.name);
-	const kind = optionalNullableString(body.kind, "kind", 128);
-	if (name !== undefined) input.name = name;
-	if (body.models !== undefined)
-		input.models = stringArray(body.models, "models");
-	if (kind !== undefined) input.kind = kind;
-	if (Object.keys(input).length === 0) throw invalidRequest();
 	return input;
 }
 
@@ -586,40 +544,6 @@ export function createRoutingRouter(
 		...writeGuards,
 		asyncHandler(async (request, response) => {
 			await service.deleteAccount(userId(request), resourceId(request));
-			response.json(createApiSuccessResponse({ deleted: true }));
-		}),
-	);
-	router.post(
-		"/routes",
-		...writeGuards,
-		asyncHandler(async (request, response) => {
-			response.json(
-				createApiSuccessResponse(
-					await service.createRoute(userId(request), routeCreateInput(request)),
-				),
-			);
-		}),
-	);
-	router.put(
-		"/routes/:id",
-		...writeGuards,
-		asyncHandler(async (request, response) => {
-			response.json(
-				createApiSuccessResponse(
-					await service.updateRoute(
-						userId(request),
-						resourceId(request),
-						routeUpdateInput(request),
-					),
-				),
-			);
-		}),
-	);
-	router.delete(
-		"/routes/:id",
-		...writeGuards,
-		asyncHandler(async (request, response) => {
-			await service.deleteRoute(userId(request), resourceId(request));
 			response.json(createApiSuccessResponse({ deleted: true }));
 		}),
 	);

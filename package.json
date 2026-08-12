@@ -2,7 +2,7 @@
   "name": "@cloudcli-ai/cloudcli",
   "version": "1.37.0",
   "productName": "CloudCLI",
-  "description": "A web-based UI for Claude Code CLI",
+  "description": "A web-based UI for Codex with 9Router-backed authentication and models",
   "type": "module",
   "main": "dist-server/server/index.js",
   "bin": {
@@ -74,8 +74,7 @@
       "dist-server/",
       "shared/",
       "server/",
-      "package.json",
-      "!**/node_modules/@anthropic-ai/claude-agent-sdk-{darwin,linux,win32}-*/**"
+      "package.json"
     ],
     "protocols": [
       {
@@ -117,16 +116,10 @@
     }
   },
   "keywords": [
-    "claude code",
-    "claude-code",
-    "claude-code-ui",
     "cloudcli",
     "codex",
-    "cursor",
-    "cursor-cli",
-    "anthropic",
+    "9router",
     "openai",
-    "google",
     "coding-agent",
     "web-ui",
     "ui",
@@ -135,7 +128,6 @@
   "author": "CloudCLI UI Contributors",
   "license": "AGPL-3.0-or-later",
   "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "^0.3.165",
     "@codemirror/lang-css": "^6.3.1",
     "@codemirror/lang-html": "^6.4.9",
     "@codemirror/lang-javascript": "^6.2.4",

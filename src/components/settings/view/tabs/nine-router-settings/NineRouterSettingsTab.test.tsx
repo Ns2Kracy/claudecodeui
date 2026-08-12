@@ -18,7 +18,7 @@ import {
 	NineRouterSettingsTabView,
 	isNineRouterRuntimeReady,
 } from "./NineRouterSettingsTab.js";
-import UpstreamsRoutesSection from "./UpstreamsRoutesSection.js";
+import ProviderAccountsSection from "./ProviderAccountsSection.js";
 import type { RoutingErrorContext } from "./routingState.js";
 
 // npm test compiles TSX with the server's classic JSX transform. Some shared
@@ -35,7 +35,6 @@ async function renderRoutingView(
 			status: number;
 			retryable: boolean;
 		} | null;
-		routesError?: boolean;
 		upstreamDetailsError?: boolean;
 		errorContext?: RoutingErrorContext | null;
 		activeMutation?: string | null;
@@ -64,9 +63,7 @@ async function renderRoutingView(
 				activeMutation: options.activeMutation ?? null,
 				codexApplied: options.codexApplied ?? false,
 				onApplyToCodex: async () => true,
-				routesError: options.routesError,
 				upstreamDetailsError: options.upstreamDetailsError,
-				onRetryRoutes: () => {},
 				accountDraft: { provider: "", name: "", apiKey: "", active: true },
 				onAccountFieldChange: () => {},
 				onExpandUpstreamDetails: () => {},
@@ -75,9 +72,6 @@ async function renderRoutingView(
 				onUpdateAccount: async () => true,
 				onTestAccount: async () => true,
 				onDeleteAccount: async () => true,
-				onCreateRoute: async () => true,
-				onUpdateRoute: async () => true,
-				onDeleteRoute: async () => true,
 			}),
 		),
 	);
@@ -98,7 +92,7 @@ test("first render shows router-safe terminology and no obsolete controls", asyn
 	assert.equal(markup.includes("write-only"), false);
 });
 
-test("ready runtime enables provider and route details without source or usage UI", async () => {
+test("ready runtime enables provider details without source or usage UI", async () => {
 	const settings = emptyRoutingSettingsView();
 	settings.runtime = {
 		...settings.runtime,
@@ -117,15 +111,12 @@ test("ready runtime enables provider and route details without source or usage U
 			cursorRuntime: false,
 		},
 	};
-	settings.routes = [
-		{ id: "route-1", name: "quality-first", kind: null, models: ["model-a"] },
-	];
 	const markup = await renderRoutingView(settings);
 
 	assert.equal(markup.includes("never-render-admin"), false);
 	assert.equal(markup.includes("never-render-key"), false);
 	assert.equal(/9Router/i.test(markup), false);
-	assert.match(markup, /Upstreams and routes/);
+	assert.match(markup, /Provider accounts/);
 	assert.equal(markup.includes("Native login"), false);
 	assert.equal(markup.includes("Usage &amp; limits"), false);
 	assert.equal(markup.includes("Advisory alerts"), false);
@@ -242,9 +233,6 @@ test("degraded runtime does not render ready-only detail controls", async () => 
 			retryable: true,
 		},
 	};
-	settings.routes = [
-		{ id: "route-1", name: "quality-first", kind: null, models: ["model-a"] },
-	];
 
 	const markup = await renderRoutingView(settings);
 
@@ -284,15 +272,13 @@ test("open provider connection section uses localized Provider Router method cop
 		createElement(
 			I18nextProvider,
 			{ i18n },
-			createElement(UpstreamsRoutesSection, {
+			createElement(ProviderAccountsSection, {
 				configured: true,
 				connectionStatus: "connected",
 				capabilities: settings.runtime.capabilities,
 				accountSummary: settings.accountSummary,
-				routeSummary: settings.routeSummary,
 				accounts: [],
 				models: [],
-				routes: [],
 				loading: false,
 				detailsError: false,
 				activeMutation: null,
@@ -304,9 +290,6 @@ test("open provider connection section uses localized Provider Router method cop
 				onUpdateAccount: async () => true,
 				onTestAccount: async () => true,
 				onDeleteAccount: async () => true,
-				onCreateRoute: async () => true,
-				onUpdateRoute: async () => true,
-				onDeleteRoute: async () => true,
 				defaultOpen: true,
 			}),
 		),
@@ -320,7 +303,7 @@ test("open provider connection section uses localized Provider Router method cop
 	assert.equal(/9Router/i.test(markup), false);
 });
 
-test("degraded runtime is not eligible for automatic account or route detail reads", () => {
+test("degraded runtime is not eligible for automatic account detail reads", () => {
 	const settings = emptyRoutingSettingsView();
 	settings.runtime = {
 		...settings.runtime,
@@ -328,7 +311,6 @@ test("degraded runtime is not eligible for automatic account or route detail rea
 		capabilities: {
 			...settings.runtime.capabilities,
 			readAccounts: true,
-			readRoutes: true,
 			readUsage: false,
 		},
 	};
@@ -339,27 +321,22 @@ test("degraded runtime is not eligible for automatic account or route detail rea
 	assert.equal(isNineRouterRuntimeReady(settings), true);
 });
 
-test("route loading failures are scoped away from obsolete operation alerts", async () => {
+test("provider detail failures are scoped to the inline retry state", async () => {
 	const settings = emptyRoutingSettingsView();
-	settings.runtime = {
-		...settings.runtime,
-		status: "ready",
-		capabilities: { ...settings.runtime.capabilities, readRoutes: true },
-	};
+	settings.runtime.status = "ready";
+	settings.runtime.capabilities.readAccounts = true;
 
 	const markup = await renderRoutingView(settings, {
-		routesError: true,
 		upstreamDetailsError: true,
 		errorContext: "details",
 		error: {
-			code: "ROUTING_ROUTES_FAILED",
-			message: "Could not load route details",
+			code: "ROUTING_ACCOUNTS_FAILED",
+			message: "Could not load provider details",
 			status: 502,
 			retryable: true,
 		},
 	});
 
 	assert.equal(markup.includes("9Router operation failed"), false);
-	assert.equal(markup.includes("Could not load route details"), false);
-	assert.equal(markup.includes("Create a route in 9Router"), false);
+	assert.equal(markup.includes("Could not load provider details"), false);
 });

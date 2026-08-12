@@ -1,22 +1,23 @@
-import * as fs from 'node:fs/promises';
+import * as fs from "node:fs/promises";
 
-import spawn from 'cross-spawn';
+import spawn from "cross-spawn";
 
-import { projectsDb } from '@/modules/database/index.js';
+import { projectsDb } from "@/modules/database/index.js";
 
-import { createGitRouter } from './git.routes.js';
+import { createGitRouter } from "./git.routes.js";
 
 type GitExternalDependencies = Pick<
-  Parameters<typeof createGitRouter>[0],
-  'queryClaude' | 'queryCursor'
+	Parameters<typeof createGitRouter>[0],
+	"queryCodex"
 >;
 
-/** Assembles the Git router with runners from the centralized provider runtime service. */
+/** Assembles the Git router with the centralized Codex runtime. */
 export function createGitModule(externalDependencies: GitExternalDependencies) {
-  return createGitRouter({
-    fileSystem: fs,
-    spawnProcess: spawn,
-    resolveProjectPathById: (projectId) => projectsDb.getProjectPathById(projectId),
-    ...externalDependencies,
-  });
+	return createGitRouter({
+		fileSystem: fs,
+		spawnProcess: spawn,
+		resolveProjectPathById: (projectId) =>
+			projectsDb.getProjectPathById(projectId),
+		...externalDependencies,
+	});
 }

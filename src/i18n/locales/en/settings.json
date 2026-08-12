@@ -645,21 +645,19 @@
       }
     },
     "management": {
-      "title": "Upstreams and routes",
-      "description": "Manage the provider accounts and ordered model routes used by routed sessions.",
-      "disclosure": "Manage upstreams and routes",
+      "title": "Provider accounts",
+      "description": "Manage configured provider accounts and load models available from those accounts.",
+      "disclosure": "Manage provider accounts",
       "summary": {
         "accounts_one": "{{count}} account",
         "accounts_other": "{{count}} accounts",
         "degraded_one": "{{count}} needs attention",
-        "degraded_other": "{{count}} need attention",
-        "routes_one": "{{count}} route",
-        "routes_other": "{{count}} routes"
+        "degraded_other": "{{count}} need attention"
       },
-      "connectFirst": "The built-in Provider Router runtime must be ready before accounts and routes can load.",
-      "unavailable": "This Provider Router version does not expose supported account or route management APIs.",
-      "loading": "Loading upstream accounts and routes...",
-      "loadFailed": "Could not load upstream accounts and routes.",
+      "connectFirst": "The built-in Provider Router runtime must be ready before provider accounts can load.",
+      "unavailable": "This Provider Router version does not expose a supported account management API.",
+      "loading": "Loading provider accounts and models...",
+      "loadFailed": "Could not load provider accounts and models.",
       "actions": {
         "retry": "Retry",
         "save": "Save",
@@ -700,29 +698,7 @@
           "unknown": "Unknown"
         }
       },
-      "routes": {
-        "title": "Routes",
-        "description": "Order models by preference. The Provider Router applies the route when a supported agent starts a new session.",
-        "add": "Add route",
-        "name": "Route name",
-        "nameHelp": "Use letters, numbers, underscores, periods, and hyphens only.",
-        "orderedModels": "Ordered models",
-        "noSelectedModels": "Add at least one model to this route.",
-        "addModel": "Add model",
-        "searchModels": "Search models",
-        "noMatchingModels": "No matching models are available.",
-        "empty": "No routes were returned by the Provider Router.",
-        "inUse": "In use",
-        "modelCount_one": "{{count}} model",
-        "modelCount_other": "{{count}} models",
-        "moveUp": "Move {{model}} up",
-        "moveDown": "Move {{model}} down",
-        "removeModel": "Remove {{model}}",
-        "editLabel": "Edit {{name}}",
-        "confirmDelete": "Delete {{name}}?",
-        "boundWarning": "This route is selected by an agent. Switch that agent to Native login or another route to avoid failed sessions.",
-        "unavailable": "Route details are unavailable for this Provider Router version."
-      },
+      "connectProvider": "Connect a provider",
       "providerConnectionMethodHelp": "Choose a method supported by the Provider Router runtime."
     },
     "runtime": {

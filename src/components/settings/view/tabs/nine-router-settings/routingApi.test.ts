@@ -70,7 +70,6 @@ test("builds allowlisted detail queries and encodes dynamic resource ids once", 
 		...emptyRoutingSettingsView(),
 		accounts: [],
 		models: [],
-		routes: [],
 	};
 	const api = createRoutingApiClient(async (url, init) => {
 		requests.push({ url: String(url), init });
@@ -80,13 +79,10 @@ test("builds allowlisted detail queries and encodes dynamic resource ids once", 
 		return jsonResponse({ success: true, data: settings });
 	});
 
-	await api.getSettings({ accounts: true, models: true, routes: true });
+	await api.getSettings({ accounts: true, models: true });
 	await api.deleteAccount("account/name");
 
-	assert.equal(
-		requests[0]?.url,
-		"/api/routing?details=accounts%2Cmodels%2Croutes",
-	);
+	assert.equal(requests[0]?.url, "/api/routing?details=accounts%2Cmodels");
 	assert.equal(requests[1]?.url, "/api/routing/accounts/account%2Fname");
 	assert.equal(requests[1]?.init?.method, "DELETE");
 });

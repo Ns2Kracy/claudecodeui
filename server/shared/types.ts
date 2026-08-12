@@ -1,5 +1,5 @@
-import type { IncomingMessage } from 'node:http';
-import type { Readable } from 'node:stream';
+import type { IncomingMessage } from "node:http";
+import type { Readable } from "node:stream";
 
 //----------------- HTTP RESPONSE SHAPES ------------
 /**
@@ -9,8 +9,8 @@ import type { Readable } from 'node:stream';
  * consumers can parse responses consistently across endpoints.
  */
 export type ApiSuccessShape<TData = unknown> = {
-  success: true;
-  data: TData;
+	success: true;
+	data: TData;
 };
 
 /**
@@ -31,8 +31,8 @@ export type AnyRecord = Record<string, any>;
  * socket is still open before broadcasting.
  */
 export type RealtimeClientConnection = {
-  readyState: number;
-  send(data: string): void;
+	readyState: number;
+	send(data: string): void;
 };
 
 /**
@@ -42,10 +42,10 @@ export type RealtimeClientConnection = {
  * represented here so websocket handlers can resolve a stable writer user id.
  */
 export type AuthenticatedWebSocketUser = {
-  id?: string | number;
-  userId?: string | number;
-  username?: string;
-  [key: string]: unknown;
+	id?: string | number;
+	userId?: string | number;
+	username?: string;
+	[key: string]: unknown;
 };
 
 /**
@@ -55,7 +55,7 @@ export type AuthenticatedWebSocketUser = {
  * downstream websocket handlers rely on this extended request type.
  */
 export type AuthenticatedWebSocketRequest = IncomingMessage & {
-  user?: AuthenticatedWebSocketUser;
+	user?: AuthenticatedWebSocketUser;
 };
 
 // ---------------------------
@@ -66,7 +66,7 @@ export type AuthenticatedWebSocketRequest = IncomingMessage & {
  * Use this as the source of truth whenever a function or payload needs to identify
  * a specific LLM integration.
  */
-export type LLMProvider = 'claude' | 'codex' | 'cursor' | 'opencode';
+export type LLMProvider = "claude" | "codex" | "cursor" | "opencode";
 
 // ---------------------------
 //----------------- ROUTING MODULE CONTRACTS ------------
@@ -79,67 +79,66 @@ export type LLMProvider = 'claude' | 'codex' | 'cursor' | 'opencode';
  * dashboard credentials and cookies must never enter this contract.
  */
 export type RuntimeRoutingConfiguration =
-  | { source: 'native' }
-  | {
-      source: '9router';
-      baseUrl: string;
-      openAiBaseUrl: string;
-      apiKey: string;
-      routeId?: string;
-      routeName: string;
-      model?: string;
-    };
+	| { source: "native" }
+	| {
+			source: "9router";
+			baseUrl: string;
+			openAiBaseUrl: string;
+			apiKey: string;
+			routeId?: string;
+			routeName: string;
+			model?: string;
+	  };
 
 /**
  * Decrypted credentials supplied only while constructing an in-memory
  * NineRouterClient. Callers must not log, persist, or serialize this value.
  */
 export type RoutingClientCredentials = {
-  baseUrl: string;
-  adminPassword: string;
-  dataPlaneKey: string;
+	baseUrl: string;
+	adminPassword: string;
+	dataPlaneKey: string;
 };
 
 /**
  * Optional detail expansions accepted by the aggregate routing settings read.
- * Summary counts remain available without these flags; large account, model,
- * and route arrays are included only when explicitly requested.
+ * Summary counts remain available without these flags; account and model
+ * arrays are included only when explicitly requested.
  */
 export type RoutingSettingsDetails = {
-  accounts?: boolean;
-  models?: boolean;
-  routes?: boolean;
+	accounts?: boolean;
+	models?: boolean;
 };
 
 /**
  * One selectable model row in a provider model catalog.
  */
 export type ProviderModelOption = {
-  value: string;
-  label: string;
-  /**
-   * Internal catalog provenance used by backend/frontend model handling to keep
-   * native provider entries distinct from 9router sidecar entries. This is not a
-   * user-facing provider selector; 9router rows remain normal model options with
-   * collision-free `9router:<official-model-id>` values.
-   */
-  source?: 'native' | '9router';
-  description?: string;
-  effort?: {
-    default?: string;
-    values: {
-      value: string;
-      description?: string;
-    }[];
-  };
+	value: string;
+	label: string;
+	/**
+	 * Internal catalog provenance used by backend/frontend model handling to keep
+	 * native provider entries distinct from 9router sidecar entries. This is not a
+	 * user-facing provider selector; routed rows keep the upstream model ID and
+	 * use provenance only for internal runtime dispatch.
+	 */
+	source?: "native" | "9router";
+	description?: string;
+	effort?: {
+		default?: string;
+		values: {
+			value: string;
+			description?: string;
+		}[];
+	};
 };
 
 /**
  * Provider model catalog returned by `GET /api/providers/:provider/models`.
  */
 export type ProviderModelsDefinition = {
-  OPTIONS: ProviderModelOption[];
-  DEFAULT: string;
+	OPTIONS: ProviderModelOption[];
+	DEFAULT: string;
 };
 
 /**
@@ -151,9 +150,9 @@ export type ProviderModelsDefinition = {
  * persisted disk cache, or a fresh provider fetch.
  */
 export type ProviderModelsCacheInfo = {
-  updatedAt: string;
-  expiresAt: string;
-  source: 'memory' | 'disk' | 'fresh';
+	updatedAt: string;
+	expiresAt: string;
+	source: "memory" | "disk" | "fresh";
 };
 
 /**
@@ -163,8 +162,8 @@ export type ProviderModelsCacheInfo = {
  * cache metadata that explains how current the catalog is.
  */
 export type ProviderModelsResult = {
-  models: ProviderModelsDefinition;
-  cache: ProviderModelsCacheInfo;
+	models: ProviderModelsDefinition;
+	cache: ProviderModelsCacheInfo;
 };
 
 // ---------------------------
@@ -178,7 +177,7 @@ export type ProviderModelsResult = {
  * to the provider catalog `DEFAULT` value when the active model cannot be read.
  */
 export type ProviderCurrentActiveModel = {
-  model: string;
+	model: string;
 };
 
 /**
@@ -194,7 +193,7 @@ export type ProviderCurrentActiveModel = {
  * Routes surface this so the frontend can tell a real selection apart from a
  * placeholder without re-deriving the precedence chain.
  */
-export type ProviderSessionModelSource = 'session' | 'provider' | 'default';
+export type ProviderSessionModelSource = "session" | "provider" | "default";
 
 /**
  * The model one session runs with, plus where that answer came from.
@@ -204,10 +203,10 @@ export type ProviderSessionModelSource = 'session' | 'provider' | 'default';
  * composer's model picker so every surface agrees on one answer.
  */
 export type ProviderSessionModel = {
-  provider: LLMProvider;
-  sessionId: string | null;
-  model: string;
-  source: ProviderSessionModelSource;
+	provider: LLMProvider;
+	sessionId: string | null;
+	model: string;
+	source: ProviderSessionModelSource;
 };
 
 /**
@@ -216,20 +215,20 @@ export type ProviderSessionModel = {
  * Keep this union in sync with event kinds produced by provider session adapters.
  */
 export type MessageKind =
-  | 'text'
-  | 'tool_use'
-  | 'tool_result'
-  | 'thinking'
-  | 'stream_delta'
-  | 'stream_end'
-  | 'error'
-  | 'complete'
-  | 'status'
-  | 'permission_request'
-  | 'permission_cancelled'
-  | 'session_created'
-  | 'interactive_prompt'
-  | 'task_notification';
+	| "text"
+	| "tool_use"
+	| "tool_result"
+	| "thinking"
+	| "stream_delta"
+	| "stream_end"
+	| "error"
+	| "complete"
+	| "status"
+	| "permission_request"
+	| "permission_cancelled"
+	| "session_created"
+	| "interactive_prompt"
+	| "task_notification";
 
 /**
  * Event kinds added by the chat gateway layer on top of provider message kinds.
@@ -241,10 +240,10 @@ export type MessageKind =
  * needs one kind-based switch.
  */
 export type GatewayEventKind =
-  | 'chat_subscribed'
-  | 'session_upserted'
-  | 'loading_progress'
-  | 'protocol_error';
+	| "chat_subscribed"
+	| "session_upserted"
+	| "loading_progress"
+	| "protocol_error";
 
 /**
  * Complete set of `kind` values emitted to websocket clients.
@@ -262,63 +261,63 @@ export type ServerEventKind = MessageKind | GatewayEventKind;
  * emitted outside provider-specific modules.
  */
 export type NormalizedMessage = {
-  id: string;
-  sessionId: string;
-  timestamp: string;
-  provider: LLMProvider;
-  kind: MessageKind;
-  /**
-   * Monotonic per-run sequence number assigned by the chat run registry when a
-   * live event is forwarded to the websocket. History messages loaded over
-   * REST do not carry it. Clients use it with `chat.subscribe` to replay only
-   * the live events they missed across websocket reconnects.
-   */
-  seq?: number;
-  role?: 'user' | 'assistant';
-  content?: string;
-  /**
-   * Optional display-oriented metadata used by providers that need to expose
-   * richer transcript artifacts without introducing a brand-new message kind.
-   *
-   * Current Claude usage:
-   * - local slash commands expose parsed command fields
-   * - compact summaries are flagged so the UI can treat them differently later
-   */
-  displayText?: string;
-  commandName?: string;
-  commandMessage?: string;
-  commandArgs?: string;
-  isLocalCommand?: boolean;
-  isLocalCommandStdout?: boolean;
-  isCompactSummary?: boolean;
-  images?: unknown;
-  /** Non-image files attached to a user turn after provider history normalization. */
-  files?: unknown;
-  toolName?: string;
-  toolInput?: unknown;
-  toolId?: string;
-  toolResult?: {
-    content?: string;
-    isError?: boolean;
-    toolUseResult?: unknown;
-  };
-  isError?: boolean;
-  text?: string;
-  tokens?: number;
-  canInterrupt?: boolean;
-  requestId?: string;
-  input?: unknown;
-  context?: unknown;
-  reason?: string;
-  newSessionId?: string;
-  status?: string;
-  summary?: string;
-  tokenBudget?: unknown;
-  subagentTools?: unknown;
-  toolUseResult?: unknown;
-  sequence?: number;
-  rowid?: number;
-  [key: string]: unknown;
+	id: string;
+	sessionId: string;
+	timestamp: string;
+	provider: LLMProvider;
+	kind: MessageKind;
+	/**
+	 * Monotonic per-run sequence number assigned by the chat run registry when a
+	 * live event is forwarded to the websocket. History messages loaded over
+	 * REST do not carry it. Clients use it with `chat.subscribe` to replay only
+	 * the live events they missed across websocket reconnects.
+	 */
+	seq?: number;
+	role?: "user" | "assistant";
+	content?: string;
+	/**
+	 * Optional display-oriented metadata used by providers that need to expose
+	 * richer transcript artifacts without introducing a brand-new message kind.
+	 *
+	 * Current Claude usage:
+	 * - local slash commands expose parsed command fields
+	 * - compact summaries are flagged so the UI can treat them differently later
+	 */
+	displayText?: string;
+	commandName?: string;
+	commandMessage?: string;
+	commandArgs?: string;
+	isLocalCommand?: boolean;
+	isLocalCommandStdout?: boolean;
+	isCompactSummary?: boolean;
+	images?: unknown;
+	/** Non-image files attached to a user turn after provider history normalization. */
+	files?: unknown;
+	toolName?: string;
+	toolInput?: unknown;
+	toolId?: string;
+	toolResult?: {
+		content?: string;
+		isError?: boolean;
+		toolUseResult?: unknown;
+	};
+	isError?: boolean;
+	text?: string;
+	tokens?: number;
+	canInterrupt?: boolean;
+	requestId?: string;
+	input?: unknown;
+	context?: unknown;
+	reason?: string;
+	newSessionId?: string;
+	status?: string;
+	summary?: string;
+	tokenBudget?: unknown;
+	subagentTools?: unknown;
+	toolUseResult?: unknown;
+	sequence?: number;
+	rowid?: number;
+	[key: string]: unknown;
 };
 
 /**
@@ -328,23 +327,23 @@ export type NormalizedMessage = {
  * independent from the transport that ultimately delivers normalized events.
  */
 export type ProviderRuntimeWriter = {
-  send(data: unknown): void;
-  setSessionId?(sessionId: string): void;
-  userId?: string | number | null;
-  isWebSocketWriter?: boolean;
-  isSSEStreamWriter?: boolean;
+	send(data: unknown): void;
+	setSessionId?(sessionId: string): void;
+	userId?: string | number | null;
+	isWebSocketWriter?: boolean;
+	isSSEStreamWriter?: boolean;
 };
 
 export type ProviderPermissionDecision = {
-  allow: boolean;
-  updatedInput?: unknown;
-  message?: string;
-  rememberEntry?: unknown;
+	allow: boolean;
+	updatedInput?: unknown;
+	message?: string;
+	rememberEntry?: unknown;
 };
 
 export type ProviderRuntimePermissionGateway = {
-  resolve(requestId: string, decision: ProviderPermissionDecision): void;
-  listPending(sessionId: string): unknown[];
+	resolve(requestId: string, decision: ProviderPermissionDecision): void;
+	listPending(sessionId: string): unknown[];
 };
 
 /**
@@ -354,22 +353,22 @@ export type ProviderRuntimePermissionGateway = {
  * adapters from importing services that resolve back through providerRegistry.
  */
 export type ProviderRuntimeContext = {
-  /** Server-resolved model source for this run; never derived from browser-supplied user identity. */
-  routing: RuntimeRoutingConfiguration;
-  resolveProviderSessionId(sessionId: string | null | undefined): string | null;
-  resolveResumeModel(
-    sessionId: string | undefined,
-    requestedModel?: string | null,
-  ): Promise<string | undefined>;
-  getProviderModels(): Promise<ProviderModelsDefinition>;
-  normalizeMessage(raw: unknown, sessionId: string | null): NormalizedMessage[];
-  isProviderInstalled(): Promise<boolean>;
+	/** Server-resolved model source for this run; never derived from browser-supplied user identity. */
+	routing: RuntimeRoutingConfiguration;
+	resolveProviderSessionId(sessionId: string | null | undefined): string | null;
+	resolveResumeModel(
+		sessionId: string | undefined,
+		requestedModel?: string | null,
+	): Promise<string | undefined>;
+	getProviderModels(): Promise<ProviderModelsDefinition>;
+	normalizeMessage(raw: unknown, sessionId: string | null): NormalizedMessage[];
+	isProviderInstalled(): Promise<boolean>;
 };
 
 export type ProviderRunFunction = (
-  command: string,
-  options: AnyRecord,
-  writer: ProviderRuntimeWriter,
+	command: string,
+	options: AnyRecord,
+	writer: ProviderRuntimeWriter,
 ) => Promise<unknown>;
 
 /**
@@ -385,10 +384,10 @@ export type ProviderRunFunction = (
  * app-allocated id that the provider has never seen.
  */
 export type FetchHistoryOptions = {
-  projectPath?: string;
-  limit?: number | null;
-  offset?: number;
-  providerSessionId?: string;
+	projectPath?: string;
+	limit?: number | null;
+	offset?: number;
+	providerSessionId?: string;
 };
 
 /**
@@ -397,12 +396,12 @@ export type FetchHistoryOptions = {
  * Use this as the contract for APIs that return paginated conversation history.
  */
 export type FetchHistoryResult = {
-  messages: NormalizedMessage[];
-  total: number;
-  hasMore: boolean;
-  offset: number;
-  limit: number | null;
-  tokenUsage?: unknown;
+	messages: NormalizedMessage[];
+	total: number;
+	hasMore: boolean;
+	offset: number;
+	limit: number | null;
+	tokenUsage?: unknown;
 };
 
 // ---------------------------
@@ -416,7 +415,13 @@ export type FetchHistoryResult = {
  * `project` is used for providers that treat workspace-local skills as project
  * scoped.
  */
-export type ProviderSkillScope = 'user' | 'project' | 'plugin' | 'repo' | 'admin' | 'system';
+export type ProviderSkillScope =
+	| "user"
+	| "project"
+	| "plugin"
+	| "repo"
+	| "admin"
+	| "system";
 
 /**
  * Shared input accepted by provider skill listing operations.
@@ -426,7 +431,7 @@ export type ProviderSkillScope = 'user' | 'project' | 'plugin' | 'repo' | 'admin
  * this option is omitted.
  */
 export type ProviderSkillListOptions = {
-  workspacePath?: string;
+	workspacePath?: string;
 };
 
 /**
@@ -438,9 +443,9 @@ export type ProviderSkillListOptions = {
  * their bytes.
  */
 export type ProviderSkillCreateFile = {
-  relativePath: string;
-  content: string;
-  encoding: 'utf8' | 'base64';
+	relativePath: string;
+	content: string;
+	encoding: "utf8" | "base64";
 };
 
 /**
@@ -454,10 +459,10 @@ export type ProviderSkillCreateFile = {
  * carries scripts, references, and other files from a complete skill folder.
  */
 export type ProviderSkillCreateEntry = {
-  content: string;
-  directoryName?: string;
-  fileName?: string;
-  files?: ProviderSkillCreateFile[];
+	content: string;
+	directoryName?: string;
+	fileName?: string;
+	files?: ProviderSkillCreateFile[];
 };
 
 /**
@@ -467,11 +472,11 @@ export type ProviderSkillCreateEntry = {
  * entry can contain only markdown or a complete skill folder.
  */
 export type ProviderSkillCreateInput = {
-  entries: ProviderSkillCreateEntry[];
+	entries: ProviderSkillCreateEntry[];
 };
 
 export type ProviderSkillRemoveInput = {
-  directoryName: string;
+	directoryName: string;
 };
 
 /**
@@ -484,14 +489,14 @@ export type ProviderSkillRemoveInput = {
  * callers can distinguish duplicate skill names across scopes.
  */
 export type ProviderSkill = {
-  provider: LLMProvider;
-  name: string;
-  description: string;
-  command: string;
-  scope: ProviderSkillScope;
-  sourcePath: string;
-  pluginName?: string;
-  pluginId?: string;
+	provider: LLMProvider;
+	name: string;
+	description: string;
+	command: string;
+	scope: ProviderSkillScope;
+	sourcePath: string;
+	pluginName?: string;
+	pluginId?: string;
 };
 
 /**
@@ -504,13 +509,13 @@ export type ProviderSkill = {
  * arbitrary nested folders below the source root.
  */
 export type ProviderSkillSource = {
-  scope: ProviderSkillScope;
-  rootDir: string;
-  recursive?: boolean;
-  commandPrefix?: '/' | '$';
-  commandForSkill?: (skillName: string) => string;
-  pluginName?: string;
-  pluginId?: string;
+	scope: ProviderSkillScope;
+	rootDir: string;
+	recursive?: boolean;
+	commandPrefix?: "/" | "$";
+	commandForSkill?: (skillName: string) => string;
+	pluginName?: string;
+	pluginId?: string;
 };
 
 // ---------------------------
@@ -522,9 +527,9 @@ export type ProviderSkillSource = {
  * the stable machine-readable error category.
  */
 export type AppErrorOptions = {
-  code?: string;
-  statusCode?: number;
-  details?: unknown;
+	code?: string;
+	statusCode?: number;
+	details?: unknown;
 };
 
 // ---------------------------
@@ -535,12 +540,12 @@ export type AppErrorOptions = {
  * `user` is global for a user account, `local` is provider-local, and `project`
  * is tied to a specific project path.
  */
-export type McpScope = 'user' | 'local' | 'project';
+export type McpScope = "user" | "local" | "project";
 
 /**
  * Transport protocol used by an MCP server definition.
  */
-export type McpTransport = 'stdio' | 'http' | 'sse';
+export type McpTransport = "stdio" | "http" | "sse";
 
 /**
  * Normalized MCP server model exposed to frontend and route handlers.
@@ -549,19 +554,19 @@ export type McpTransport = 'stdio' | 'http' | 'sse';
  * returning results.
  */
 export type ProviderMcpServer = {
-  provider: LLMProvider;
-  name: string;
-  scope: McpScope;
-  transport: McpTransport;
-  command?: string;
-  args?: string[];
-  env?: Record<string, string>;
-  cwd?: string;
-  url?: string;
-  headers?: Record<string, string>;
-  envVars?: string[];
-  bearerTokenEnvVar?: string;
-  envHttpHeaders?: Record<string, string>;
+	provider: LLMProvider;
+	name: string;
+	scope: McpScope;
+	transport: McpTransport;
+	command?: string;
+	args?: string[];
+	env?: Record<string, string>;
+	cwd?: string;
+	url?: string;
+	headers?: Record<string, string>;
+	envVars?: string[];
+	bearerTokenEnvVar?: string;
+	envHttpHeaders?: Record<string, string>;
 };
 
 /**
@@ -571,19 +576,19 @@ export type ProviderMcpServer = {
  * through provider-specific MCP repositories.
  */
 export type UpsertProviderMcpServerInput = {
-  name: string;
-  scope?: McpScope;
-  transport: McpTransport;
-  workspacePath?: string;
-  command?: string;
-  args?: string[];
-  env?: Record<string, string>;
-  cwd?: string;
-  url?: string;
-  headers?: Record<string, string>;
-  envVars?: string[];
-  bearerTokenEnvVar?: string;
-  envHttpHeaders?: Record<string, string>;
+	name: string;
+	scope?: McpScope;
+	transport: McpTransport;
+	workspacePath?: string;
+	command?: string;
+	args?: string[];
+	env?: Record<string, string>;
+	cwd?: string;
+	url?: string;
+	headers?: Record<string, string>;
+	envVars?: string[];
+	bearerTokenEnvVar?: string;
+	envHttpHeaders?: Record<string, string>;
 };
 
 // ---------------------------
@@ -595,12 +600,12 @@ export type UpsertProviderMcpServerInput = {
  * credential state for each provider.
  */
 export type ProviderAuthStatus = {
-  installed: boolean;
-  provider: LLMProvider;
-  authenticated: boolean;
-  email: string | null;
-  method: string | null;
-  error?: string;
+	installed: boolean;
+	provider: LLMProvider;
+	authenticated: boolean;
+	email: string | null;
+	method: string | null;
+	error?: string;
 };
 
 // ---------------------------
@@ -612,12 +617,12 @@ export type ProviderAuthStatus = {
  * metadata needed for UI rendering and management operations.
  */
 export type CredentialPublicRow = {
-  id: number;
-  credential_name: string;
-  credential_type: string;
-  description: string | null;
-  created_at: string;
-  is_active: number;
+	id: number;
+	credential_name: string;
+	credential_type: string;
+	description: string | null;
+	created_at: string;
+	is_active: number;
 };
 
 /**
@@ -627,9 +632,9 @@ export type CredentialPublicRow = {
  * but must never receive the stored secret value.
  */
 export type CreateCredentialResult = {
-  id: number | bigint;
-  credentialName: string;
-  credentialType: string;
+	id: number | bigint;
+	credentialName: string;
+	credentialType: string;
 };
 
 // ---------------------------
@@ -641,11 +646,11 @@ export type CreateCredentialResult = {
  * project record without leaking raw SQL row typing across modules.
  */
 export type ProjectRepositoryRow = {
-  project_id: string;
-  project_path: string;
-  custom_project_name: string | null;
-  isStarred: number;
-  isArchived: number;
+	project_id: string;
+	project_path: string;
+	custom_project_name: string | null;
+	isStarred: number;
+	isArchived: number;
 };
 
 /**
@@ -656,9 +661,9 @@ export type ProjectRepositoryRow = {
  * an already-active path blocked project creation.
  */
 export type CreateProjectPathOutcome =
-  | 'created'
-  | 'reactivated_archived'
-  | 'active_conflict';
+	| "created"
+	| "reactivated_archived"
+	| "active_conflict";
 
 /**
  * Structured result returned by project-path upsert operations.
@@ -667,8 +672,8 @@ export type CreateProjectPathOutcome =
  * should return a conflict, or needs follow-up retrieval of row metadata.
  */
 export type CreateProjectPathResult = {
-  outcome: CreateProjectPathOutcome;
-  project: ProjectRepositoryRow | null;
+	outcome: CreateProjectPathOutcome;
+	project: ProjectRepositoryRow | null;
 };
 
 /**
@@ -678,9 +683,9 @@ export type CreateProjectPathResult = {
  * only when validation fails and is suitable for user-facing diagnostics.
  */
 export type WorkspacePathValidationResult = {
-  valid: boolean;
-  resolvedPath?: string;
-  error?: string;
+	valid: boolean;
+	resolvedPath?: string;
+	error?: string;
 };
 
 // ---------------------------
@@ -692,8 +697,8 @@ export type WorkspacePathValidationResult = {
  * both streams without caring about process plumbing.
  */
 export type GitCommandResult = {
-  stdout: string;
-  stderr: string;
+	stdout: string;
+	stderr: string;
 };
 
 /**
@@ -704,7 +709,10 @@ export type GitCommandResult = {
  * promise must reject (with `stderr` attached when available) on a non-zero
  * exit code.
  */
-export type GitCommandRunner = (args: string[], cwd: string) => Promise<GitCommandResult>;
+export type GitCommandRunner = (
+	args: string[],
+	cwd: string,
+) => Promise<GitCommandResult>;
 
 /**
  * One entry parsed from `git worktree list --porcelain`.
@@ -714,12 +722,12 @@ export type GitCommandRunner = (args: string[], cwd: string) => Promise<GitComma
  * detached-HEAD worktrees.
  */
 export type WorktreePorcelainEntry = {
-  path: string;
-  headSha: string | null;
-  branch: string | null;
-  isDetached: boolean;
-  isLocked: boolean;
-  isPrunable: boolean;
+	path: string;
+	headSha: string | null;
+	branch: string | null;
+	isDetached: boolean;
+	isLocked: boolean;
+	isPrunable: boolean;
 };
 
 /**
@@ -731,20 +739,20 @@ export type WorktreePorcelainEntry = {
  * project row linked to the worktree directory (if one was registered).
  */
 export type WorktreeDescriptor = {
-  path: string;
-  branch: string | null;
-  headSha: string | null;
-  isMain: boolean;
-  isCurrent: boolean;
-  isLocked: boolean;
-  isDetached: boolean;
-  changedFileCount: number;
-  ahead: number;
-  behind: number;
-  lastCommitSubject: string | null;
-  lastCommitDate: string | null;
-  linkedProjectId: string | null;
-  linkedProjectArchived: boolean;
+	path: string;
+	branch: string | null;
+	headSha: string | null;
+	isMain: boolean;
+	isCurrent: boolean;
+	isLocked: boolean;
+	isDetached: boolean;
+	changedFileCount: number;
+	ahead: number;
+	behind: number;
+	lastCommitSubject: string | null;
+	lastCommitDate: string | null;
+	linkedProjectId: string | null;
+	linkedProjectArchived: boolean;
 };
 
 /**
@@ -754,9 +762,9 @@ export type WorktreeDescriptor = {
  * target offered by the UI. `worktrees` always lists the main worktree first.
  */
 export type WorktreeListResult = {
-  repositoryRoot: string;
-  baseBranch: string | null;
-  worktrees: WorktreeDescriptor[];
+	repositoryRoot: string;
+	baseBranch: string | null;
+	worktrees: WorktreeDescriptor[];
 };
 
 // ---------------------------
@@ -768,7 +776,7 @@ export type WorktreeListResult = {
  * service uses Git to resolve the complete repository-level worktree list.
  */
 export type ListWorktreesInput = {
-  projectPath: string;
+	projectPath: string;
 };
 
 /**
@@ -778,9 +786,9 @@ export type ListWorktreesInput = {
  * `baseBranch`. When `baseBranch` is omitted, the main worktree branch is used.
  */
 export type CreateWorktreeInput = {
-  projectPath: string;
-  branch: string;
-  baseBranch?: string | null;
+	projectPath: string;
+	branch: string;
+	baseBranch?: string | null;
 };
 
 /**
@@ -790,9 +798,9 @@ export type CreateWorktreeInput = {
  * allowing API clients to accurately describe what Git changed.
  */
 export type CreateWorktreeResult = {
-  worktreePath: string;
-  branch: string;
-  createdBranch: boolean;
+	worktreePath: string;
+	branch: string;
+	createdBranch: boolean;
 };
 
 /**
@@ -802,7 +810,7 @@ export type CreateWorktreeResult = {
  * registration fails, so routes only receive this shape after both steps pass.
  */
 export type CreateAndOpenWorktreeResult = CreateWorktreeResult & {
-  project: WorktreeProjectView;
+	project: WorktreeProjectView;
 };
 
 /**
@@ -812,8 +820,8 @@ export type CreateAndOpenWorktreeResult = CreateWorktreeResult & {
  * `projectPath` before it creates or restores any project record.
  */
 export type OpenWorktreeInput = {
-  projectPath: string;
-  worktreePath: string;
+	projectPath: string;
+	worktreePath: string;
 };
 
 /**
@@ -823,13 +831,13 @@ export type OpenWorktreeInput = {
  * module so the frontend can switch to the worktree without another lookup.
  */
 export type WorktreeProjectView = {
-  projectId: string;
-  path: string;
-  fullPath: string;
-  displayName: string;
-  isStarred: boolean;
-  sessions: [];
-  sessionMeta: { hasMore: false; total: 0 };
+	projectId: string;
+	path: string;
+	fullPath: string;
+	displayName: string;
+	isStarred: boolean;
+	sessions: [];
+	sessionMeta: { hasMore: false; total: 0 };
 };
 
 /**
@@ -839,10 +847,10 @@ export type WorktreeProjectView = {
  * best-effort branch cleanup after the worktree directory is removed.
  */
 export type RemoveWorktreeInput = {
-  projectPath: string;
-  worktreePath: string;
-  force?: boolean;
-  deleteBranch?: boolean;
+	projectPath: string;
+	worktreePath: string;
+	force?: boolean;
+	deleteBranch?: boolean;
 };
 
 /**
@@ -852,11 +860,11 @@ export type RemoveWorktreeInput = {
  * already removed the worktree, allowing callers to represent partial success.
  */
 export type RemoveWorktreeResult = {
-  removedPath: string;
-  branch: string | null;
-  branchDeleted: boolean;
-  archivedProjectId: string | null;
-  archivalError: string | null;
+	removedPath: string;
+	branch: string | null;
+	branchDeleted: boolean;
+	archivedProjectId: string | null;
+	archivalError: string | null;
 };
 
 /**
@@ -866,11 +874,11 @@ export type RemoveWorktreeResult = {
  * merges, and may remove the source worktree after a successful merge.
  */
 export type MergeWorktreeInput = {
-  projectPath: string;
-  worktreePath: string;
-  squash?: boolean;
-  message?: string | null;
-  removeAfterMerge?: boolean;
+	projectPath: string;
+	worktreePath: string;
+	squash?: boolean;
+	message?: string | null;
+	removeAfterMerge?: boolean;
 };
 
 /**
@@ -881,11 +889,11 @@ export type MergeWorktreeInput = {
  * already-completed merge as a failure.
  */
 export type MergeWorktreeResult = {
-  mergedBranch: string;
-  targetBranch: string;
-  squash: boolean;
-  removedWorktree: RemoveWorktreeResult | null;
-  cleanupError: string | null;
+	mergedBranch: string;
+	targetBranch: string;
+	squash: boolean;
+	removedWorktree: RemoveWorktreeResult | null;
+	cleanupError: string | null;
 };
 
 // ---------------------------
@@ -897,7 +905,7 @@ export type MergeWorktreeResult = {
  * deterministic fake so worktree creation never touches developer directories.
  */
 export type WorktreeFileSystem = {
-  pathExists(candidatePath: string): Promise<boolean>;
+	pathExists(candidatePath: string): Promise<boolean>;
 };
 
 /**
@@ -908,17 +916,14 @@ export type WorktreeFileSystem = {
  * `index.ts` barrels, while unit tests supply in-memory functions.
  */
 export type WorktreeProjectGateway = {
-  getProjectPathById(projectId: string): string | null;
-  getProjectByPath(projectPath: string): ProjectRepositoryRow | null;
-  createProject(input: {
-    projectPath: string;
-    customName: string;
-  }): Promise<{
-    outcome: 'created' | 'reactivated_archived';
-    project: { projectId: string };
-  }>;
-  restoreProject(projectId: string): void | Promise<void>;
-  archiveProject(projectId: string): void | Promise<void>;
+	getProjectPathById(projectId: string): string | null;
+	getProjectByPath(projectPath: string): ProjectRepositoryRow | null;
+	createProject(input: { projectPath: string; customName: string }): Promise<{
+		outcome: "created" | "reactivated_archived";
+		project: { projectId: string };
+	}>;
+	restoreProject(projectId: string): void | Promise<void>;
+	archiveProject(projectId: string): void | Promise<void>;
 };
 
 /**
@@ -928,13 +933,15 @@ export type WorktreeProjectGateway = {
  * repositories, filesystem adapters, Git runners, or individual service files.
  */
 export type WorktreeServices = {
-  resolveProjectPath(projectId: string): string;
-  list(input: ListWorktreesInput): Promise<WorktreeListResult>;
-  create(input: CreateWorktreeInput): Promise<CreateWorktreeResult>;
-  createAndOpen(input: CreateWorktreeInput): Promise<CreateAndOpenWorktreeResult>;
-  open(input: OpenWorktreeInput): Promise<WorktreeProjectView>;
-  merge(input: MergeWorktreeInput): Promise<MergeWorktreeResult>;
-  remove(input: RemoveWorktreeInput): Promise<RemoveWorktreeResult>;
+	resolveProjectPath(projectId: string): string;
+	list(input: ListWorktreesInput): Promise<WorktreeListResult>;
+	create(input: CreateWorktreeInput): Promise<CreateWorktreeResult>;
+	createAndOpen(
+		input: CreateWorktreeInput,
+	): Promise<CreateAndOpenWorktreeResult>;
+	open(input: OpenWorktreeInput): Promise<WorktreeProjectView>;
+	merge(input: MergeWorktreeInput): Promise<MergeWorktreeResult>;
+	remove(input: RemoveWorktreeInput): Promise<RemoveWorktreeResult>;
 };
 
 // ---------------------------
@@ -948,15 +955,15 @@ export type WorktreeServices = {
  * file-operation requests.
  */
 export type FileTreeNode = {
-  name: string;
-  path: string;
-  type: 'file' | 'directory';
-  size: number;
-  modified: string | null;
-  permissions: string;
-  permissionsRwx: string;
-  isSymlink?: boolean;
-  children?: FileTreeNode[];
+	name: string;
+	path: string;
+	type: "file" | "directory";
+	size: number;
+	modified: string | null;
+	permissions: string;
+	permissionsRwx: string;
+	isSymlink?: boolean;
+	children?: FileTreeNode[];
 };
 
 /**
@@ -966,8 +973,8 @@ export type FileTreeNode = {
  * provide small handwritten entries and therefore never read real directories.
  */
 export type FileTreeDirectoryEntry = {
-  name: string;
-  isDirectory(): boolean;
+	name: string;
+	isDirectory(): boolean;
 };
 
 /**
@@ -978,11 +985,11 @@ export type FileTreeDirectoryEntry = {
  * deletion behavior.
  */
 export type FileTreeStats = {
-  size: number;
-  mtime: Date;
-  mode: number;
-  isDirectory(): boolean;
-  isSymbolicLink(): boolean;
+	size: number;
+	mtime: Date;
+	mode: number;
+	isDirectory(): boolean;
+	isSymbolicLink(): boolean;
 };
 
 /**
@@ -993,19 +1000,19 @@ export type FileTreeStats = {
  * cannot inspect, write, rename, or delete developer files.
  */
 export type FileTreeFileSystem = {
-  access(candidatePath: string): Promise<void>;
-  stat(candidatePath: string): Promise<FileTreeStats>;
-  lstat(candidatePath: string): Promise<FileTreeStats>;
-  readdir(directoryPath: string): Promise<FileTreeDirectoryEntry[]>;
-  realpath(candidatePath: string): Promise<string>;
-  readTextFile(filePath: string): Promise<string>;
-  writeTextFile(filePath: string, content: string): Promise<void>;
-  makeDirectory(directoryPath: string, recursive: boolean): Promise<void>;
-  rename(oldPath: string, newPath: string): Promise<void>;
-  removeDirectory(directoryPath: string): Promise<void>;
-  unlink(filePath: string): Promise<void>;
-  copyFile(sourcePath: string, destinationPath: string): Promise<void>;
-  createReadStream(filePath: string): Readable;
+	access(candidatePath: string): Promise<void>;
+	stat(candidatePath: string): Promise<FileTreeStats>;
+	lstat(candidatePath: string): Promise<FileTreeStats>;
+	readdir(directoryPath: string): Promise<FileTreeDirectoryEntry[]>;
+	realpath(candidatePath: string): Promise<string>;
+	readTextFile(filePath: string): Promise<string>;
+	writeTextFile(filePath: string, content: string): Promise<void>;
+	makeDirectory(directoryPath: string, recursive: boolean): Promise<void>;
+	rename(oldPath: string, newPath: string): Promise<void>;
+	removeDirectory(directoryPath: string): Promise<void>;
+	unlink(filePath: string): Promise<void>;
+	copyFile(sourcePath: string, destinationPath: string): Promise<void>;
+	createReadStream(filePath: string): Readable;
 };
 
 /**
@@ -1015,7 +1022,7 @@ export type FileTreeFileSystem = {
  * never import the Database module or its repositories directly.
  */
 export type FileTreeProjectGateway = {
-  getProjectPathById(projectId: string): string | null | Promise<string | null>;
+	getProjectPathById(projectId: string): string | null | Promise<string | null>;
 };
 
 /**
@@ -1025,8 +1032,8 @@ export type FileTreeProjectGateway = {
  * symlinks before the File Tree service exposes or mutates paths.
  */
 export type FileTreeWorkspaceGateway = {
-  rootPath: string;
-  validatePath(candidatePath: string): Promise<WorkspacePathValidationResult>;
+	rootPath: string;
+	validatePath(candidatePath: string): Promise<WorkspacePathValidationResult>;
 };
 
 /**
@@ -1037,10 +1044,10 @@ export type FileTreeWorkspaceGateway = {
  * depend on Express or Multer types.
  */
 export type FileTreeUploadedFile = {
-  originalName: string;
-  temporaryPath: string;
-  size: number;
-  mimeType: string;
+	originalName: string;
+	temporaryPath: string;
+	size: number;
+	mimeType: string;
 };
 
 /**
@@ -1050,7 +1057,7 @@ export type FileTreeUploadedFile = {
  * loggers and never patch the global console singleton.
  */
 export type FileTreeLogger = {
-  error(message: string, error?: unknown): void;
+	error(message: string, error?: unknown): void;
 };
 
 /**
@@ -1061,12 +1068,12 @@ export type FileTreeLogger = {
  * repository, or machine-wide defaults.
  */
 export type FileTreeServiceDependencies = {
-  fileSystem: FileTreeFileSystem;
-  projects: FileTreeProjectGateway;
-  workspace: FileTreeWorkspaceGateway;
-  resolveMimeType(filePath: string): string;
-  fileSystemConcurrency: number;
-  logger: FileTreeLogger;
+	fileSystem: FileTreeFileSystem;
+	projects: FileTreeProjectGateway;
+	workspace: FileTreeWorkspaceGateway;
+	resolveMimeType(filePath: string): string;
+	fileSystemConcurrency: number;
+	logger: FileTreeLogger;
 };
 
 /**
@@ -1077,55 +1084,82 @@ export type FileTreeServiceDependencies = {
  * mutations themselves.
  */
 export type FileTreeServices = {
-  browseWorkspace(inputPath: string | null): Promise<{
-    path: string;
-    suggestions: Array<{ path: string; name: string; type: 'directory' }>;
-  }>;
-  createWorkspaceFolder(folderPath: string): Promise<{ success: true; path: string }>;
-  readTextFile(projectId: string, filePath: string): Promise<{ content: string; path: string }>;
-  openFile(projectId: string, filePath: string): Promise<{ contentType: string; stream: Readable }>;
-  saveTextFile(projectId: string, filePath: string, content: string): Promise<{
-    success: true;
-    path: string;
-    message: string;
-  }>;
-  listProjectFiles(
-    projectId: string,
-    options?: { respectGitignore: boolean },
-  ): Promise<FileTreeNode[]>;
-  createEntry(input: {
-    projectId: string;
-    parentPath: string;
-    type: 'file' | 'directory';
-    name: string;
-  }): Promise<{ success: true; path: string; name: string; type: 'file' | 'directory'; message: string }>;
-  renameEntry(input: { projectId: string; oldPath: string; newName: string }): Promise<{
-    success: true;
-    oldPath: string;
-    newPath: string;
-    newName: string;
-    message: string;
-  }>;
-  deleteEntry(input: { projectId: string; targetPath: string }): Promise<{
-    success: true;
-    path: string;
-    type: 'file' | 'directory';
-    message: string;
-  }>;
-  storeUploadedFiles(input: {
-    projectId: string;
-    targetPath: string;
-    relativePaths: string[];
-    requestedFileCount: number;
-    files: FileTreeUploadedFile[];
-  }): Promise<{
-    success: true;
-    files: Array<{ name: string; path: string; size: number; mimeType: string }>;
-    uploadedCount: number;
-    requestedFileCount: number;
-    targetPath: string;
-    message: string;
-  }>;
+	browseWorkspace(inputPath: string | null): Promise<{
+		path: string;
+		suggestions: Array<{ path: string; name: string; type: "directory" }>;
+	}>;
+	createWorkspaceFolder(
+		folderPath: string,
+	): Promise<{ success: true; path: string }>;
+	readTextFile(
+		projectId: string,
+		filePath: string,
+	): Promise<{ content: string; path: string }>;
+	openFile(
+		projectId: string,
+		filePath: string,
+	): Promise<{ contentType: string; stream: Readable }>;
+	saveTextFile(
+		projectId: string,
+		filePath: string,
+		content: string,
+	): Promise<{
+		success: true;
+		path: string;
+		message: string;
+	}>;
+	listProjectFiles(
+		projectId: string,
+		options?: { respectGitignore: boolean },
+	): Promise<FileTreeNode[]>;
+	createEntry(input: {
+		projectId: string;
+		parentPath: string;
+		type: "file" | "directory";
+		name: string;
+	}): Promise<{
+		success: true;
+		path: string;
+		name: string;
+		type: "file" | "directory";
+		message: string;
+	}>;
+	renameEntry(input: {
+		projectId: string;
+		oldPath: string;
+		newName: string;
+	}): Promise<{
+		success: true;
+		oldPath: string;
+		newPath: string;
+		newName: string;
+		message: string;
+	}>;
+	deleteEntry(input: { projectId: string; targetPath: string }): Promise<{
+		success: true;
+		path: string;
+		type: "file" | "directory";
+		message: string;
+	}>;
+	storeUploadedFiles(input: {
+		projectId: string;
+		targetPath: string;
+		relativePaths: string[];
+		requestedFileCount: number;
+		files: FileTreeUploadedFile[];
+	}): Promise<{
+		success: true;
+		files: Array<{
+			name: string;
+			path: string;
+			size: number;
+			mimeType: string;
+		}>;
+		uploadedCount: number;
+		requestedFileCount: number;
+		targetPath: string;
+		message: string;
+	}>;
 };
 
 // ---------------------------
@@ -1139,11 +1173,11 @@ export type FileTreeServices = {
  * never control the server's outbound destination.
  */
 export type VoiceRequestOverrides = {
-  apiKey?: string;
-  sttModel?: string;
-  ttsModel?: string;
-  ttsVoice?: string;
-  ttsFormat?: string;
+	apiKey?: string;
+	sttModel?: string;
+	ttsModel?: string;
+	ttsVoice?: string;
+	ttsFormat?: string;
 };
 
 /**
@@ -1153,9 +1187,9 @@ export type VoiceRequestOverrides = {
  * shape so the service does not depend on Express or Multer types.
  */
 export type VoiceAudioUpload = {
-  bytes: Buffer;
-  mimeType: string;
-  fileName: string;
+	bytes: Buffer;
+	mimeType: string;
+	fileName: string;
 };
 
 /**
@@ -1165,8 +1199,8 @@ export type VoiceAudioUpload = {
  * without buffering the complete synthesized audio in application memory.
  */
 export type VoiceSpeechPayload = {
-  contentType: string;
-  body: ReadableStream<Uint8Array> | null;
+	contentType: string;
+	body: ReadableStream<Uint8Array> | null;
 };
 
 /**
@@ -1178,8 +1212,8 @@ export type VoiceSpeechPayload = {
  * into HTTP output, while unexpected programming errors still reject normally.
  */
 export type VoiceServiceResult<TValue> =
-  | { ok: true; value: TValue }
-  | { ok: false; status: number; error: string };
+	| { ok: true; value: TValue }
+	| { ok: false; status: number; error: string };
 
 /**
  * Complete application-service surface consumed by the Voice HTTP router.
@@ -1189,15 +1223,15 @@ export type VoiceServiceResult<TValue> =
  * contract with handwritten fetch fakes and never patch global state.
  */
 export type VoiceService = {
-  getHealth(): { configured: boolean };
-  transcribe(input: {
-    audio: VoiceAudioUpload;
-    overrides: VoiceRequestOverrides;
-  }): Promise<VoiceServiceResult<{ text: string }>>;
-  synthesizeSpeech(input: {
-    text: string;
-    overrides: VoiceRequestOverrides;
-  }): Promise<VoiceServiceResult<VoiceSpeechPayload>>;
+	getHealth(): { configured: boolean };
+	transcribe(input: {
+		audio: VoiceAudioUpload;
+		overrides: VoiceRequestOverrides;
+	}): Promise<VoiceServiceResult<{ text: string }>>;
+	synthesizeSpeech(input: {
+		text: string;
+		overrides: VoiceRequestOverrides;
+	}): Promise<VoiceServiceResult<VoiceSpeechPayload>>;
 };
 
 // ---------------------------
@@ -1210,8 +1244,8 @@ export type VoiceService = {
  * monkey-patching the global console singleton.
  */
 export type CliOutput = {
-  log(message?: string): void;
-  error(message?: string): void;
+	log(message?: string): void;
+	error(message?: string): void;
 };
 
 /**
@@ -1222,9 +1256,9 @@ export type CliOutput = {
  * path-keyed fakes, so service tests never inspect or modify the real machine.
  */
 export type CliFileSystem = {
-  readTextFile(filePath: string): string;
-  pathExists(filePath: string): boolean;
-  getFileStats(filePath: string): { size: number; modifiedAt: Date };
+	readTextFile(filePath: string): string;
+	pathExists(filePath: string): boolean;
+	getFileStats(filePath: string): { size: number; modifiedAt: Date };
 };
 
 /**
@@ -1243,9 +1277,9 @@ export type CliEnvironment = Record<string, string | undefined>;
  * injects only the fields the service needs.
  */
 export type CliPackageMetadata = {
-  version: string;
-  homepage?: string;
-  bugsUrl?: string;
+	version: string;
+	homepage?: string;
+	bugsUrl?: string;
 };
 
 /**
@@ -1256,7 +1290,7 @@ export type CliPackageMetadata = {
  * directly with isolated dependencies.
  */
 export type CliApplication = {
-  run(argumentsList: string[]): Promise<number>;
+	run(argumentsList: string[]): Promise<number>;
 };
 
 /**
@@ -1267,5 +1301,5 @@ export type CliApplication = {
  * their own handwritten adapters.
  */
 export type SandboxCommandService = {
-  execute(argumentsList: string[]): Promise<number>;
+	execute(argumentsList: string[]): Promise<number>;
 };

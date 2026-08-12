@@ -24,45 +24,42 @@ test("routing state starts secret-free and loads aggregate settings", () => {
 	assert.equal(secretText.includes("adminPassword"), false);
 	assert.equal(secretText.includes("dataPlaneKey"), false);
 
-	const settings = {
-		...emptyRoutingSettingsView(),
-		routeSummary: { total: 3 },
-	};
+	const settings = emptyRoutingSettingsView();
 	const loaded = routingStateReducer(initial, {
 		type: "loadSucceeded",
 		settings,
 	});
 	assert.equal(loaded.loading, false);
-	assert.equal(loaded.settings.routeSummary.total, 3);
+	assert.deepEqual(loaded.settings.accountSummary, { total: 0, degraded: 0 });
 	assert.equal(loaded.error, null);
 });
 
 test("expanded detail sections trigger one read until explicitly retried", () => {
 	const initial = createInitialRoutingState();
-	assert.equal(shouldLoadRoutingDetails(initial, ["accounts", "routes"]), true);
+	assert.equal(shouldLoadRoutingDetails(initial, ["accounts", "models"]), true);
 
 	const loading = routingStateReducer(initial, {
 		type: "detailsStarted",
-		keys: ["accounts", "routes"],
+		keys: ["accounts", "models"],
 	});
 	assert.equal(
-		shouldLoadRoutingDetails(loading, ["accounts", "routes"]),
+		shouldLoadRoutingDetails(loading, ["accounts", "models"]),
 		false,
 	);
 
 	const failed = routingStateReducer(loading, {
 		type: "detailsFailed",
-		keys: ["accounts", "routes"],
+		keys: ["accounts", "models"],
 		error: safeError,
 	});
-	assert.equal(shouldLoadRoutingDetails(failed, ["accounts", "routes"]), false);
+	assert.equal(shouldLoadRoutingDetails(failed, ["accounts", "models"]), false);
 
 	const retryable = routingStateReducer(failed, {
 		type: "detailsReset",
-		keys: ["accounts", "routes"],
+		keys: ["accounts", "models"],
 	});
 	assert.equal(
-		shouldLoadRoutingDetails(retryable, ["accounts", "routes"]),
+		shouldLoadRoutingDetails(retryable, ["accounts", "models"]),
 		true,
 	);
 });
@@ -102,26 +99,19 @@ test("detail loads merge data without discarding details loaded by another secti
 			],
 		},
 	});
-	const routesLoaded = routingStateReducer(accountsLoaded, {
+	const modelsLoaded = routingStateReducer(accountsLoaded, {
 		type: "detailsSucceeded",
-		keys: ["routes"],
+		keys: ["models"],
 		settings: {
 			...emptyRoutingSettingsView(),
-			routes: [
-				{
-					id: "route-1",
-					name: "quality-first",
-					kind: null,
-					models: ["model-a"],
-				},
-			],
+			models: [{ id: "model-a", provider: "anthropic", name: "model-a" }],
 		},
 	});
 
-	assert.equal(routesLoaded.settings.accounts?.[0]?.id, "account-1");
-	assert.equal(routesLoaded.settings.routes?.[0]?.id, "route-1");
+	assert.equal(modelsLoaded.settings.accounts?.[0]?.id, "account-1");
+	assert.equal(modelsLoaded.settings.models?.[0]?.id, "model-a");
 
-	const cleared = routingStateReducer(routesLoaded, { type: "detailsCleared" });
+	const cleared = routingStateReducer(modelsLoaded, { type: "detailsCleared" });
 	assert.equal(cleared.settings.accounts, undefined);
 	assert.deepEqual(cleared.detailStatus, {});
 });
@@ -152,12 +142,10 @@ test("a late aggregate response cannot discard details that completed first", ()
 		type: "loadSucceeded",
 		settings: {
 			...emptyRoutingSettingsView(),
-			routeSummary: { total: 2 },
 		},
 	});
 
 	assert.equal(afterLateAggregate.settings.accounts?.[0]?.id, "account-new");
-	assert.equal(afterLateAggregate.settings.routeSummary.total, 2);
 	assert.equal(afterLateAggregate.detailStatus.accounts, "loaded");
 });
 
@@ -223,12 +211,12 @@ test("detail failures are identified separately so one inline retry state owns t
 	assert.equal(mutationStarted.errorContext, null);
 });
 
-test("route-only loading and failures keep the upstream route editor gated", () => {
-	assert.deepEqual(upstreamDetailsState({ routes: "loading" }), {
+test("account and model loading share the upstream details gate", () => {
+	assert.deepEqual(upstreamDetailsState({ models: "loading" }), {
 		loading: true,
 		error: false,
 	});
-	assert.deepEqual(upstreamDetailsState({ routes: "error" }), {
+	assert.deepEqual(upstreamDetailsState({ accounts: "error" }), {
 		loading: false,
 		error: true,
 	});
@@ -237,11 +225,11 @@ test("route-only loading and failures keep the upstream route editor gated", () 
 test("post-mutation refresh failures keep stale details behind a retryable error gate", () => {
 	const running = routingStateReducer(createInitialRoutingState(), {
 		type: "mutationStarted",
-		key: "route:update:route-1",
+		key: "account:update:account-1",
 	});
 	const failed = routingStateReducer(running, {
 		type: "mutationRefreshFailed",
-		keys: ["accounts", "models", "routes"],
+		keys: ["accounts", "models"],
 		error: safeError,
 	});
 
@@ -249,5 +237,4 @@ test("post-mutation refresh failures keep stale details behind a retryable error
 	assert.equal(failed.errorContext, "details");
 	assert.equal(failed.detailStatus.accounts, "error");
 	assert.equal(failed.detailStatus.models, "error");
-	assert.equal(failed.detailStatus.routes, "error");
 });

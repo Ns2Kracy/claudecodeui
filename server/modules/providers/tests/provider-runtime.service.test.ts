@@ -177,7 +177,14 @@ test("dispatches runs and aborts through the runtime owned by providerRegistry",
 test("Codex rejects runs without a selected routed model", async () => {
 	let ran = false;
 	const service = createService([
-		createProvider("codex", createRuntime({ async run() { ran = true; } })),
+		createProvider(
+			"codex",
+			createRuntime({
+				async run() {
+					ran = true;
+				},
+			}),
+		),
 	]);
 
 	await assert.rejects(
@@ -193,18 +200,28 @@ test("Codex rejects runs without a selected routed model", async () => {
 test("Codex rejects native model provenance before starting the runtime", async () => {
 	let ran = false;
 	const service = createService(
-		[createProvider("codex", createRuntime({ async run() { ran = true; } }))],
+		[
+			createProvider(
+				"codex",
+				createRuntime({
+					async run() {
+						ran = true;
+					},
+				}),
+			),
+		],
 		undefined,
 		[{ value: "gpt-native", source: "native" }],
 	);
 
 	await assert.rejects(
-		() => service.run(
-			"codex",
-			"hello",
-			{ model: "gpt-native", modelSource: "native" },
-			{ userId: 7, send() {} },
-		),
+		() =>
+			service.run(
+				"codex",
+				"hello",
+				{ model: "gpt-native", modelSource: "native" },
+				{ userId: 7, send() {} },
+			),
 		(error: unknown) =>
 			error instanceof Error &&
 			"code" in error &&

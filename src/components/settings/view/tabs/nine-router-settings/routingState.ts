@@ -11,7 +11,7 @@ export type RoutingUiError = {
 	retryable: boolean;
 };
 
-export type RoutingDetailKey = "accounts" | "models" | "routes";
+export type RoutingDetailKey = "accounts" | "models";
 
 export type RoutingDetailStatus = "loading" | "loaded" | "error";
 export type RoutingErrorContext = "load" | "details" | "mutation";
@@ -125,7 +125,6 @@ function mergeSettings(
 		...incoming,
 		accounts: incoming.accounts ?? current.accounts,
 		models: incoming.models ?? current.models,
-		routes: incoming.routes ?? current.routes,
 	};
 }
 
@@ -140,11 +139,7 @@ export function shouldLoadRoutingDetails(
 export function upstreamDetailsState(
 	detailStatus: RoutingState["detailStatus"],
 ): { loading: boolean; error: boolean } {
-	const statuses = [
-		detailStatus.accounts,
-		detailStatus.models,
-		detailStatus.routes,
-	];
+	const statuses = [detailStatus.accounts, detailStatus.models];
 	return {
 		loading: statuses.includes("loading"),
 		error: statuses.includes("error"),
@@ -212,7 +207,6 @@ export function routingStateReducer(
 			const {
 				accounts: _accounts,
 				models: _models,
-				routes: _routes,
 				...aggregateSettings
 			} = state.settings;
 			return {

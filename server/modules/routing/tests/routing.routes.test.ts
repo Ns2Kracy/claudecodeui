@@ -32,12 +32,10 @@ async function withRoutingServer(
 			_next: express.NextFunction,
 		) => {
 			if (error instanceof AppError) {
-				response
-					.status(error.statusCode)
-					.json({
-						success: false,
-						error: { code: error.code, message: error.message },
-					});
+				response.status(error.statusCode).json({
+					success: false,
+					error: { code: error.code, message: error.message },
+				});
 				return;
 			}
 			response.status(500).json({ success: false });
@@ -96,14 +94,11 @@ test("GET settings rejects invalid details and usage period inputs", async () =>
 	);
 });
 
-test("account and route routes reject invalid inputs without service calls", async () => {
+test("account routes reject invalid inputs without service calls", async () => {
 	await withRoutingServer(
 		{
 			createApiKeyAccount: async () => {
 				throw new Error("unexpected account call");
-			},
-			createRoute: async () => {
-				throw new Error("unexpected route call");
 			},
 		},
 		async (baseUrl) => {
@@ -118,27 +113,22 @@ test("account and route routes reject invalid inputs without service calls", asy
 				).status,
 				400,
 			);
-			assert.equal(
-				(
-					await fetch(`${baseUrl}/api/routing/routes`, {
-						method: "POST",
-						headers,
-						body: JSON.stringify({ name: "bad name!", models: [] }),
-					})
-				).status,
-				400,
-			);
 		},
 	);
 });
 
-test("connection mutation routes are removed", async () => {
+test("obsolete routing mutation routes are removed", async () => {
 	await withRoutingServer({}, async (baseUrl) => {
 		for (const [method, path] of [
 			["PUT", "/connection"],
 			["POST", "/connection/validations"],
 			["DELETE", "/connection"],
 			["POST", "/runtime/restart"],
+			["GET", "/routes"],
+			["GET", "/routes/route-1"],
+			["POST", "/routes"],
+			["PUT", "/routes/route-1"],
+			["DELETE", "/routes/route-1"],
 			["PUT", "/bindings/providers/claude"],
 			["PUT", "/usage-alerts/daily"],
 		] as const) {
@@ -187,7 +177,7 @@ test("Codex application is a guarded mutation with a secret-free response", asyn
 	);
 });
 
-test("typed account and route mutations reach service", async () => {
+test("typed account mutations reach service", async () => {
 	const calls: string[] = [];
 	await withRoutingServer(
 		{
@@ -204,10 +194,6 @@ test("typed account and route mutations reach service", async () => {
 					lastError: null,
 					expiresAt: null,
 				};
-			},
-			createRoute: async () => {
-				calls.push("route");
-				return { id: "r1", name: "quality", kind: null, models: [] };
 			},
 		},
 		async (baseUrl) => {
@@ -226,60 +212,9 @@ test("typed account and route mutations reach service", async () => {
 				).status,
 				200,
 			);
-			assert.equal(
-				(
-					await fetch(`${baseUrl}/api/routing/routes`, {
-						method: "POST",
-						headers,
-						body: JSON.stringify({ name: "quality", models: [] }),
-					})
-				).status,
-				200,
-			);
-			assert.deepEqual(calls, ["account", "route"]);
+			assert.deepEqual(calls, ["account"]);
 		},
 	);
-});
-
-test("same-origin browser mutations survive a development proxy host rewrite", async () => {
-	let called = false;
-	await withRoutingServer(
-		{
-			createRoute: async () => {
-				called = true;
-				return { id: "r1", name: "quality", kind: null, models: [] };
-			},
-		},
-		async (baseUrl) => {
-			const response = await fetch(`${baseUrl}/api/routing/routes`, {
-				method: "POST",
-				headers: {
-					"content-type": "application/json",
-					origin: "http://localhost:5173",
-					"sec-fetch-site": "same-origin",
-				},
-				body: JSON.stringify({ name: "quality", models: [] }),
-			});
-
-			assert.equal(response.status, 200);
-			assert.equal(called, true);
-		},
-	);
-});
-
-test("cross-site browser mutations remain rejected even with a trusted-looking origin", async () => {
-	await withRoutingServer({}, async (baseUrl) => {
-		const response = await fetch(`${baseUrl}/api/routing/routes`, {
-			method: "POST",
-			headers: {
-				"content-type": "application/json",
-				origin: baseUrl,
-				"sec-fetch-site": "cross-site",
-			},
-			body: JSON.stringify({ name: "quality", models: [] }),
-		});
-		assert.equal(response.status, 403);
-	});
 });
 
 test("provider detail, model, and provider-node routes are thin authenticated service calls", async () => {

@@ -1,7 +1,7 @@
 <div align="center">
  <img src="public/logo.svg" alt="CloudCLI UI" width="64" height="64">
- <h1>Cloud CLI (aka Claude Code UI)</h1>
- <p>A desktop and mobile UI for <a href="https://docs.anthropic.com/en/docs/claude-code">Claude Code</a>, <a href="https://docs.cursor.com/en/cli/overview">Cursor CLI</a>, and <a href="https://developers.openai.com/codex">Codex</a>.<br>Use it locally or remotely to view your active projects and sessions from everywhere.</p>
+ <h1>Cloud CLI</h1>
+ <p>A desktop and mobile UI for <a href="https://developers.openai.com/codex">Codex</a>, with provider authentication and model discovery managed by 9Router.<br>Use it locally or remotely to work with your projects and sessions from everywhere.</p>
 </div>
 
 <p align="center">
@@ -40,31 +40,28 @@
 </tr>
 <tr>
 <td align="center" colspan="2">
-<h3>CLI Selection</h3>
-<img src="public/screenshots/cli-selection.png" alt="CLI Selection" width="400">
+<h3>Model Selection</h3>
+<img src="public/screenshots/cli-selection.png" alt="Model Selection" width="400">
 <br>
-<em>Select between Claude Code, Cursor CLI and Codex</em>
+<em>Select a model exposed by your configured 9Router provider accounts</em>
 </td>
 </tr>
 </table>
-
-
 
 </div>
 
 ## Features
 
-- **Responsive Design** - Works seamlessly across desktop, tablet, and mobile so you can also use Agents from mobile 
+- **Responsive Design** - Works seamlessly across desktop, tablet, and mobile so you can also use Agents from mobile
 - **Interactive Chat Interface** - Built-in chat interface for seamless communication with the Agents
 - **Integrated Shell Terminal** - Direct access to the Agents CLI through built-in shell functionality
 - **File Explorer** - Interactive file tree with syntax highlighting and live editing
-- **Git Explorer** - View, stage and commit your changes. You can also switch branches 
+- **Git Explorer** - View, stage and commit your changes. You can also switch branches
 - **Browser Use** - Open browser sessions for web research, testing, and agent-driven browser tasks
 - **Session Management** - Resume conversations, manage multiple sessions, and track history
 - **Plugin System** - Extend CloudCLI with custom plugins — add new tabs, backend services, and integrations. [Build your own →](https://github.com/cloudcli-ai/cloudcli-plugin-starter)
 - **TaskMaster AI Integration** *(Optional)* - Advanced project management with AI-powered task planning, PRD parsing, and workflow automation
-- **Model Compatibility** - Works with Claude and GPT model families (the full list of supported models is available at runtime via `GET /api/providers/:provider/models`)
-
+- **Routed Model Catalog** - Shows only models exposed by configured 9Router provider accounts through `GET /api/providers/codex/models`
 
 ## Quick Start
 
@@ -97,13 +94,13 @@ Visit the **[documentation →](https://cloudcli.ai/docs)** for full configurati
 
 #### Docker Sandboxes (Experimental)
 
-Run agents in isolated sandboxes with hypervisor-level isolation. Starts Claude Code by default. Requires the [`sbx` CLI](https://docs.docker.com/ai/sandboxes/get-started/).
+Run Codex in isolated sandboxes with hypervisor-level isolation. Requires the [`sbx` CLI](https://docs.docker.com/ai/sandboxes/get-started/).
 
 ```
 npx @cloudcli-ai/cloudcli@latest sandbox ~/my-project
 ```
 
-Supports Claude Code and Codex. See the [sandbox docs](docker/) for setup and advanced options.
+Supports Codex through 9Router. See the [sandbox docs](docker/) for setup and advanced options.
 
 ### Desktop Companion App
 
@@ -115,7 +112,6 @@ CloudCLI Desktop is an optional native companion for CloudCLI Cloud and Local Cl
 
 Use it to open CloudCLI Cloud environments, switch between local and remote workspaces, and copy mobile/browser URLs. To work locally, choose **Local CloudCLI** in the desktop app; it will use your running local server or start one for you.
 
-
 ---
 
 ## Which option is right for you?
@@ -123,7 +119,7 @@ Use it to open CloudCLI Cloud environments, switch between local and remote work
 CloudCLI UI is the open source UI layer that powers CloudCLI Cloud. You can self-host it on your own machine, run it in a Docker sandbox for isolation, or use CloudCLI Cloud for a fully managed environment.
 
 | | Self-Hosted (npm) | Self-Hosted (Docker Sandbox) *(Experimental)* | CloudCLI Cloud |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | **Best for** | Local agent sessions on your own machine | Isolated agents with web/mobile IDE | Teams who want agents in the cloud |
 | **How you access it** | Browser via `[yourip]:port` | Browser via `localhost:port` | Browser, any IDE, REST API, n8n |
 | **Setup** | `npx @cloudcli-ai/cloudcli` | `npx @cloudcli-ai/cloudcli@latest sandbox ~/project` | No setup required |
@@ -131,27 +127,27 @@ CloudCLI UI is the open source UI layer that powers CloudCLI Cloud. You can self
 | **Machine needs to stay on** | Yes | Yes | No |
 | **Mobile access** | Any browser on your network | Any browser on your network | Any device |
 | **Desktop companion** | Optional. Choose Local CloudCLI | Optional. Choose Local CloudCLI | Optional. Opens cloud environments |
-| **Agents supported** | Claude Code, Cursor CLI, Codex | Claude Code, Codex | Claude Code, Cursor CLI, Codex |
+| **Agents supported** | Codex | Codex | Codex |
 | **File explorer and Git** | Yes | Yes | Yes |
-| **MCP configuration** | Synced with `~/.claude` | Managed via UI | Managed via UI |
+| **MCP configuration** | Managed for Codex via UI | Managed via UI | Managed via UI |
 | **REST API** | Yes | Yes | Yes |
 | **Team sharing** | No | No | Yes |
 | **Platform cost** | Free, open source | Free, open source | Starts at €7/month |
 
-> All options use your own AI subscriptions (Claude, Cursor, etc.) — CloudCLI provides the environment, not the AI.
+> All options use provider accounts you connect through 9Router — CloudCLI provides the environment, not the AI.
 
 ---
 
 ## Security & Tools Configuration
 
-**🔒 Important Notice**: All Claude Code tools are **disabled by default**. This prevents potentially harmful operations from running automatically.
+**🔒 Important Notice**: Codex permission modes control how agent tools may run. Start with the safest mode for your workflow.
 
-### Enabling Tools
+### Configuring Permissions
 
-To use Claude Code's full functionality, you'll need to manually enable tools:
+To adjust Codex permissions:
 
 1. **Open Tools Settings** - Click the gear icon in the sidebar
-2. **Enable Selectively** - Turn on only the tools you need
+2. **Choose Conservatively** - Select only the permission level you need
 3. **Apply Settings** - Your preferences are saved locally
 
 <div align="center">
@@ -172,7 +168,7 @@ CloudCLI has a plugin system that lets you add custom tabs with their own fronte
 ### Available Plugins
 
 | Plugin | Description |
-|---|---|
+| --- | --- |
 | **[Project Stats](https://github.com/cloudcli-ai/cloudcli-plugin-starter)** | Shows file counts, lines of code, file-type breakdown, largest files, and recently modified files for your current project |
 | **[Web Terminal](https://github.com/cloudcli-ai/cloudcli-plugin-terminal)** | Full xterm.js terminal with multi-tab support |
 | **[Claude Watch](https://github.com/satsuki19980613/cloudcli-claude-watch)** | Watches long-running Claude Code sessions for hangs and exposes process controls |
@@ -190,20 +186,15 @@ CloudCLI has a plugin system that lets you add custom tabs with their own fronte
 **[Plugin Documentation →](https://cloudcli.ai/docs/plugin-overview)** — full guide to the plugin API, manifest format, security model, and more.
 
 ---
+
 ## FAQ
 
 <details>
-<summary>How is this different from Claude Code Remote Control?</summary>
+<summary>Can I still view sessions created by older CloudCLI agent integrations?</summary>
 
-Claude Code Remote Control lets you send messages to a session already running in your local terminal. Your machine has to stay on, your terminal has to stay open, and sessions time out after roughly 10 minutes without a network connection.
+Yes. The active agent is Codex, while historical session metadata and transcripts from older installations remain readable where available. New runs, authentication, model discovery, MCP, and skills use the Codex-only path.
 
-CloudCLI UI and CloudCLI Cloud extend Claude Code rather than sit alongside it — your MCP servers, permissions, settings, and sessions are the exact same ones Claude Code uses natively. Nothing is duplicated or managed separately.
-
-Here's what that means in practice:
-
-- **All your sessions, not just one** — CloudCLI UI auto-discovers every session from your `~/.claude` folder. Remote Control only exposes the single active session to make it available in the Claude mobile app.
-- **Your settings are your settings** — MCP servers, tool permissions, and project config you change in CloudCLI UI are written directly to your Claude Code config and take effect immediately, and vice versa.
-- **Works with more agents** — Claude Code, Cursor CLI and Codex, not just Claude Code.
+- **Routed Codex access** — provider OAuth, API keys, and the available model catalog are managed centrally through 9Router.
 - **Full UI, not just a chat window** — file explorer, Git integration, MCP management, and a shell terminal are all built in.
 - **CloudCLI Cloud runs in the cloud** — close your laptop, the agent keeps running. No terminal to babysit, no machine to keep awake.
 
@@ -212,7 +203,7 @@ Here's what that means in practice:
 <details>
 <summary>Do I need to pay for an AI subscription separately?</summary>
 
-Yes. CloudCLI provides the environment, not the AI. You bring your own Claude, Cursor, or Codex subscription. CloudCLI Cloud starts at €7/month for the hosted environment on top of that.
+Yes. CloudCLI provides the environment, not the AI. Connect your own provider account through 9Router. CloudCLI Cloud starts at €7/month for the hosted environment on top of that.
 
 </details>
 
@@ -224,9 +215,9 @@ Yes. For self-hosted, run the server on your machine and open `[yourip]:port` in
 </details>
 
 <details>
-<summary>Will changes I make in the UI affect my local Claude Code setup?</summary>
+<summary>Will changes I make in the UI affect my local Codex setup?</summary>
 
-Yes, for self-hosted. CloudCLI UI reads from and writes to the same `~/.claude` config that Claude Code uses natively. MCP servers you add via the UI show up in Claude Code immediately and vice versa.
+Yes, for self-hosted. CloudCLI UI manages the Codex configuration under `~/.codex`; provider authentication and available models are sourced from 9Router.
 
 </details>
 
@@ -245,25 +236,26 @@ GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later) — see [LIC
 
 This project is open source and free to use, modify, and distribute under the AGPL-3.0-or-later license. If you modify this software and run it as a network service, you must make your modified source code available to users of that service.
 
-CloudCLI UI - (https://cloudcli.ai).
+CloudCLI UI - (<https://cloudcli.ai>).
 
 ## Acknowledgments
 
 ### Built With
-- **[Claude Code](https://docs.anthropic.com/en/docs/claude-code)** - Anthropic's official CLI
-- **[Cursor CLI](https://docs.cursor.com/en/cli/overview)** - Cursor's official CLI
+
 - **[Codex](https://developers.openai.com/codex)** - OpenAI Codex
+- **[9Router](https://github.com/9router/9router)** - Provider authentication and model routing
 - **[React](https://react.dev/)** - User interface library
 - **[Vite](https://vitejs.dev/)** - Fast build tool and dev server
 - **[Tailwind CSS](https://tailwindcss.com/)** - Utility-first CSS framework
 - **[CodeMirror](https://codemirror.net/)** - Advanced code editor
 - **[TaskMaster AI](https://github.com/eyaltoledano/claude-task-master)** *(Optional)* - AI-powered project management and task planning
 
-
 ### Sponsors
+
 - [Siteboon - AI powered website builder](https://siteboon.ai)
+
 ---
 
 <div align="center">
- <strong>Made with care for the Claude Code, Cursor and Codex community.</strong>
+ <strong>Made with care for the Codex community.</strong>
 </div>

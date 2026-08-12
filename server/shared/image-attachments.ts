@@ -1,17 +1,15 @@
-import { promises as fs, realpathSync } from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
+import { realpathSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
 
 /**
  * Shared chat-attachment plumbing for every provider runtime.
  *
  * Uploaded chat files are persisted once in the global `~/.cloudcli/assets`
  * folder and referenced by absolute path everywhere else:
- * - Claude: paths are read back into base64 `image` content blocks.
  * - Codex: paths become `local_image` input items.
  * - General files: verified paths are appended inside a `<files_input>` tag,
- *   which every provider history adapter strips back out for display.
- * - Cursor/OpenCode images: paths use the equivalent `<images_input>` tag.
+ *   which provider history parsing strips back out for display.
  *
  * The chat UI loads them through dedicated `/api/assets/images/:filename` and
  * `/api/assets/files/:filename` routes, which serve only from this folder.
@@ -19,35 +17,27 @@ import path from 'node:path';
 
 /** Global storage folder for uploaded chat image attachments. */
 export function getGlobalImageAssetsDir(): string {
-  return path.join(os.homedir(), '.cloudcli', 'assets');
+	return path.join(os.homedir(), ".cloudcli", "assets");
 }
 
 export type ImageAttachmentDescriptor = {
-  /** Project-relative (preferred) or absolute path to the stored image. */
-  path: string;
-  name?: string;
-  mimeType?: string;
-  size?: number;
+	/** Project-relative (preferred) or absolute path to the stored image. */
+	path: string;
+	name?: string;
+	mimeType?: string;
+	size?: number;
 };
 
 /** Provider-neutral descriptor used for both image and non-image chat attachments. */
 export type ChatAttachmentDescriptor = ImageAttachmentDescriptor;
 
-/** Media types the Claude Messages API accepts for base64 image blocks. */
-const CLAUDE_IMAGE_MEDIA_TYPES = new Set([
-  'image/jpeg',
-  'image/png',
-  'image/gif',
-  'image/webp',
-]);
-
 const EXTENSION_TO_MEDIA_TYPE: Record<string, string> = {
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.png': 'image/png',
-  '.gif': 'image/gif',
-  '.webp': 'image/webp',
-  '.svg': 'image/svg+xml',
+	".jpg": "image/jpeg",
+	".jpeg": "image/jpeg",
+	".png": "image/png",
+	".gif": "image/gif",
+	".webp": "image/webp",
+	".svg": "image/svg+xml",
 };
 
 /**
@@ -55,89 +45,105 @@ const EXTENSION_TO_MEDIA_TYPE: Record<string, string> = {
  * descriptors. The websocket gateway and provider adapters use this to handle
  * current `attachments` payloads and legacy image path arrays consistently.
  */
-export function normalizeAttachmentDescriptors(attachments: unknown): ChatAttachmentDescriptor[] {
-  if (!Array.isArray(attachments)) {
-    return [];
-  }
+export function normalizeAttachmentDescriptors(
+	attachments: unknown,
+): ChatAttachmentDescriptor[] {
+	if (!Array.isArray(attachments)) {
+		return [];
+	}
 
-  const descriptors: ChatAttachmentDescriptor[] = [];
-  for (const entry of attachments) {
-    if (typeof entry === 'string' && entry.trim()) {
-      descriptors.push({ path: entry.trim() });
-      continue;
-    }
-    if (entry && typeof entry === 'object') {
-      const record = entry as Record<string, unknown>;
-      const entryPath = typeof record.path === 'string' ? record.path.trim() : '';
-      if (!entryPath) {
-        continue;
-      }
-      const descriptor: ChatAttachmentDescriptor = { path: entryPath };
-      if (typeof record.name === 'string') {
-        descriptor.name = record.name;
-      }
-      if (typeof record.mimeType === 'string') {
-        descriptor.mimeType = record.mimeType;
-      }
-      if (typeof record.size === 'number' && Number.isFinite(record.size)) {
-        descriptor.size = record.size;
-      }
-      descriptors.push(descriptor);
-    }
-  }
-  return descriptors;
+	const descriptors: ChatAttachmentDescriptor[] = [];
+	for (const entry of attachments) {
+		if (typeof entry === "string" && entry.trim()) {
+			descriptors.push({ path: entry.trim() });
+			continue;
+		}
+		if (entry && typeof entry === "object") {
+			const record = entry as Record<string, unknown>;
+			const entryPath =
+				typeof record.path === "string" ? record.path.trim() : "";
+			if (!entryPath) {
+				continue;
+			}
+			const descriptor: ChatAttachmentDescriptor = { path: entryPath };
+			if (typeof record.name === "string") {
+				descriptor.name = record.name;
+			}
+			if (typeof record.mimeType === "string") {
+				descriptor.mimeType = record.mimeType;
+			}
+			if (typeof record.size === "number" && Number.isFinite(record.size)) {
+				descriptor.size = record.size;
+			}
+			descriptors.push(descriptor);
+		}
+	}
+	return descriptors;
 }
 
 /** Backward-compatible image-specific alias used by existing provider adapters. */
-export function normalizeImageDescriptors(images: unknown): ImageAttachmentDescriptor[] {
-  return normalizeAttachmentDescriptors(images);
+export function normalizeImageDescriptors(
+	images: unknown,
+): ImageAttachmentDescriptor[] {
+	return normalizeAttachmentDescriptors(images);
 }
 
-const IMAGE_FILE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp']);
+const IMAGE_FILE_EXTENSIONS = new Set([
+	".jpg",
+	".jpeg",
+	".png",
+	".gif",
+	".webp",
+]);
 
 /**
  * Determines whether the websocket gateway should route an attachment through
  * provider-native image input instead of the general file reference channel.
  */
-export function isImageAttachmentDescriptor(descriptor: ChatAttachmentDescriptor): boolean {
-  if (descriptor.mimeType && CLAUDE_IMAGE_MEDIA_TYPES.has(descriptor.mimeType)) {
-    return true;
-  }
-  return IMAGE_FILE_EXTENSIONS.has(path.extname(descriptor.path).toLowerCase());
+export function isImageAttachmentDescriptor(
+	descriptor: ChatAttachmentDescriptor,
+): boolean {
+	if (descriptor.mimeType?.startsWith("image/")) {
+		return true;
+	}
+	return IMAGE_FILE_EXTENSIONS.has(path.extname(descriptor.path).toLowerCase());
 }
 
 /** Normalizes Windows separators so stored references stay portable. */
 export function toPosixPath(value: string): string {
-  return value.replace(/\\/g, '/');
+	return value.replace(/\\/g, "/");
 }
 
 /** Resolves a project-relative image path against the run's working directory. */
-export function resolveImageAbsolutePath(cwd: string | undefined, imagePath: string): string {
-  if (path.isAbsolute(imagePath)) {
-    return imagePath;
-  }
-  return path.resolve(cwd || process.cwd(), imagePath);
+export function resolveImageAbsolutePath(
+	cwd: string | undefined,
+	imagePath: string,
+): string {
+	if (path.isAbsolute(imagePath)) {
+		return imagePath;
+	}
+	return path.resolve(cwd || process.cwd(), imagePath);
 }
 
 function isPathInsideDirectory(candidate: string, directory: string): boolean {
-  // resolve + startsWith(root + separator) is the containment idiom CodeQL
-  // recognizes as a path-injection barrier, and matches the check used by
-  // resolveImageAssetFile in the assets module. The root itself never
-  // matches (no trailing separator after resolve), only entries below it.
-  const resolvedRoot = path.resolve(directory) + path.sep;
-  return path.resolve(candidate).startsWith(resolvedRoot);
+	// resolve + startsWith(root + separator) is the containment idiom CodeQL
+	// recognizes as a path-injection barrier, and matches the check used by
+	// resolveImageAssetFile in the assets module. The root itself never
+	// matches (no trailing separator after resolve), only entries below it.
+	const resolvedRoot = path.resolve(directory) + path.sep;
+	return path.resolve(candidate).startsWith(resolvedRoot);
 }
 
 function getDirectoryPathVariants(directory: string): string[] {
-  const resolvedDirectory = path.resolve(directory);
-  try {
-    const canonicalDirectory = path.resolve(realpathSync(directory));
-    return canonicalDirectory === resolvedDirectory
-      ? [resolvedDirectory]
-      : [resolvedDirectory, canonicalDirectory];
-  } catch {
-    return [resolvedDirectory];
-  }
+	const resolvedDirectory = path.resolve(directory);
+	try {
+		const canonicalDirectory = path.resolve(realpathSync(directory));
+		return canonicalDirectory === resolvedDirectory
+			? [resolvedDirectory]
+			: [resolvedDirectory, canonicalDirectory];
+	} catch {
+		return [resolvedDirectory];
+	}
 }
 
 /**
@@ -147,41 +153,47 @@ function getDirectoryPathVariants(directory: string): string[] {
  * the agent could already access on its own. Anything else (e.g. `~/.ssh`) is
  * refused, so a caller-supplied descriptor can never leak arbitrary files.
  */
-export function isAllowedImageSourcePath(resolvedPath: string, cwd?: string): boolean {
-  return [getGlobalImageAssetsDir(), cwd || process.cwd()].some((directory) =>
-    getDirectoryPathVariants(directory).some((directoryVariant) =>
-      isPathInsideDirectory(resolvedPath, directoryVariant)
-    )
-  );
+export function isAllowedImageSourcePath(
+	resolvedPath: string,
+	cwd?: string,
+): boolean {
+	return [getGlobalImageAssetsDir(), cwd || process.cwd()].some((directory) =>
+		getDirectoryPathVariants(directory).some((directoryVariant) =>
+			isPathInsideDirectory(resolvedPath, directoryVariant),
+		),
+	);
 }
 
 /**
  * Resolves the media type for one image, preferring the uploaded mime type and
  * falling back to the file extension.
  */
-export function resolveImageMediaType(descriptor: ImageAttachmentDescriptor): string | null {
-  if (descriptor.mimeType) {
-    return descriptor.mimeType;
-  }
-  const extension = path.extname(descriptor.path).toLowerCase();
-  return EXTENSION_TO_MEDIA_TYPE[extension] || null;
+export function resolveImageMediaType(
+	descriptor: ImageAttachmentDescriptor,
+): string | null {
+	if (descriptor.mimeType) {
+		return descriptor.mimeType;
+	}
+	const extension = path.extname(descriptor.path).toLowerCase();
+	return EXTENSION_TO_MEDIA_TYPE[extension] || null;
 }
 
-const IMAGES_INPUT_TAG_PATTERN = /\s*<images_input>([\s\S]*?)<\/images_input>\s*/g;
+const IMAGES_INPUT_TAG_PATTERN =
+	/\s*<images_input>([\s\S]*?)<\/images_input>\s*/g;
 
 // One image reference recovered from an <images_input> block: the stored
 // asset path plus the user's original filename when it was recorded.
 export type ParsedImageAttachment = {
-  path: string;
-  name?: string;
+	path: string;
+	name?: string;
 };
 
 // Result of stripping an <images_input> block out of persisted prompt text.
 // `imagePaths` mirrors `attachments` for callers that only need paths.
 export type ParsedImagesInput = {
-  text: string;
-  imagePaths: string[];
-  attachments: ParsedImageAttachment[];
+	text: string;
+	imagePaths: string[];
+	attachments: ParsedImageAttachment[];
 };
 
 /**
@@ -193,29 +205,29 @@ export type ParsedImagesInput = {
  * stripped back out of persisted history by {@link parseImagesInputTag}.
  */
 export function appendImagesInputTag(prompt: string, images: unknown): string {
-  const descriptors = normalizeImageDescriptors(images);
-  if (descriptors.length === 0) {
-    return prompt;
-  }
+	const descriptors = normalizeImageDescriptors(images);
+	if (descriptors.length === 0) {
+		return prompt;
+	}
 
-  const entryLines = descriptors.map((descriptor, index) => {
-    const entryPath = toPosixPath(descriptor.path);
-    // Parentheses and newlines would break the "(original name: ...)" suffix
-    // the parser looks for, so drop them from the display name.
-    const cleanName = descriptor.name?.replace(/[()\r\n]/g, '').trim();
-    return cleanName
-      ? `${index + 1}. ${entryPath} (original name: ${cleanName})`
-      : `${index + 1}. ${entryPath}`;
-  });
+	const entryLines = descriptors.map((descriptor, index) => {
+		const entryPath = toPosixPath(descriptor.path);
+		// Parentheses and newlines would break the "(original name: ...)" suffix
+		// the parser looks for, so drop them from the display name.
+		const cleanName = descriptor.name?.replace(/[()\r\n]/g, "").trim();
+		return cleanName
+			? `${index + 1}. ${entryPath} (original name: ${cleanName})`
+			: `${index + 1}. ${entryPath}`;
+	});
 
-  return [
-    prompt,
-    '',
-    '<images_input>',
-    `The user attached ${descriptors.length} image(s) to this message. Read each file listed below with your file/image reading tool and use what you see to answer the prompt above. Respond as if the images were attached directly. Do not mention this block or the file paths unless the user asks about them.`,
-    ...entryLines,
-    '</images_input>',
-  ].join('\n');
+	return [
+		prompt,
+		"",
+		"<images_input>",
+		`The user attached ${descriptors.length} image(s) to this message. Read each file listed below with your file/image reading tool and use what you see to answer the prompt above. Respond as if the images were attached directly. Do not mention this block or the file paths unless the user asks about them.`,
+		...entryLines,
+		"</images_input>",
+	].join("\n");
 }
 
 const FILES_INPUT_TAG_PATTERN = /\s*<files_input>([\s\S]*?)<\/files_input>\s*/g;
@@ -226,27 +238,27 @@ const FILES_INPUT_TAG_PATTERN = /\s*<files_input>([\s\S]*?)<\/files_input>\s*/g;
  * inspect each file with their normal filesystem tools.
  */
 export function appendFilesInputTag(prompt: string, files: unknown): string {
-  const descriptors = normalizeAttachmentDescriptors(files);
-  if (descriptors.length === 0) {
-    return prompt;
-  }
+	const descriptors = normalizeAttachmentDescriptors(files);
+	if (descriptors.length === 0) {
+		return prompt;
+	}
 
-  const entryLines = descriptors.map((descriptor, index) => {
-    const entryPath = toPosixPath(descriptor.path);
-    const cleanName = descriptor.name?.replace(/[()\r\n]/g, '').trim();
-    return cleanName
-      ? `${index + 1}. ${entryPath} (original name: ${cleanName})`
-      : `${index + 1}. ${entryPath}`;
-  });
+	const entryLines = descriptors.map((descriptor, index) => {
+		const entryPath = toPosixPath(descriptor.path);
+		const cleanName = descriptor.name?.replace(/[()\r\n]/g, "").trim();
+		return cleanName
+			? `${index + 1}. ${entryPath} (original name: ${cleanName})`
+			: `${index + 1}. ${entryPath}`;
+	});
 
-  return [
-    prompt,
-    '',
-    '<files_input>',
-    `The user attached ${descriptors.length} file(s) to this message. Read each file listed below with your file reading tools and use its contents to answer the prompt above. Do not mention this block or the file paths unless the user asks about them.`,
-    ...entryLines,
-    '</files_input>',
-  ].join('\n');
+	return [
+		prompt,
+		"",
+		"<files_input>",
+		`The user attached ${descriptors.length} file(s) to this message. Read each file listed below with your file reading tools and use its contents to answer the prompt above. Do not mention this block or the file paths unless the user asks about them.`,
+		...entryLines,
+		"</files_input>",
+	].join("\n");
 }
 
 // Matches one numbered attachment entry inside the tag body. Works for both
@@ -257,22 +269,26 @@ const IMAGES_INPUT_ENTRY_PATTERN = /\d+\.\s+(.+?)(?=\s+\d+\.\s+|\s*$)/g;
 const ORIGINAL_NAME_SUFFIX_PATTERN = /\(original name: ([^)]*)\)\s*$/;
 
 function parseNumberedImageEntries(inner: string): ParsedImageAttachment[] {
-  const attachments: ParsedImageAttachment[] = [];
-  for (const entryMatch of inner.matchAll(IMAGES_INPUT_ENTRY_PATTERN)) {
-    let entryText = entryMatch[1].trim();
-    let name: string | undefined;
+	const attachments: ParsedImageAttachment[] = [];
+	for (const entryMatch of inner.matchAll(IMAGES_INPUT_ENTRY_PATTERN)) {
+		let entryText = entryMatch[1].trim();
+		let name: string | undefined;
 
-    const nameMatch = ORIGINAL_NAME_SUFFIX_PATTERN.exec(entryText);
-    if (nameMatch) {
-      name = nameMatch[1].trim() || undefined;
-      entryText = entryText.slice(0, nameMatch.index).trim();
-    }
+		const nameMatch = ORIGINAL_NAME_SUFFIX_PATTERN.exec(entryText);
+		if (nameMatch) {
+			name = nameMatch[1].trim() || undefined;
+			entryText = entryText.slice(0, nameMatch.index).trim();
+		}
 
-    if (entryText) {
-      attachments.push(name ? { path: toPosixPath(entryText), name } : { path: toPosixPath(entryText) });
-    }
-  }
-  return attachments;
+		if (entryText) {
+			attachments.push(
+				name
+					? { path: toPosixPath(entryText), name }
+					: { path: toPosixPath(entryText) },
+			);
+		}
+	}
+	return attachments;
 }
 
 /**
@@ -280,33 +296,39 @@ function parseNumberedImageEntries(inner: string): ParsedImageAttachment[] {
  * text and restores its attachment descriptors for chat history.
  */
 export function parseFilesInputTag(text: string): {
-  text: string;
-  filePaths: string[];
-  attachments: ParsedImageAttachment[];
+	text: string;
+	filePaths: string[];
+	attachments: ParsedImageAttachment[];
 } {
-  if (typeof text !== 'string' || !text.includes('<files_input>')) {
-    return { text, filePaths: [], attachments: [] };
-  }
+	if (typeof text !== "string" || !text.includes("<files_input>")) {
+		return { text, filePaths: [], attachments: [] };
+	}
 
-  let lastMatch: RegExpExecArray | null = null;
-  FILES_INPUT_TAG_PATTERN.lastIndex = 0;
-  for (let match = FILES_INPUT_TAG_PATTERN.exec(text); match; match = FILES_INPUT_TAG_PATTERN.exec(text)) {
-    lastMatch = match;
-  }
-  if (!lastMatch) {
-    return { text, filePaths: [], attachments: [] };
-  }
+	let lastMatch: RegExpExecArray | null = null;
+	FILES_INPUT_TAG_PATTERN.lastIndex = 0;
+	for (
+		let match = FILES_INPUT_TAG_PATTERN.exec(text);
+		match;
+		match = FILES_INPUT_TAG_PATTERN.exec(text)
+	) {
+		lastMatch = match;
+	}
+	if (!lastMatch) {
+		return { text, filePaths: [], attachments: [] };
+	}
 
-  const attachments = parseNumberedImageEntries(lastMatch[1]);
-  const stripped = (
-    text.slice(0, lastMatch.index) + '\n' + text.slice(lastMatch.index + lastMatch[0].length)
-  ).trim();
+	const attachments = parseNumberedImageEntries(lastMatch[1]);
+	const stripped = (
+		text.slice(0, lastMatch.index) +
+		"\n" +
+		text.slice(lastMatch.index + lastMatch[0].length)
+	).trim();
 
-  return {
-    text: stripped,
-    filePaths: attachments.map((attachment) => attachment.path),
-    attachments,
-  };
+	return {
+		text: stripped,
+		filePaths: attachments.map((attachment) => attachment.path),
+		attachments,
+	};
 }
 
 /**
@@ -321,115 +343,73 @@ export function parseFilesInputTag(text: string): {
  * Windows-flattened single-line forms.
  */
 export function parseImagesInputTag(text: string): ParsedImagesInput {
-  if (typeof text !== 'string' || !text.includes('<images_input>')) {
-    return { text, imagePaths: [], attachments: [] };
-  }
+	if (typeof text !== "string" || !text.includes("<images_input>")) {
+		return { text, imagePaths: [], attachments: [] };
+	}
 
-  let lastMatch: RegExpExecArray | null = null;
-  IMAGES_INPUT_TAG_PATTERN.lastIndex = 0;
-  for (let match = IMAGES_INPUT_TAG_PATTERN.exec(text); match; match = IMAGES_INPUT_TAG_PATTERN.exec(text)) {
-    lastMatch = match;
-  }
-  if (!lastMatch) {
-    return { text, imagePaths: [], attachments: [] };
-  }
+	let lastMatch: RegExpExecArray | null = null;
+	IMAGES_INPUT_TAG_PATTERN.lastIndex = 0;
+	for (
+		let match = IMAGES_INPUT_TAG_PATTERN.exec(text);
+		match;
+		match = IMAGES_INPUT_TAG_PATTERN.exec(text)
+	) {
+		lastMatch = match;
+	}
+	if (!lastMatch) {
+		return { text, imagePaths: [], attachments: [] };
+	}
 
-  const attachments = parseNumberedImageEntries(lastMatch[1]);
+	const attachments = parseNumberedImageEntries(lastMatch[1]);
 
-  const stripped = (
-    text.slice(0, lastMatch.index) + '\n' + text.slice(lastMatch.index + lastMatch[0].length)
-  ).trim();
+	const stripped = (
+		text.slice(0, lastMatch.index) +
+		"\n" +
+		text.slice(lastMatch.index + lastMatch[0].length)
+	).trim();
 
-  return {
-    text: stripped,
-    imagePaths: attachments.map((attachment) => attachment.path),
-    attachments,
-  };
+	return {
+		text: stripped,
+		imagePaths: attachments.map((attachment) => attachment.path),
+		attachments,
+	};
 }
 
 /** Maps raw image paths to the attachment shape carried by NormalizedMessage.images. */
-export function toImageAttachments(imagePaths: string[]): Array<{ path: string }> {
-  return imagePaths.map((imagePath) => ({ path: toPosixPath(imagePath) }));
-}
-
-type ClaudeContentBlock =
-  | { type: 'text'; text: string }
-  | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } };
-
-/**
- * Builds the Claude user-message content list: the prompt text followed by one
- * base64 `image` block per attachment. Images the Claude API cannot accept
- * (e.g. SVG) or that fail to read are skipped with a warning so the prompt
- * itself still goes through.
- */
-export async function buildClaudeUserContent(
-  prompt: string,
-  images: unknown,
-  cwd?: string,
-): Promise<ClaudeContentBlock[]> {
-  const blocks: ClaudeContentBlock[] = [{ type: 'text', text: prompt }];
-
-  for (const descriptor of normalizeImageDescriptors(images)) {
-    const mediaType = resolveImageMediaType(descriptor);
-    if (!mediaType || !CLAUDE_IMAGE_MEDIA_TYPES.has(mediaType)) {
-      console.warn(`[Images] Skipping unsupported Claude image type for ${descriptor.path}`);
-      continue;
-    }
-
-    const resolvedPath = resolveImageAbsolutePath(cwd, descriptor.path);
-    if (!isAllowedImageSourcePath(resolvedPath, cwd)) {
-      console.warn(`[Images] Refusing to read image outside allowed roots: ${descriptor.path}`);
-      continue;
-    }
-
-    try {
-      const canonicalPath = await fs.realpath(resolvedPath);
-      if (!isAllowedImageSourcePath(canonicalPath, cwd)) {
-        console.warn(`[Images] Refusing to read symlinked image outside allowed roots: ${descriptor.path}`);
-        continue;
-      }
-
-      const bytes = await fs.readFile(canonicalPath);
-      blocks.push({
-        type: 'image',
-        source: {
-          type: 'base64',
-          media_type: mediaType,
-          data: bytes.toString('base64'),
-        },
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      console.warn(`[Images] Failed to read image ${descriptor.path}: ${message}`);
-    }
-  }
-
-  return blocks;
+export function toImageAttachments(
+	imagePaths: string[],
+): Array<{ path: string }> {
+	return imagePaths.map((imagePath) => ({ path: toPosixPath(imagePath) }));
 }
 
 type CodexInputItem =
-  | { type: 'text'; text: string }
-  | { type: 'local_image'; path: string };
+	| { type: "text"; text: string }
+	| { type: "local_image"; path: string };
 
 /**
  * Builds the Codex `runStreamed` input list: prompt text plus one
  * `local_image` item per attachment, resolved to absolute paths so the Codex
  * runtime can read them regardless of its own working directory handling.
  */
-export function buildCodexInputItems(prompt: string, images: unknown, cwd?: string): CodexInputItem[] {
-  const items: CodexInputItem[] = [{ type: 'text', text: prompt }];
-  for (const descriptor of normalizeImageDescriptors(images)) {
-    const resolvedPath = resolveImageAbsolutePath(cwd, descriptor.path);
-    if (!isAllowedImageSourcePath(resolvedPath, cwd)) {
-      // Same trust boundary as buildClaudeUserContent — the Codex runtime
-      // reads this file, so it must stay within the allowed roots.
-      console.warn(`[Images] Refusing to attach image outside allowed roots: ${descriptor.path}`);
-      continue;
-    }
-    items.push({
-      type: 'local_image',
-      path: resolvedPath,
-    });
-  }
-  return items;
+export function buildCodexInputItems(
+	prompt: string,
+	images: unknown,
+	cwd?: string,
+): CodexInputItem[] {
+	const items: CodexInputItem[] = [{ type: "text", text: prompt }];
+	for (const descriptor of normalizeImageDescriptors(images)) {
+		const resolvedPath = resolveImageAbsolutePath(cwd, descriptor.path);
+		if (!isAllowedImageSourcePath(resolvedPath, cwd)) {
+			// The Codex runtime reads this file, so it must stay within allowed roots.
+			console.warn(
+				`[Images] Refusing to attach image outside allowed roots: ${descriptor.path}`,
+			);
+			continue;
+		}
+		items.push({
+			type: "local_image",
+			path: resolvedPath,
+		});
+	}
+	return items;
 }

@@ -1,13 +1,11 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { AlertTriangle, Loader2, ShieldCheck, Wrench } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type {
 	CreateRoutingApiKeyAccountInput,
-	CreateRoutingRouteInput,
 	RoutingSettingsView,
 	UpdateRoutingAccountInput,
-	UpdateRoutingRouteInput,
 } from "../../../../../../shared/routing.js";
 import {
 	Alert,
@@ -22,7 +20,7 @@ import {
 	type RoutingUiError,
 	upstreamDetailsState,
 } from "./routingState.js";
-import UpstreamsRoutesSection from "./UpstreamsRoutesSection.js";
+import ProviderAccountsSection from "./ProviderAccountsSection.js";
 import { useNineRouterSettings } from "./useNineRouterSettings.js";
 
 export type NineRouterSettingsTabViewProps = {
@@ -33,9 +31,6 @@ export type NineRouterSettingsTabViewProps = {
 	activeMutation: string | null;
 	codexApplied: boolean;
 	onApplyToCodex: () => Promise<boolean>;
-	routesLoading?: boolean;
-	routesError?: boolean;
-	onRetryRoutes: () => void;
 	accountDraft: RoutingAccountDraft;
 	upstreamDetailsLoading?: boolean;
 	upstreamDetailsError?: boolean;
@@ -52,12 +47,6 @@ export type NineRouterSettingsTabViewProps = {
 	) => Promise<boolean>;
 	onTestAccount: (id: string) => Promise<boolean>;
 	onDeleteAccount: (id: string) => Promise<boolean>;
-	onCreateRoute: (input: CreateRoutingRouteInput) => Promise<boolean>;
-	onUpdateRoute: (
-		id: string,
-		input: UpdateRoutingRouteInput,
-	) => Promise<boolean>;
-	onDeleteRoute: (id: string) => Promise<boolean>;
 };
 
 function errorCode(
@@ -81,9 +70,6 @@ export function NineRouterSettingsTabView({
 	activeMutation,
 	codexApplied,
 	onApplyToCodex,
-	routesLoading = false,
-	routesError = false,
-	onRetryRoutes,
 	accountDraft,
 	upstreamDetailsLoading = false,
 	upstreamDetailsError = false,
@@ -94,9 +80,6 @@ export function NineRouterSettingsTabView({
 	onUpdateAccount,
 	onTestAccount,
 	onDeleteAccount,
-	onCreateRoute,
-	onUpdateRoute,
-	onDeleteRoute,
 }: NineRouterSettingsTabViewProps) {
 	const { t } = useTranslation("settings");
 	const code = errorCode(settings, error).toUpperCase();
@@ -107,9 +90,7 @@ export function NineRouterSettingsTabView({
 	const incompatible = code.includes("VERSION") || code.includes("CAPABILITY");
 	const runtimeUnavailable = settings.runtime.status === "unavailable";
 	const detailErrorOwnsMessage =
-		errorContext === "details" && (routesError || upstreamDetailsError);
-	const showRouteError =
-		routesError && !unauthorized && !incompatible && !runtimeUnavailable;
+		errorContext === "details" && upstreamDetailsError;
 	const runtimeReady = isNineRouterRuntimeReady(settings);
 	const applyingToCodex = activeMutation === "codex:apply";
 	const knownStateError =
@@ -202,15 +183,13 @@ export function NineRouterSettingsTabView({
 				)}
 			</section>
 
-			<UpstreamsRoutesSection
+			<ProviderAccountsSection
 				configured={runtimeReady}
 				connectionStatus={runtimeReady ? "connected" : "offline"}
 				capabilities={settings.runtime.capabilities}
 				accountSummary={settings.accountSummary}
-				routeSummary={settings.routeSummary}
 				accounts={settings.accounts ?? []}
 				models={settings.models ?? []}
-				routes={settings.routes ?? []}
 				loading={upstreamDetailsLoading}
 				detailsError={upstreamDetailsError}
 				activeMutation={activeMutation}
@@ -222,9 +201,6 @@ export function NineRouterSettingsTabView({
 				onUpdateAccount={onUpdateAccount}
 				onTestAccount={onTestAccount}
 				onDeleteAccount={onDeleteAccount}
-				onCreateRoute={onCreateRoute}
-				onUpdateRoute={onUpdateRoute}
-				onDeleteRoute={onDeleteRoute}
 			/>
 		</div>
 	);
@@ -232,14 +208,7 @@ export function NineRouterSettingsTabView({
 
 export default function NineRouterSettingsTab() {
 	const controller = useNineRouterSettings();
-	const { ensureRouteDetails } = controller;
 	const upstreamDetails = upstreamDetailsState(controller.detailStatus);
-	const canReadRoutes =
-		isNineRouterRuntimeReady(controller.settings) &&
-		controller.settings.runtime.capabilities.readRoutes;
-	useEffect(() => {
-		if (canReadRoutes) void ensureRouteDetails();
-	}, [canReadRoutes, ensureRouteDetails]);
 
 	return (
 		<NineRouterSettingsTabView
@@ -250,11 +219,6 @@ export default function NineRouterSettingsTab() {
 			activeMutation={controller.activeMutation}
 			codexApplied={controller.codexApplied}
 			onApplyToCodex={async () => Boolean(await controller.applyToCodex())}
-			routesLoading={controller.detailStatus.routes === "loading"}
-			routesError={controller.detailStatus.routes === "error"}
-			onRetryRoutes={() => {
-				void controller.retryRouteDetails();
-			}}
 			accountDraft={controller.accountDraft}
 			upstreamDetailsLoading={upstreamDetails.loading}
 			upstreamDetailsError={upstreamDetails.error}
@@ -275,13 +239,6 @@ export default function NineRouterSettingsTab() {
 			onDeleteAccount={async (id) =>
 				Boolean(await controller.deleteAccount(id))
 			}
-			onCreateRoute={async (input) =>
-				Boolean(await controller.createRoute(input))
-			}
-			onUpdateRoute={async (id, input) =>
-				Boolean(await controller.updateRoute(id, input))
-			}
-			onDeleteRoute={async (id) => Boolean(await controller.deleteRoute(id))}
 		/>
 	);
 }
