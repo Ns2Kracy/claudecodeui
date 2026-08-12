@@ -1,26 +1,93 @@
 import { providerRegistry } from '@/modules/providers/provider.registry.js';
 import type { LLMProvider, ProviderAuthStatus } from '@/shared/types.js';
 
-export const providerAuthService = {
-  /**
-   * Resolves a provider and returns its installation/authentication status.
-   */
-  async getProviderAuthStatus(providerName: string): Promise<ProviderAuthStatus> {
-    const provider = providerRegistry.resolveProvider(providerName);
-    return provider.auth.getStatus();
-  },
-
-  /**
-   * Returns whether a provider runtime appears installed.
-   * Falls back to true if status lookup itself fails so callers preserve the
-   * original runtime error instead of replacing it with a status-check failure.
-   */
-  async isProviderInstalled(providerName: LLMProvider): Promise<boolean> {
-    try {
-      const status = await this.getProviderAuthStatus(providerName);
-      return status.installed;
-    } catch {
-      return true;
-    }
-  },
+type RoutedAccount = {
+  provider: string;
+  name: string;
+  authType: string;
+  active: boolean;
+  status: string;
 };
+
+type ProviderAuthServiceDependencies = {
+  listRoutingAccounts(): Promise<RoutedAccount[]>;
+  getCodexInstallationStatus(): Promise<boolean>;
+};
+
+/**
+ * Creates the provider auth application service. Provider tests inject the
+ * routing account query; production resolves it lazily through the routing
+ * barrel to avoid a providers/routing composition cycle at module startup.
+ */
+export function createProviderAuthService(
+  dependencies: ProviderAuthServiceDependencies,
+) {
+  return {
+    /** Returns Codex installation state and 9Router-owned authentication state. */
+    async getProviderAuthStatus(providerName: string): Promise<ProviderAuthStatus> {
+      providerRegistry.resolveProvider(providerName);
+      const installed = await dependencies.getCodexInstallationStatus();
+
+      try {
+        const accounts = await dependencies.listRoutingAccounts();
+        const account = accounts.find(
+          (candidate) =>
+            candidate.active &&
+            candidate.status !== 'failed' &&
+            (candidate.provider === 'codex' || candidate.provider === 'openai'),
+        );
+        if (account) {
+          return {
+            installed,
+            provider: 'codex',
+            authenticated: true,
+            email: account.name,
+            method: `9router:${account.authType}`,
+          };
+        }
+
+        return {
+          installed,
+          provider: 'codex',
+          authenticated: false,
+          email: null,
+          method: null,
+          error: 'No usable Codex account is configured in 9Router',
+        };
+      } catch {
+        return {
+          installed,
+          provider: 'codex',
+          authenticated: false,
+          email: null,
+          method: null,
+          error: '9Router authentication is unavailable',
+        };
+      }
+    },
+
+    /**
+     * Returns whether the Codex runtime appears installed. Falls back to true
+     * if lookup fails so callers retain the original runtime error.
+     */
+    async isProviderInstalled(providerName: LLMProvider): Promise<boolean> {
+      try {
+        providerRegistry.resolveProvider(providerName);
+        return await dependencies.getCodexInstallationStatus();
+      } catch {
+        return true;
+      }
+    },
+  };
+}
+
+export const providerAuthService = createProviderAuthService({
+  async listRoutingAccounts() {
+    const { routingService } = await import('@/modules/routing/index.js');
+    return routingService.listAccounts(0);
+  },
+  async getCodexInstallationStatus() {
+    const status = await providerRegistry.resolveProvider('codex').auth.getStatus();
+    return status.installed;
+  },
+});
