@@ -104,21 +104,24 @@ function createService(
 	});
 }
 
-test("providerRegistry owns one runtime for every registered provider", () => {
+test("providerRegistry exposes only the Codex runtime", () => {
 	const providers = providerRegistry.listProviders();
 
 	assert.deepEqual(
 		providers.map((provider) => provider.id),
-		["claude", "codex", "cursor", "opencode"],
+		["codex"],
 	);
-	assert.equal(
-		providers.every((provider) => typeof provider.runtime.run === "function"),
-		true,
-	);
-	assert.equal(
-		providers.every((provider) => typeof provider.runtime.abort === "function"),
-		true,
-	);
+	assert.equal(typeof providers[0]?.runtime.run, "function");
+	assert.equal(typeof providers[0]?.runtime.abort, "function");
+	for (const removedProvider of ["claude", "cursor", "opencode"]) {
+		assert.throws(
+			() => providerRegistry.resolveProvider(removedProvider),
+			(error: unknown) =>
+				error instanceof Error &&
+				"code" in error &&
+				error.code === "UNSUPPORTED_PROVIDER",
+		);
+	}
 });
 
 test("dispatches runs and aborts through the runtime owned by providerRegistry", async () => {
