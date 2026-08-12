@@ -14,7 +14,9 @@ RUN apt-get update \
 COPY package.json package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm,sharing=locked \
     npm ci --ignore-scripts --include=dev \
-    && npm rebuild better-sqlite3 bcrypt node-pty
+    && npm rebuild better-sqlite3 bcrypt node-pty \
+    && ln -s /app/node_modules/.bin/codex /usr/local/bin/codex \
+    && codex --version
 
 COPY . .
 RUN npm run build
