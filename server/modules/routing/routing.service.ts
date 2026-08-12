@@ -1,94 +1,106 @@
-import type { IRoutingNineRouterClient } from '@/shared/interfaces.js';
+import type { IRoutingNineRouterClient } from "@/shared/interfaces.js";
 import type {
-  RoutingClientCredentials,
-  RoutingSettingsDetails,
-} from '@/shared/types.js';
-import { AppError } from '@/shared/utils.js';
+	RoutingClientCredentials,
+	RoutingSettingsDetails,
+} from "@/shared/types.js";
+import { AppError } from "@/shared/utils.js";
 
 import type {
-  CreateRoutingApiKeyAccountInput,
-  CreateRoutingProviderNodeInput,
-  CreateRoutingRouteInput,
-  RoutingAccountView,
-  RoutingOAuthPollingStateView,
-  RoutingRuntimeView,
-  RoutingSettingsView,
-  UpdateRoutingAccountInput,
-  UpdateRoutingProviderNodeInput,
-  ValidateRoutingProviderNodeInput,
-  UpdateRoutingRouteInput,
-} from '../../../shared/routing.js';
-import { emptyRoutingSettingsView } from '../../../shared/routing.js';
+	CreateRoutingApiKeyAccountInput,
+	CreateRoutingProviderNodeInput,
+	CreateRoutingRouteInput,
+	RoutingAccountView,
+	RoutingOAuthPollingStateView,
+	RoutingRuntimeView,
+	RoutingSettingsView,
+	UpdateRoutingAccountInput,
+	UpdateRoutingProviderNodeInput,
+	ValidateRoutingProviderNodeInput,
+	UpdateRoutingRouteInput,
+} from "../../../shared/routing.js";
+import { emptyRoutingSettingsView } from "../../../shared/routing.js";
 
-import type { createRoutingOAuthService } from './routing-oauth.service.js';
-import type { NineRouterInternalCredentials, NineRouterSidecarStatus } from './nine-router-sidecar.service.js';
+import type { createRoutingOAuthService } from "./routing-oauth.service.js";
+import type {
+	NineRouterInternalCredentials,
+	NineRouterSidecarStatus,
+} from "./nine-router-sidecar.service.js";
 
 type RuntimeCredentialsProvider = {
-  getStatus(): NineRouterSidecarStatus;
-  getInternalCredentials(): NineRouterInternalCredentials;
+	getStatus(): NineRouterSidecarStatus;
+	getInternalCredentials(): NineRouterInternalCredentials;
 };
 
 type CodexConfigPort = {
-  applyCustomProvider(input: { baseUrl: string; apiKey: string }): Promise<{ provider: 'Custom' }>;
+	applyCustomProvider(input: {
+		baseUrl: string;
+		apiKey: string;
+	}): Promise<{ provider: "Custom" }>;
 };
 
 type RoutingServiceDependencies = {
-  runtime: RuntimeCredentialsProvider;
-  clientFactory(credentials: RoutingClientCredentials): IRoutingNineRouterClient;
-  codexConfig: CodexConfigPort;
-  oauth?: ReturnType<typeof createRoutingOAuthService>;
-  now?: () => Date;
+	runtime: RuntimeCredentialsProvider;
+	clientFactory(
+		credentials: RoutingClientCredentials,
+	): IRoutingNineRouterClient;
+	codexConfig: CodexConfigPort;
+	oauth?: ReturnType<typeof createRoutingOAuthService>;
+	now?: () => Date;
 };
 
 function safeOperationFailure(): AppError {
-  return new AppError('The 9router operation failed', {
-    code: 'ROUTING_OPERATION_FAILED',
-    statusCode: 502,
-  });
+	return new AppError("The 9router operation failed", {
+		code: "ROUTING_OPERATION_FAILED",
+		statusCode: 502,
+	});
 }
 
 function configurationInvalid(): AppError {
-  return new AppError('The 9router runtime configuration is invalid', {
-    code: 'ROUTING_CONFIGURATION_INVALID',
-    statusCode: 500,
-  });
+	return new AppError("The 9router runtime configuration is invalid", {
+		code: "ROUTING_CONFIGURATION_INVALID",
+		statusCode: 500,
+	});
 }
 
 function runtimeUnavailable(): AppError {
-  return new AppError('The 9router sidecar is unavailable', {
-    code: 'ROUTING_RUNTIME_UNAVAILABLE',
-    statusCode: 409,
-  });
+	return new AppError("The 9router sidecar is unavailable", {
+		code: "ROUTING_RUNTIME_UNAVAILABLE",
+		statusCode: 409,
+	});
 }
 
 function safeAppError(error: unknown): AppError {
-  return error instanceof AppError ? error : safeOperationFailure();
+	return error instanceof AppError ? error : safeOperationFailure();
 }
 
-function runtimeView(status: NineRouterSidecarStatus, checkedAt: string): RoutingRuntimeView {
-  const defaults = emptyRoutingSettingsView().runtime;
-  const state = status.state;
-  return {
-    mode: 'sidecar',
-    status: state,
-    version: status.version,
-    lastCheckedAt: checkedAt,
-    lastError: status.lastError,
-    capabilities: state === 'ready'
-      ? {
-          readAccounts: true,
-          writeApiKeyAccounts: true,
-          testAccounts: true,
-          readRoutes: true,
-          writeRoutes: true,
-          readUsage: false,
-          claudeRuntime: true,
-          codexRuntime: true,
-          openCodeRuntime: true,
-          cursorRuntime: false,
-        }
-      : { ...defaults.capabilities },
-  };
+function runtimeView(
+	status: NineRouterSidecarStatus,
+	checkedAt: string,
+): RoutingRuntimeView {
+	const defaults = emptyRoutingSettingsView().runtime;
+	const state = status.state;
+	return {
+		mode: "sidecar",
+		status: state,
+		version: status.version,
+		lastCheckedAt: checkedAt,
+		lastError: status.lastError,
+		capabilities:
+			state === "ready"
+				? {
+						readAccounts: true,
+						writeApiKeyAccounts: true,
+						testAccounts: true,
+						readRoutes: true,
+						writeRoutes: true,
+						readUsage: false,
+						claudeRuntime: true,
+						codexRuntime: true,
+						openCodeRuntime: true,
+						cursorRuntime: false,
+					}
+				: { ...defaults.capabilities },
+	};
 }
 
 /**
@@ -98,113 +110,205 @@ function runtimeView(status: NineRouterSidecarStatus, checkedAt: string): Routin
  * credentials generated by CloudCLI.
  */
 export function createRoutingService(dependencies: RoutingServiceDependencies) {
-  const now = dependencies.now ?? (() => new Date());
+	const now = dependencies.now ?? (() => new Date());
 
-  function runtimeCredentials(): RoutingClientCredentials {
-    const status = dependencies.runtime.getStatus();
-    if (status.state !== 'ready') throw runtimeUnavailable();
-    if (!status.origin) throw configurationInvalid();
-    const credentials = dependencies.runtime.getInternalCredentials();
-    return {
-      baseUrl: status.origin,
-      adminPassword: credentials.initialPassword,
-      dataPlaneKey: credentials.dataPlaneKey,
-    };
-  }
+	function runtimeCredentials(): RoutingClientCredentials {
+		const status = dependencies.runtime.getStatus();
+		if (status.state !== "ready") throw runtimeUnavailable();
+		if (!status.origin) throw configurationInvalid();
+		const credentials = dependencies.runtime.getInternalCredentials();
+		return {
+			baseUrl: status.origin,
+			adminPassword: credentials.initialPassword,
+			dataPlaneKey: credentials.dataPlaneKey,
+		};
+	}
 
-  function clientForRuntime(): IRoutingNineRouterClient {
-    try {
-      return dependencies.clientFactory(runtimeCredentials());
-    } catch (error) {
-      throw safeAppError(error);
-    }
-  }
+	function clientForRuntime(): IRoutingNineRouterClient {
+		try {
+			return dependencies.clientFactory(runtimeCredentials());
+		} catch (error) {
+			throw safeAppError(error);
+		}
+	}
 
-  async function callSafely<T>(operation: () => Promise<T>): Promise<T> {
-    try { return await operation(); } catch (error) { throw safeAppError(error); }
-  }
+	async function callSafely<T>(operation: () => Promise<T>): Promise<T> {
+		try {
+			return await operation();
+		} catch (error) {
+			throw safeAppError(error);
+		}
+	}
 
-  return {
-    async getSettings(userId: number, details: RoutingSettingsDetails = {}): Promise<RoutingSettingsView> {
-      const settings = emptyRoutingSettingsView();
-      settings.runtime = runtimeView(dependencies.runtime.getStatus(), now().toISOString());
+	return {
+		async getSettings(
+			userId: number,
+			details: RoutingSettingsDetails = {},
+		): Promise<RoutingSettingsView> {
+			const settings = emptyRoutingSettingsView();
+			settings.runtime = runtimeView(
+				dependencies.runtime.getStatus(),
+				now().toISOString(),
+			);
 
+			const capabilities = settings.runtime.capabilities;
+			if (!capabilities.readAccounts && !capabilities.readRoutes)
+				return settings;
 
-      const capabilities = settings.runtime.capabilities;
-      if (!capabilities.readAccounts && !capabilities.readRoutes) return settings;
+			try {
+				const client = clientForRuntime();
+				if (capabilities.readAccounts) {
+					const accounts = await client.listAccounts();
+					settings.accountSummary = {
+						total: accounts.length,
+						degraded: accounts.filter((account) =>
+							["cooling", "limited", "failed"].includes(account.status),
+						).length,
+					};
+					if (details.accounts) settings.accounts = accounts;
+				}
+				if (capabilities.readRoutes) {
+					const routes = await client.listRoutes();
+					settings.routeSummary = { total: routes.length };
+					if (details.routes) settings.routes = routes;
+					if (details.models) settings.models = await client.listModels();
+				}
+			} catch (error) {
+				const safeError = safeAppError(error);
+				settings.runtime.status =
+					safeError.code === "ROUTING_RUNTIME_UNAVAILABLE"
+						? "unavailable"
+						: "degraded";
+				settings.runtime.lastError = {
+					code: safeError.code,
+					message: safeError.message,
+					retryable: safeError.statusCode >= 500,
+				};
+			}
+			return settings;
+		},
 
-      try {
-        const client = clientForRuntime();
-        if (capabilities.readAccounts) {
-          const accounts = await client.listAccounts();
-          settings.accountSummary = {
-            total: accounts.length,
-            degraded: accounts.filter((account) => ['cooling', 'limited', 'failed'].includes(account.status)).length,
-          };
-          if (details.accounts) settings.accounts = accounts;
-        }
-        if (capabilities.readRoutes) {
-          const routes = await client.listRoutes();
-          settings.routeSummary = { total: routes.length };
-          if (details.routes) settings.routes = routes;
-          if (details.models) settings.models = await client.listModels();
-        }
-      } catch (error) {
-        const safeError = safeAppError(error);
-        settings.runtime.status = safeError.code === 'ROUTING_RUNTIME_UNAVAILABLE' ? 'unavailable' : 'degraded';
-        settings.runtime.lastError = { code: safeError.code, message: safeError.message, retryable: safeError.statusCode >= 500 };
-      }
-      return settings;
-    },
+		async applyToCodex(_userId: number): Promise<{ provider: "Custom" }> {
+			return callSafely(async () => {
+				const credentials = runtimeCredentials();
+				return dependencies.codexConfig.applyCustomProvider({
+					baseUrl: `${credentials.baseUrl}/api/v1`,
+					apiKey: credentials.dataPlaneKey,
+				});
+			});
+		},
 
-    async applyToCodex(_userId: number): Promise<{ provider: 'Custom' }> {
-      return callSafely(async () => {
-        const credentials = runtimeCredentials();
-        return dependencies.codexConfig.applyCustomProvider({
-          baseUrl: `${credentials.baseUrl}/api/v1`,
-          apiKey: credentials.dataPlaneKey,
-        });
-      });
-    },
+		async listModels(_userId: number) {
+			return callSafely(() => clientForRuntime().listModels());
+		},
+		async listAccounts(_userId: number) {
+			return callSafely(() => clientForRuntime().listAccounts());
+		},
 
-    async listModels(_userId: number) { return callSafely(() => clientForRuntime().listModels()); },
-    async listAccounts(_userId: number) { return callSafely(() => clientForRuntime().listAccounts()); },
-
-    async getProvider(_userId: number, id: string) { return callSafely(() => clientForRuntime().getProvider(id)); },
-    async listProviderModels(_userId: number, id: string) { return callSafely(() => clientForRuntime().listProviderModels(id)); },
-    async startOAuth(userId: number, provider: string) {
-      if (!dependencies.oauth) throw runtimeUnavailable();
-      return dependencies.oauth.startAuthorizationCode(userId, provider);
-    },
-    async exchangeOAuth(userId: number, provider: string, input: { transactionId: string; state: string; code: string }): Promise<RoutingAccountView> {
-      if (!dependencies.oauth) throw runtimeUnavailable();
-      return callSafely(() => dependencies.oauth!.completeAuthorizationCode(userId, provider, input));
-    },
-    async startDeviceCode(userId: number, provider: string) {
-      if (!dependencies.oauth) throw runtimeUnavailable();
-      return dependencies.oauth.startDeviceCode(userId, provider);
-    },
-    async pollDeviceCode(userId: number, provider: string, input: { transactionId: string }): Promise<RoutingOAuthPollingStateView> {
-      if (!dependencies.oauth) throw runtimeUnavailable();
-      return callSafely(() => dependencies.oauth!.pollDeviceCode(userId, provider, input));
-    },
-    async cancelDeviceCode(userId: number, provider: string, input: { transactionId: string }) {
-      if (!dependencies.oauth) throw runtimeUnavailable();
-      return dependencies.oauth.cancelDeviceCode(userId, provider, input);
-    },
-    async listProviderNodes(_userId: number) { return callSafely(() => clientForRuntime().listProviderNodes()); },
-    async createProviderNode(_userId: number, input: CreateRoutingProviderNodeInput) { return callSafely(() => clientForRuntime().createProviderNode(input)); },
-    async validateProviderNode(_userId: number, input: ValidateRoutingProviderNodeInput) { return callSafely(() => clientForRuntime().validateProviderNode(input)); },
-    async updateProviderNode(_userId: number, id: string, input: UpdateRoutingProviderNodeInput) { return callSafely(() => clientForRuntime().updateProviderNode(id, input)); },
-    async deleteProviderNode(_userId: number, id: string): Promise<void> { await callSafely(() => clientForRuntime().deleteProviderNode(id)); },
-    async createApiKeyAccount(_userId: number, input: CreateRoutingApiKeyAccountInput) { return callSafely(() => clientForRuntime().createApiKeyAccount(input)); },
-    async updateAccount(_userId: number, id: string, input: UpdateRoutingAccountInput) { return callSafely(() => clientForRuntime().updateAccount(id, input)); },
-    async deleteAccount(_userId: number, id: string): Promise<void> { await callSafely(() => clientForRuntime().deleteAccount(id)); },
-    async testAccount(_userId: number, id: string) { return callSafely(() => clientForRuntime().testAccount(id)); },
-    async listRoutes(_userId: number) { return callSafely(() => clientForRuntime().listRoutes()); },
-    async getRoute(_userId: number, id: string) { return callSafely(() => clientForRuntime().getRoute(id)); },
-    async createRoute(_userId: number, input: CreateRoutingRouteInput) { return callSafely(() => clientForRuntime().createRoute(input)); },
-    async updateRoute(_userId: number, id: string, input: UpdateRoutingRouteInput) { return callSafely(() => clientForRuntime().updateRoute(id, input)); },
-    async deleteRoute(_userId: number, id: string): Promise<void> { await callSafely(() => clientForRuntime().deleteRoute(id)); },
-  };
+		async getProvider(_userId: number, id: string) {
+			return callSafely(() => clientForRuntime().getProvider(id));
+		},
+		async listProviderModels(_userId: number, id: string) {
+			return callSafely(() => clientForRuntime().listProviderModels(id));
+		},
+		async startOAuth(userId: number, provider: string) {
+			if (!dependencies.oauth) throw runtimeUnavailable();
+			return dependencies.oauth.startAuthorizationCode(userId, provider);
+		},
+		async exchangeOAuth(
+			userId: number,
+			provider: string,
+			input: { transactionId: string; state: string; code: string },
+		): Promise<RoutingAccountView> {
+			if (!dependencies.oauth) throw runtimeUnavailable();
+			return callSafely(() =>
+				dependencies.oauth!.completeAuthorizationCode(userId, provider, input),
+			);
+		},
+		async startDeviceCode(userId: number, provider: string) {
+			if (!dependencies.oauth) throw runtimeUnavailable();
+			return dependencies.oauth.startDeviceCode(userId, provider);
+		},
+		async pollDeviceCode(
+			userId: number,
+			provider: string,
+			input: { transactionId: string },
+		): Promise<RoutingOAuthPollingStateView> {
+			if (!dependencies.oauth) throw runtimeUnavailable();
+			return callSafely(() =>
+				dependencies.oauth!.pollDeviceCode(userId, provider, input),
+			);
+		},
+		async cancelDeviceCode(
+			userId: number,
+			provider: string,
+			input: { transactionId: string },
+		) {
+			if (!dependencies.oauth) throw runtimeUnavailable();
+			return dependencies.oauth.cancelDeviceCode(userId, provider, input);
+		},
+		async listProviderNodes(_userId: number) {
+			return callSafely(() => clientForRuntime().listProviderNodes());
+		},
+		async createProviderNode(
+			_userId: number,
+			input: CreateRoutingProviderNodeInput,
+		) {
+			return callSafely(() => clientForRuntime().createProviderNode(input));
+		},
+		async validateProviderNode(
+			_userId: number,
+			input: ValidateRoutingProviderNodeInput,
+		) {
+			return callSafely(() => clientForRuntime().validateProviderNode(input));
+		},
+		async updateProviderNode(
+			_userId: number,
+			id: string,
+			input: UpdateRoutingProviderNodeInput,
+		) {
+			return callSafely(() => clientForRuntime().updateProviderNode(id, input));
+		},
+		async deleteProviderNode(_userId: number, id: string): Promise<void> {
+			await callSafely(() => clientForRuntime().deleteProviderNode(id));
+		},
+		async createApiKeyAccount(
+			_userId: number,
+			input: CreateRoutingApiKeyAccountInput,
+		) {
+			return callSafely(() => clientForRuntime().createApiKeyAccount(input));
+		},
+		async updateAccount(
+			_userId: number,
+			id: string,
+			input: UpdateRoutingAccountInput,
+		) {
+			return callSafely(() => clientForRuntime().updateAccount(id, input));
+		},
+		async deleteAccount(_userId: number, id: string): Promise<void> {
+			await callSafely(() => clientForRuntime().deleteAccount(id));
+		},
+		async testAccount(_userId: number, id: string) {
+			return callSafely(() => clientForRuntime().testAccount(id));
+		},
+		async listRoutes(_userId: number) {
+			return callSafely(() => clientForRuntime().listRoutes());
+		},
+		async getRoute(_userId: number, id: string) {
+			return callSafely(() => clientForRuntime().getRoute(id));
+		},
+		async createRoute(_userId: number, input: CreateRoutingRouteInput) {
+			return callSafely(() => clientForRuntime().createRoute(input));
+		},
+		async updateRoute(
+			_userId: number,
+			id: string,
+			input: UpdateRoutingRouteInput,
+		) {
+			return callSafely(() => clientForRuntime().updateRoute(id, input));
+		},
+		async deleteRoute(_userId: number, id: string): Promise<void> {
+			await callSafely(() => clientForRuntime().deleteRoute(id));
+		},
+	};
 }
