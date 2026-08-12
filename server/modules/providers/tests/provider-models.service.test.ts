@@ -53,29 +53,41 @@ const createEphemeralCachePath = (): string =>
 		`provider-model-cache-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}.json`,
 	);
 
-test("provider models service delegates to the resolved provider model adapter", async () => {
-	const calls: LLMProvider[] = [];
+test("Codex models come only from the configured 9Router catalog", async () => {
+	let nativeLookups = 0;
 	const service = createProviderModelsService({
 		cachePath: createEphemeralCachePath(),
-		resolveProvider: (provider) => {
-			calls.push(provider);
+		resolveProvider: () => {
+			nativeLookups += 1;
 			return {
 				models: {
-					getSupportedModels: async () => createModels(`${provider}-models`),
+					getSupportedModels: async () => createModels("native-model"),
 					getCurrentActiveModel: async () =>
-						createCurrentActiveModel(`${provider}-active`),
+						createCurrentActiveModel("native-model"),
 				},
 			};
 		},
+		listRoutingModels: async () => [
+			{ id: "cx/gpt-5", provider: "cx", name: "GPT 5" },
+			{ id: "deepseek/v3", provider: "deepseek", name: "V3" },
+		],
 	});
 
-	const models = await service.getProviderModels("codex", {
-		bypassCache: true,
-	});
+	const result = await service.getProviderModels("codex", { bypassCache: true });
 
-	assert.deepEqual(calls, ["codex"]);
-	assert.equal(models.models.DEFAULT, "codex-models");
-	assert.equal(models.cache.source, "fresh");
+	assert.equal(nativeLookups, 0);
+	assert.deepEqual(result.models, {
+		OPTIONS: [
+			{ value: "cx/gpt-5", label: "Cx · GPT 5", source: "9router" },
+			{
+				value: "deepseek/v3",
+				label: "Deepseek · V3",
+				source: "9router",
+			},
+		],
+		DEFAULT: "cx/gpt-5",
+	});
+	assert.equal(result.cache.source, "fresh");
 });
 
 test("provider models service returns each provider adapter result without rewriting it", async () => {
@@ -105,7 +117,7 @@ test("provider models service returns each provider adapter result without rewri
 	assert.deepEqual(models.models, expectedModels);
 });
 
-test("provider models service appends routed models with their upstream IDs", async () => {
+test("non-Codex provider models can still use the legacy unified catalog during migration", async () => {
 	const service = createProviderModelsService({
 		cachePath: createEphemeralCachePath(),
 		resolveProvider: () => ({
@@ -187,7 +199,7 @@ test("provider models service rejects native and routed id collisions", async ()
 	});
 
 	await assert.rejects(
-		() => service.getProviderModels("codex", { bypassCache: true }),
+		() => service.getProviderModels("cursor", { bypassCache: true }),
 		(error: unknown) =>
 			error instanceof Error &&
 			"code" in error &&
@@ -195,13 +207,23 @@ test("provider models service rejects native and routed id collisions", async ()
 	);
 });
 
-test("provider models service leaves native catalog unchanged when 9router is unavailable", async () => {
-	const nativeModels = createModels("codex-native");
+test("Codex has an empty catalog when 9Router has no configured models", async () => {
 	const service = createProviderModelsService({
-		cachePath: createEphemeralCachePath(),
+		resolveProvider: () => {
+			throw new Error("native catalog must not be loaded");
+		},
+		listRoutingModels: async () => [],
+	});
+
+	const result = await service.getProviderModels("codex");
+	assert.deepEqual(result.models, { OPTIONS: [], DEFAULT: "" });
+});
+
+test("Codex model loading fails closed when 9Router is unavailable", async () => {
+	const service = createProviderModelsService({
 		resolveProvider: () => ({
 			models: {
-				getSupportedModels: async () => nativeModels,
+				getSupportedModels: async () => createModels("codex-native"),
 				getCurrentActiveModel: async () =>
 					createCurrentActiveModel("codex-native"),
 			},
@@ -211,11 +233,10 @@ test("provider models service leaves native catalog unchanged when 9router is un
 		},
 	});
 
-	const models = await service.getProviderModels("codex", {
-		bypassCache: true,
-	});
-
-	assert.deepEqual(models.models, nativeModels);
+	await assert.rejects(
+		() => service.getProviderModels("codex"),
+		/sidecar unavailable/,
+	);
 });
 
 test("provider models are cached for the three-day ttl", async () => {
@@ -241,20 +262,20 @@ test("provider models are cached for the three-day ttl", async () => {
 			}),
 		});
 
-		const first = await service.getProviderModels("codex");
-		const cached = await service.getProviderModels("codex");
+		const first = await service.getProviderModels("cursor");
+		const cached = await service.getProviderModels("cursor");
 		assert.equal(loadCount, 1);
 		assert.equal(cached.models.DEFAULT, first.models.DEFAULT);
 		assert.equal(cached.cache.source, "memory");
 
 		currentTime += PROVIDER_MODELS_CACHE_TTL_MS - 1;
-		await service.getProviderModels("codex");
+		await service.getProviderModels("cursor");
 		assert.equal(loadCount, 1);
 
 		currentTime += 2;
-		const refreshed = await service.getProviderModels("codex");
+		const refreshed = await service.getProviderModels("cursor");
 		assert.equal(loadCount, 2);
-		assert.equal(refreshed.models.DEFAULT, "codex-2");
+		assert.equal(refreshed.models.DEFAULT, "cursor-2");
 	} finally {
 		await rm(tempRoot, { recursive: true, force: true });
 	}
@@ -603,11 +624,14 @@ test("resolveSessionModel falls back to the catalog default with nothing else to
 					createCurrentActiveModel("provider-reported"),
 			},
 		}),
+		listRoutingModels: async () => [
+			{ id: "cx/gpt-5", provider: "cx", name: "GPT 5" },
+		],
 	});
 
 	const resolved = await service.resolveSessionModel("codex");
 
-	assert.equal(resolved.model, "codex-models");
+	assert.equal(resolved.model, "cx/gpt-5");
 	assert.equal(resolved.source, "default");
 });
 

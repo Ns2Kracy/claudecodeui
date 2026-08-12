@@ -257,6 +257,46 @@ export const createProviderModelsService = (
 		return provider ? `${toTitle(provider)} · ${name}` : name;
 	};
 
+	const toRoutedModelCatalog = (
+		routingModels: RoutingModelView[],
+	): ProviderModelsDefinition => {
+		const seenValues = new Set<string>();
+		const options = routingModels.flatMap((model) => {
+			const id = model.id;
+			const name = model.name.trim();
+			if (!id.trim() || !name || seenValues.has(id)) return [];
+			seenValues.add(id);
+			return [
+				{
+					value: id,
+					label: routingModelLabel({ ...model, id, name }),
+					source: "9router" as const,
+				},
+			];
+		});
+
+		return { OPTIONS: options, DEFAULT: options[0]?.value ?? "" };
+	};
+
+	const loadRoutedCodexModels = (): Promise<ProviderModelsResult> => {
+		const request = listRoutingModels()
+			.then((routingModels) => {
+				const currentTime = now();
+				return {
+					models: toRoutedModelCatalog(routingModels),
+					cache: {
+						updatedAt: new Date(currentTime).toISOString(),
+						expiresAt: new Date(currentTime).toISOString(),
+						source: "fresh" as const,
+					},
+				};
+			})
+			.finally(() => pendingRequests.delete("codex"));
+
+		pendingRequests.set("codex", request);
+		return request;
+	};
+
 	const withUnifiedModelCatalog = async (
 		models: ProviderModelsDefinition,
 	): Promise<ProviderModelsDefinition> => {
@@ -357,6 +397,10 @@ export const createProviderModelsService = (
 		provider: LLMProvider,
 		options: ProviderModelsOptions = {},
 	): Promise<ProviderModelsResult> => {
+		if (provider === "codex") {
+			return pendingRequests.get(provider) ?? loadRoutedCodexModels();
+		}
+
 		if (UNCACHED_PROVIDERS.has(provider)) {
 			const pendingRequest = pendingRequests.get(provider);
 			if (pendingRequest) {
