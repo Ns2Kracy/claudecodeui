@@ -1,15 +1,12 @@
 import { useEffect, useState } from 'react';
 
 export function useSelectedProvider() {
-  const [provider, setProvider] = useState(() => {
-    return localStorage.getItem('selected-provider') || 'claude';
-  });
+  const [provider, setProvider] = useState('codex');
 
   useEffect(() => {
     // Keep provider in sync when another tab changes the selected provider.
     const handleStorageChange = () => {
-      const nextProvider = localStorage.getItem('selected-provider') || 'claude';
-      setProvider(nextProvider);
+      setProvider('codex');
     };
 
     window.addEventListener('storage', handleStorageChange);

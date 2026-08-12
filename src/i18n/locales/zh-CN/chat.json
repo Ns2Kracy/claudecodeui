@@ -139,8 +139,8 @@
     }
   },
   "providerSelection": {
-    "title": "选择您的 AI 助手",
-    "description": "选择一个供应商以开始新对话",
+    "title": "选择 Codex 模型",
+    "description": "选择一个路由模型以开始新对话",
     "selectModel": "选择模型",
     "providerInfo": {
       "anthropic": "由 Anthropic 提供",

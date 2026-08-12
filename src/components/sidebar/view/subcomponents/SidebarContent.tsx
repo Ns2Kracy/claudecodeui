@@ -283,7 +283,7 @@ export default function SidebarContent({
                         // cross-reference with the loaded projects list.
                         projectResult.projectId,
                         session.sessionId,
-                        session.provider || session.matches[0]?.provider || 'claude',
+                        session.provider || session.matches[0]?.provider || 'codex',
                         session.matches[0]?.timestamp,
                         session.matches[0]?.snippet
                       )}

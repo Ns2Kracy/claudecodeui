@@ -270,7 +270,7 @@ function Sidebar({
               // The server emits null when it can't resolve a project row for
               // the search hit; treat that as "no project" and still navigate
               // to the session so the user can open it from the URL.
-              const resolvedProvider = (provider || 'claude') as LLMProvider;
+              const resolvedProvider = (provider || 'codex') as LLMProvider;
               const project = projectId ? projects.find(p => p.projectId === projectId) : null;
               const searchTarget = { __searchTargetTimestamp: messageTimestamp || null, __searchTargetSnippet: messageSnippet || null };
               const sessionObj = {

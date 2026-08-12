@@ -156,8 +156,8 @@
     "buttonTitle": "思考模式：{{mode}}"
   },
   "providerSelection": {
-    "title": "選擇您的 AI 助手",
-    "description": "選擇一個提供者以開始新對話",
+    "title": "選擇 Codex 模型",
+    "description": "選擇一個路由模型以開始新對話",
     "selectModel": "選擇模型",
     "providerInfo": {
       "anthropic": "由 Anthropic 提供",

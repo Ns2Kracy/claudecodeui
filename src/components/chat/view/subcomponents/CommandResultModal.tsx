@@ -245,10 +245,10 @@ function ModelsContent({
   const [changingModel, setChangingModel] = useState<string | null>(null);
   const [pendingSessionModel, setPendingSessionModel] = useState<string | null>(null);
   const [selectionNotice, setSelectionNotice] = useState<string | null>(null);
-  const currentProvider = (data?.current?.provider || 'claude') as LLMProvider;
+  const currentProvider: LLMProvider = 'codex';
   const currentModel = data?.current?.model || 'Unknown';
-  const providerLabel = data?.current?.providerLabel || getProviderLabel(currentProvider);
-  const liveDefinition = providerModelCatalog[currentProvider];
+  const providerLabel = getProviderLabel(currentProvider);
+  const liveDefinition = providerModelCatalog.codex;
   const availableOptions = useMemo<ModelOption[]>(() => {
     if (liveDefinition?.OPTIONS && liveDefinition.OPTIONS.length > 0) {
       return liveDefinition.OPTIONS;
@@ -345,7 +345,7 @@ function ModelsContent({
                   onClick={() => handleSelectModel(option.value)}
                   disabled={Boolean(changingModel)}
                   aria-label={`Select model ${option.value}`}
-                  className={`settings-content-enter group flex min-h-[4rem] flex-col rounded-2xl border p-3 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default disabled:opacity-60 ${
+                  className={`settings-content-enter group flex min-h-16 flex-col rounded-2xl border p-3 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default disabled:opacity-60 ${
                     isCurrent
                       ? 'border-primary/45 bg-primary/10'
                       : isPendingSelection

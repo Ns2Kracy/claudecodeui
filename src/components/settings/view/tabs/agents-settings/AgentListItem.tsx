@@ -12,40 +12,19 @@ type AgentListItemProps = {
 
 type AgentConfig = {
   name: string;
-  color: 'blue' | 'purple' | 'gray' | 'zinc';
+  color: 'gray';
 };
 
 const agentConfig: Record<AgentProvider, AgentConfig> = {
-  claude: {
-    name: 'Claude',
-    color: 'blue',
-  },
-  cursor: {
-    name: 'Cursor',
-    color: 'purple',
-  },
   codex: {
     name: 'Codex',
     color: 'gray',
   },
-  opencode: {
-    name: 'OpenCode',
-    color: 'zinc',
-  },
 };
 
 const colorClasses = {
-  blue: {
-    dot: 'bg-blue-500',
-  },
-  purple: {
-    dot: 'bg-purple-500',
-  },
   gray: {
     dot: 'bg-foreground/60',
-  },
-  zinc: {
-    dot: 'bg-zinc-500',
   },
 } as const;
 
@@ -96,7 +75,7 @@ export default function AgentListItem({
       {authStatus.authenticated ? (
         <span className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${colors.dot}`} />
       ) : authStatus.loading ? (
-        <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-muted-foreground/30 animate-pulse" />
+        <span className="h-1.5 w-1.5 flex-shrink-0 animate-pulse rounded-full bg-muted-foreground/30" />
       ) : null}
     </button>
   );

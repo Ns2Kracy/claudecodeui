@@ -1,7 +1,21 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { readProviderModelsApiData, withUnavailableSelectedModel } from './useChatProviderState.js';
+import {
+  ACTIVE_PROVIDERS,
+  normalizeActiveProvider,
+  readProviderModelsApiData,
+  withUnavailableSelectedModel,
+} from './useChatProviderState.js';
+
+test('active chat provider is always Codex, including after legacy stored selections', () => {
+  assert.deepEqual(ACTIVE_PROVIDERS, ['codex']);
+  assert.equal(normalizeActiveProvider(null), 'codex');
+  assert.equal(normalizeActiveProvider('claude'), 'codex');
+  assert.equal(normalizeActiveProvider('cursor'), 'codex');
+  assert.equal(normalizeActiveProvider('opencode'), 'codex');
+  assert.equal(normalizeActiveProvider('codex'), 'codex');
+});
 
 test('provider model response parsing preserves 9router source metadata as model metadata only', () => {
   const data = readProviderModelsApiData({
@@ -29,16 +43,16 @@ test('provider model response parsing preserves 9router source metadata as model
   ]);
 });
 
-test('preserves a disappeared 9router session model as visibly unavailable', () => {
-  const options = [{ value: 'claude-sonnet-4-5', label: 'Claude Sonnet', source: 'native' as const }];
+test('preserves a disappeared routed session model by its exact upstream ID', () => {
+  const options = [{ value: 'cx/gpt-5.4', label: 'GPT 5.4', source: '9router' as const }];
 
-  assert.deepEqual(withUnavailableSelectedModel(options, '9router:anthropic/removed-model'), [
+  assert.deepEqual(withUnavailableSelectedModel(options, 'deepseek/deepseek-v3'), [
     ...options,
     {
-      value: '9router:anthropic/removed-model',
-      label: 'anthropic/removed-model (Provider unavailable)',
+      value: 'deepseek/deepseek-v3',
+      label: 'deepseek/deepseek-v3 (Provider unavailable)',
       source: '9router',
     },
   ]);
-  assert.strictEqual(withUnavailableSelectedModel(options, 'claude-sonnet-4-5'), options);
+  assert.strictEqual(withUnavailableSelectedModel(options, 'cx/gpt-5.4'), options);
 });

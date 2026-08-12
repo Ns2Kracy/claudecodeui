@@ -11,6 +11,7 @@ import type {
   ProjectSession,
 } from '../types/app';
 
+import { DEFAULT_ACTIVE_PROVIDER } from './projectsState';
 import type { SessionActivityMap } from './useSessionProtection';
 
 type UseProjectsStateArgs = {
@@ -76,14 +77,13 @@ type SessionDetailsApiPayload = {
 
 type ProjectSessionPage = Pick<Project, 'sessions' | 'sessionMeta'>;
 
-const DEFAULT_PROVIDER: LLMProvider = 'claude';
+const DEFAULT_PROVIDER: LLMProvider = DEFAULT_ACTIVE_PROVIDER;
 
 const serialize = (value: unknown) => JSON.stringify(value ?? null);
 
 const readSelectedProvider = (): LLMProvider => {
   try {
-    const storedProvider = localStorage.getItem('selected-provider');
-    return storedProvider ? storedProvider as LLMProvider : DEFAULT_PROVIDER;
+    return DEFAULT_PROVIDER;
   } catch {
     return DEFAULT_PROVIDER;
   }

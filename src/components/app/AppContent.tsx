@@ -157,9 +157,7 @@ function AppContentInner() {
         return;
       }
 
-      if (typeof message.provider === 'string' && message.provider.trim()) {
-        localStorage.setItem('selected-provider', message.provider);
-      }
+      localStorage.setItem('selected-provider', 'codex');
 
       setActiveTab('chat');
       setSidebarOpen(false);

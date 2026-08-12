@@ -147,8 +147,8 @@
     "permissionHeading": "How should {{provider}} actions be approved?"
   },
   "providerSelection": {
-    "title": "Choose Your AI Assistant",
-    "description": "Select a provider to start a new conversation",
+    "title": "Choose a Codex Model",
+    "description": "Select a routed model to start a new conversation",
     "selectModel": "Select Model",
     "providerInfo": {
       "anthropic": "by Anthropic",

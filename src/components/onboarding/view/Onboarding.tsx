@@ -1,9 +1,11 @@
 import { Check, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { LLMProvider } from '../../../types/app';
+
+import type { ActiveProvider } from '../../provider-auth/types';
 import { authenticatedFetch } from '../../../utils/api';
 import { useProviderAuthStatus } from '../../provider-auth/hooks/useProviderAuthStatus';
 import ProviderLoginModal from '../../provider-auth/view/ProviderLoginModal';
+
 import AgentConnectionsStep from './subcomponents/AgentConnectionsStep';
 import GitConfigurationStep from './subcomponents/GitConfigurationStep';
 import OnboardingStepProgress from './subcomponents/OnboardingStepProgress';
@@ -22,14 +24,14 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
   const [gitEmail, setGitEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [activeLoginProvider, setActiveLoginProvider] = useState<LLMProvider | null>(null);
+  const [activeLoginProvider, setActiveLoginProvider] = useState<ActiveProvider | null>(null);
   const {
     providerAuthStatus,
     checkProviderAuthStatus,
     refreshProviderAuthStatuses,
   } = useProviderAuthStatus();
 
-  const previousActiveLoginProviderRef = useRef<LLMProvider | null | undefined>(undefined);
+  const previousActiveLoginProviderRef = useRef<ActiveProvider | null | undefined>(undefined);
 
   const loadGitConfig = useCallback(async () => {
     try {
@@ -69,7 +71,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
     }
   }, [activeLoginProvider, refreshProviderAuthStatuses]);
 
-  const handleProviderLoginOpen = (provider: LLMProvider) => {
+  const handleProviderLoginOpen = (provider: ActiveProvider) => {
     setActiveLoginProvider(provider);
   };
 
@@ -152,7 +154,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
         <div aria-hidden className="pointer-events-none fixed inset-0">
           <div className="absolute -top-40 left-1/2 h-[36rem] w-[36rem] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
           <div className="absolute -bottom-32 -left-24 h-[26rem] w-[26rem] rounded-full bg-primary/5 blur-3xl" />
-          <div className="absolute inset-0 bg-[radial-gradient(hsl(var(--foreground)/0.04)_1px,transparent_1px)] [background-size:22px_22px] opacity-60" />
+          <div className="absolute inset-0 bg-[radial-gradient(hsl(var(--foreground)/0.04)_1px,transparent_1px)] opacity-60 [background-size:22px_22px]" />
         </div>
 
         <div className="relative mx-auto flex min-h-full w-full max-w-2xl items-center justify-center p-4">

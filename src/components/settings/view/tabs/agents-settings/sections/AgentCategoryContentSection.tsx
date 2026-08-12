@@ -1,71 +1,32 @@
-import type { AgentCategoryContentSectionProps } from '../types';
 import type { McpProject } from '../../../../../mcp/types';
 import { McpServers } from '../../../../../mcp';
 import type { SkillsProject } from '../../../../../skills/types';
 import { ProviderSkills } from '../../../../../skills';
+import type { AgentCategoryContentSectionProps } from '../types';
 
 import AccountContent from './content/AccountContent';
 import PermissionsContent from './content/PermissionsContent';
 
 export default function AgentCategoryContentSection({
-  selectedAgent,
   selectedCategory,
   agentContextById,
-  claudePermissions,
-  onClaudePermissionsChange,
-  cursorPermissions,
-  onCursorPermissionsChange,
   codexPermissionMode,
   onCodexPermissionModeChange,
   projects,
 }: AgentCategoryContentSectionProps) {
+  const agentContext = agentContextById.codex;
+
   return (
     <div className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-3 md:p-4">
       {selectedCategory === 'account' && (
         <AccountContent
-          agent={selectedAgent}
-          authStatus={agentContextById[selectedAgent].authStatus}
-          onLogin={agentContextById[selectedAgent].onLogin}
+          agent="codex"
+          authStatus={agentContext.authStatus}
+          onLogin={agentContext.onLogin}
         />
       )}
 
-      {selectedCategory === 'permissions' && selectedAgent === 'claude' && (
-        <PermissionsContent
-          agent="claude"
-          skipPermissions={claudePermissions.skipPermissions}
-          onSkipPermissionsChange={(value) => {
-            onClaudePermissionsChange({ ...claudePermissions, skipPermissions: value });
-          }}
-          allowedTools={claudePermissions.allowedTools}
-          onAllowedToolsChange={(value) => {
-            onClaudePermissionsChange({ ...claudePermissions, allowedTools: value });
-          }}
-          disallowedTools={claudePermissions.disallowedTools}
-          onDisallowedToolsChange={(value) => {
-            onClaudePermissionsChange({ ...claudePermissions, disallowedTools: value });
-          }}
-        />
-      )}
-
-      {selectedCategory === 'permissions' && selectedAgent === 'cursor' && (
-        <PermissionsContent
-          agent="cursor"
-          skipPermissions={cursorPermissions.skipPermissions}
-          onSkipPermissionsChange={(value) => {
-            onCursorPermissionsChange({ ...cursorPermissions, skipPermissions: value });
-          }}
-          allowedCommands={cursorPermissions.allowedCommands}
-          onAllowedCommandsChange={(value) => {
-            onCursorPermissionsChange({ ...cursorPermissions, allowedCommands: value });
-          }}
-          disallowedCommands={cursorPermissions.disallowedCommands}
-          onDisallowedCommandsChange={(value) => {
-            onCursorPermissionsChange({ ...cursorPermissions, disallowedCommands: value });
-          }}
-        />
-      )}
-
-      {selectedCategory === 'permissions' && selectedAgent === 'codex' && (
+      {selectedCategory === 'permissions' && (
         <PermissionsContent
           agent="codex"
           permissionMode={codexPermissionMode}
@@ -74,10 +35,8 @@ export default function AgentCategoryContentSection({
       )}
 
       {selectedCategory === 'mcp' && (
-        // SettingsProject.name is populated from the DB projectId by
-        // normalizeProjectForSettings, so we can map it straight through.
         <McpServers
-          selectedProvider={selectedAgent}
+          selectedProvider="codex"
           currentProjects={projects.map<McpProject>((project) => ({
             projectId: project.name,
             displayName: project.displayName,
@@ -87,9 +46,9 @@ export default function AgentCategoryContentSection({
         />
       )}
 
-      {selectedCategory === 'skills' && selectedAgent !== 'opencode' && (
+      {selectedCategory === 'skills' && (
         <ProviderSkills
-          selectedProvider={selectedAgent}
+          selectedProvider="codex"
           currentProjects={projects.map<SkillsProject>((project) => ({
             projectId: project.name,
             displayName: project.displayName,
