@@ -223,11 +223,16 @@ function mapPermissionModeToCodexOptions(permissionMode) {
  * a fake constructor to assert native calls stay argument-free.
  */
 export function createCodexClientForRouting(routing, CodexConstructor = Codex) {
+  if (!routing || routing.source !== '9router') {
+    throw new Error('Codex runtime requires 9Router');
+  }
+  if (!routing.openAiBaseUrl?.trim() || !routing.apiKey?.trim() || !routing.routeName?.trim()) {
+    throw new Error('Codex 9Router configuration is incomplete');
+  }
+
   const routeOptions = buildCodexRouteOptions(routing);
   return {
-    client: routeOptions.client
-      ? new CodexConstructor(routeOptions.client)
-      : new CodexConstructor(),
+    client: new CodexConstructor(routeOptions.client),
     model: routeOptions.model,
   };
 }

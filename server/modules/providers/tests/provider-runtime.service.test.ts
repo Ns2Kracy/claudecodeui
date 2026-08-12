@@ -138,9 +138,7 @@ test("dispatches runs and aborts through the runtime owned by providerRegistry",
 				"sonnet",
 			);
 			assert.deepEqual(await context.getProviderModels(), {
-				OPTIONS: [
-					{ value: "sonnet", label: "sonnet", source: "native" },
-				],
+				OPTIONS: [{ value: "sonnet", label: "sonnet", source: "native" }],
 				DEFAULT: "default-model",
 			});
 			assert.equal(
@@ -174,6 +172,45 @@ test("dispatches runs and aborts through the runtime owned by providerRegistry",
 		["run", "hello", { model: "sonnet" }, writer],
 		["abort", "session-1"],
 	]);
+});
+
+test("Codex rejects runs without a selected routed model", async () => {
+	let ran = false;
+	const service = createService([
+		createProvider("codex", createRuntime({ async run() { ran = true; } })),
+	]);
+
+	await assert.rejects(
+		() => service.run("codex", "hello", {}, { userId: 7, send() {} }),
+		(error: unknown) =>
+			error instanceof Error &&
+			"code" in error &&
+			error.code === "PROVIDER_MODEL_REQUIRED",
+	);
+	assert.equal(ran, false);
+});
+
+test("Codex rejects native model provenance before starting the runtime", async () => {
+	let ran = false;
+	const service = createService(
+		[createProvider("codex", createRuntime({ async run() { ran = true; } }))],
+		undefined,
+		[{ value: "gpt-native", source: "native" }],
+	);
+
+	await assert.rejects(
+		() => service.run(
+			"codex",
+			"hello",
+			{ model: "gpt-native", modelSource: "native" },
+			{ userId: 7, send() {} },
+		),
+		(error: unknown) =>
+			error instanceof Error &&
+			"code" in error &&
+			error.code === "CODEX_ROUTING_REQUIRED",
+	);
+	assert.equal(ran, false);
 });
 
 test("provider model provenance routes an unprefixed selected model through the sidecar", async () => {

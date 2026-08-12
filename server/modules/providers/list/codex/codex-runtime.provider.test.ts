@@ -15,17 +15,29 @@ class FakeCodex {
 
 const FakeCodexConstructor = FakeCodex as unknown as typeof Codex;
 
-test('native Codex runtime constructs the SDK with no options', () => {
+test('Codex runtime rejects native dispatch before constructing the SDK', () => {
   FakeCodex.constructorCalls = [];
 
-  const result = createCodexClientForRouting(
-    { source: 'native' },
-    FakeCodexConstructor,
+  assert.throws(
+    () => createCodexClientForRouting({ source: 'native' }, FakeCodexConstructor),
+    /requires 9Router/i,
   );
+  assert.deepEqual(FakeCodex.constructorCalls, []);
+});
 
-  assert.ok((result.client as unknown) instanceof FakeCodex);
-  assert.equal(result.model, undefined);
-  assert.deepEqual(FakeCodex.constructorCalls, [[]]);
+test('Codex runtime rejects incomplete routed credentials', () => {
+  FakeCodex.constructorCalls = [];
+  assert.throws(
+    () => createCodexClientForRouting({
+      source: '9router',
+      baseUrl: 'https://router.example/api',
+      openAiBaseUrl: '',
+      apiKey: '',
+      routeName: '',
+    }, FakeCodexConstructor),
+    /incomplete/i,
+  );
+  assert.deepEqual(FakeCodex.constructorCalls, []);
 });
 
 test('routed Codex runtime constructs one isolated SDK client and route model', () => {

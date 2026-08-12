@@ -87,6 +87,13 @@ export function createProviderRuntimeService(
 		const provider = dependencies.resolveProvider(providerName);
 		const requestedModel =
 			typeof options.model === "string" ? options.model.trim() : "";
+		if (providerName === "codex" && !requestedModel) {
+			throw new AppError("A routed Codex model is required", {
+				code: "PROVIDER_MODEL_REQUIRED",
+				statusCode: 409,
+			});
+		}
+
 		let routing: RuntimeRoutingConfiguration = { source: "native" };
 		if (requestedModel) {
 			const suppliedSource =
@@ -107,10 +114,30 @@ export function createProviderRuntimeService(
 					statusCode: 409,
 				});
 			}
+			if (providerName === "codex" && source !== "9router") {
+				throw new AppError("Codex must run through 9Router", {
+					code: "CODEX_ROUTING_REQUIRED",
+					statusCode: 409,
+				});
+			}
 			if (source === "9router") {
 				routing = await dependencies.resolveRoutingForModel(requestedModel);
 			}
 		}
+
+		if (
+			providerName === "codex" &&
+			(routing.source !== "9router" ||
+				!routing.openAiBaseUrl.trim() ||
+				!routing.apiKey.trim() ||
+				!routing.routeName.trim())
+		) {
+			throw new AppError("The Codex 9Router configuration is incomplete", {
+				code: "CODEX_ROUTING_INVALID",
+				statusCode: 409,
+			});
+		}
+
 		return provider.runtime.run(
 			command,
 			options,
