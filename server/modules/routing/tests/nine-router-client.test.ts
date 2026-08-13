@@ -191,8 +191,7 @@ async function withFakeRouter(
 					models: [
 						{
 							provider: "openai",
-							model: "gpt-4o",
-							fullModel: "openai/gpt-4o",
+							id: "gpt-4o",
 							apiKey: "hidden",
 						},
 					],

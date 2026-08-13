@@ -6,6 +6,7 @@ import { emptyRoutingSettingsView } from "../../../../../../shared/routing.js";
 import {
 	createInitialRoutingState,
 	createRoutingRequestCoordinator,
+	initialRoutingDetails,
 	routingStateReducer,
 	shouldLoadRoutingDetails,
 	upstreamDetailsState,
@@ -32,6 +33,18 @@ test("routing state starts secret-free and loads aggregate settings", () => {
 	assert.equal(loaded.loading, false);
 	assert.deepEqual(loaded.settings.accountSummary, { total: 0, degraded: 0 });
 	assert.equal(loaded.error, null);
+});
+
+test("the initial settings read includes upstream accounts and models", () => {
+	assert.deepEqual(initialRoutingDetails(), { accounts: true, models: true });
+	const loaded = routingStateReducer(createInitialRoutingState(), {
+		type: "detailsSucceeded",
+		keys: ["accounts", "models"],
+		settings: emptyRoutingSettingsView(),
+	});
+	assert.equal(loaded.loading, false);
+	assert.equal(loaded.detailStatus.accounts, "loaded");
+	assert.equal(loaded.detailStatus.models, "loaded");
 });
 
 test("expanded detail sections trigger one read until explicitly retried", () => {

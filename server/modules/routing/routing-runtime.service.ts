@@ -71,7 +71,7 @@ export function createRoutingRuntimeService(
 				return {
 					source: "9router",
 					baseUrl: `${credentials.baseUrl}/api`,
-					openAiBaseUrl: `${credentials.baseUrl}/api/v1`,
+					openAiBaseUrl: `${credentials.baseUrl}/v1`,
 					apiKey: credentials.dataPlaneKey,
 					routeName: officialModelId,
 					model: officialModelId,

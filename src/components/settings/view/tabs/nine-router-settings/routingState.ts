@@ -21,6 +21,11 @@ export type RoutingRequestToken = {
 	sequence: number;
 };
 
+/** Used by the settings hook to load the always-visible account surface in one request. */
+export function initialRoutingDetails() {
+	return { accounts: true, models: true } as const;
+}
+
 export type RoutingState = {
 	settings: RoutingSettingsView;
 	loading: boolean;
@@ -185,6 +190,7 @@ export function routingStateReducer(
 			return {
 				...state,
 				settings: mergeSettings(state.settings, action.settings),
+				loading: false,
 				error: null,
 				errorContext: null,
 				detailStatus: statusesFor(state.detailStatus, action.keys, "loaded"),

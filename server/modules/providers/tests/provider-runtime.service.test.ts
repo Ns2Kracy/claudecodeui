@@ -246,7 +246,7 @@ test("provider model provenance routes an unprefixed selected model through the 
 			return {
 				source: "9router",
 				baseUrl: "http://9router:20128/api",
-				openAiBaseUrl: "http://9router:20128/api/v1",
+				openAiBaseUrl: "http://9router:20128/v1",
 				apiKey: "official-key",
 				routeName: "openai/gpt-5",
 				model: "openai/gpt-5",
@@ -266,11 +266,64 @@ test("provider model provenance routes an unprefixed selected model through the 
 	assert.deepEqual(receivedRouting, {
 		source: "9router",
 		baseUrl: "http://9router:20128/api",
-		openAiBaseUrl: "http://9router:20128/api/v1",
+		openAiBaseUrl: "http://9router:20128/v1",
 		apiKey: "official-key",
 		routeName: "openai/gpt-5",
 		model: "openai/gpt-5",
 	});
+});
+
+test("qualifies a legacy unprefixed routed model from the current catalog", async () => {
+	const calls: string[] = [];
+	const service = createService(
+		[createProvider("codex", createRuntime())],
+		async (model) => {
+			calls.push(model);
+			return {
+				source: "9router",
+				baseUrl: "http://9router/api",
+				openAiBaseUrl: "http://9router/v1",
+				apiKey: "key",
+				routeName: model,
+				model,
+			};
+		},
+		[{ value: "deepseek/deepseek-v4-flash", source: "9router" }],
+	);
+
+	await service.run(
+		"codex",
+		"hello",
+		{ model: "deepseek-v4-flash", modelSource: "9router" },
+		{ userId: 7, send() {} },
+	);
+
+	assert.deepEqual(calls, ["deepseek/deepseek-v4-flash"]);
+});
+
+test("rejects an ambiguous legacy unprefixed routed model", async () => {
+	const service = createService(
+		[createProvider("codex", createRuntime())],
+		undefined,
+		[
+			{ value: "cx/shared-model", source: "9router" },
+			{ value: "openai/shared-model", source: "9router" },
+		],
+	);
+
+	await assert.rejects(
+		() =>
+			service.run(
+				"codex",
+				"hello",
+				{ model: "shared-model", modelSource: "9router" },
+				{ userId: 7, send() {} },
+			),
+		(error: unknown) =>
+			error instanceof Error &&
+			"code" in error &&
+			error.code === "PROVIDER_MODEL_UNAVAILABLE",
+	);
 });
 
 test("uses server-supplied routed provenance without rediscovering the catalog", async () => {
@@ -285,7 +338,7 @@ test("uses server-supplied routed provenance without rediscovering the catalog",
 		async (model) => ({
 			source: "9router",
 			baseUrl: "http://9router/api",
-			openAiBaseUrl: "http://9router/api/v1",
+			openAiBaseUrl: "http://9router/v1",
 			apiKey: "key",
 			routeName: model,
 			model,
@@ -301,7 +354,7 @@ test("uses server-supplied routed provenance without rediscovering the catalog",
 	assert.deepEqual(receivedRouting, {
 		source: "9router",
 		baseUrl: "http://9router/api",
-		openAiBaseUrl: "http://9router/api/v1",
+		openAiBaseUrl: "http://9router/v1",
 		apiKey: "key",
 		routeName: "cx/gpt-5",
 		model: "cx/gpt-5",

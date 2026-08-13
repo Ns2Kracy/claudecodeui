@@ -15,6 +15,7 @@ import {
 	accountDraftAfterMutation,
 	createInitialRoutingState,
 	createRoutingRequestCoordinator,
+	initialRoutingDetails,
 	routingStateReducer,
 	shouldLoadRoutingDetails,
 	type RoutingAccountDraft,
@@ -97,7 +98,11 @@ export function useNineRouterSettings() {
 
 	const loadSettings = useCallback(async () => {
 		dispatch({ type: "loadStarted" });
-		const details = loadedDetails(stateRef.current, {}, true);
+		const details = loadedDetails(
+			stateRef.current,
+			initialRoutingDetails(),
+			true,
+		);
 		const token = requestCoordinatorRef.current.startAggregate();
 		try {
 			const settings = await routingApi.getSettings(details);

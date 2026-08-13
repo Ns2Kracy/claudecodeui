@@ -35,7 +35,7 @@ test("selected Provider Router model resolves sidecar REST credentials without r
 		{
 			source: "9router",
 			baseUrl: "http://127.0.0.1:20128/api",
-			openAiBaseUrl: "http://127.0.0.1:20128/api/v1",
+			openAiBaseUrl: "http://127.0.0.1:20128/v1",
 			apiKey: "sidecar-runtime-key",
 			routeName: "anthropic/claude-sonnet-4",
 			model: "anthropic/claude-sonnet-4",

@@ -232,13 +232,22 @@ function sanitizeModel(
 	}
 	const provider = optionalString(value.provider) ?? envelopeProvider;
 	const model = optionalString(value.model);
+	const modelId = optionalString(value.id);
+	let fallbackId: string | null = null;
+	if (modelId) {
+		fallbackId = modelId.includes("/") ? modelId : `${provider}/${modelId}`;
+	}
 	const id =
 		optionalString(value.fullModel) ??
 		optionalString(value.routedModel) ??
-		optionalString(value.id);
+		fallbackId;
 	if (!id) throw invalidResponse();
 	const name =
-		optionalString(value.name) ?? optionalString(value.alias) ?? model ?? id;
+		optionalString(value.name) ??
+		optionalString(value.alias) ??
+		model ??
+		modelId ??
+		id;
 	return { id, provider, name };
 }
 

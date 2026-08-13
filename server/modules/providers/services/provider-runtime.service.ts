@@ -64,8 +64,10 @@ export function createProviderRuntimeService(
 		resolveProviderSessionId: dependencies.resolveProviderSessionId,
 		resolveResumeModel: (sessionId, requestedModel) =>
 			dependencies.resolveResumeModel(provider.id, sessionId, requestedModel),
-		getProviderModels: async () =>
-			(await dependencies.getProviderModels(provider.id)).models,
+		getProviderModels: async () => {
+			const result = await dependencies.getProviderModels(provider.id);
+			return result.models;
+		},
 		normalizeMessage: (raw, sessionId) =>
 			provider.sessions.normalizeMessage(raw, sessionId),
 		async isProviderInstalled() {
@@ -121,7 +123,23 @@ export function createProviderRuntimeService(
 				});
 			}
 			if (source === "9router") {
-				routing = await dependencies.resolveRoutingForModel(requestedModel);
+				let routedModel = requestedModel;
+				if (!routedModel.includes("/")) {
+					const result = await dependencies.getProviderModels(providerName);
+					const matches = result.models.OPTIONS.filter(
+						(option) =>
+							option.source === "9router" &&
+							option.value.endsWith(`/${routedModel}`),
+					);
+					if (matches.length !== 1) {
+						throw new AppError("The selected model is no longer available", {
+							code: "PROVIDER_MODEL_UNAVAILABLE",
+							statusCode: 409,
+						});
+					}
+					routedModel = matches[0].value;
+				}
+				routing = await dependencies.resolveRoutingForModel(routedModel);
 			}
 		}
 
