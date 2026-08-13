@@ -44,18 +44,15 @@ async function renderAccounts(
 				configured: options.configured ?? true,
 				connectionStatus: "connected",
 				capabilities: settings.runtime.capabilities,
-				accountSummary: settings.accountSummary,
 				accounts: [],
 				models: [],
 				loading: options.loading ?? false,
 				detailsError: options.detailsError ?? false,
 				activeMutation: null,
-				onExpand: () => {},
 				onRetry: () => {},
 				onUpdateAccount: async () => true,
 				onTestAccount: async () => true,
 				onDeleteAccount: async () => true,
-				defaultOpen: true,
 			}),
 		),
 	);
@@ -65,6 +62,7 @@ test("open Codex account surface exposes Provider Router connection methods", as
 	const markup = await renderAccounts();
 
 	assert.match(markup, /Provider accounts/);
+	assert.equal(markup.includes("Manage provider accounts"), false);
 	assert.match(markup, /Connect Codex/);
 	assert.match(markup, /Continue with ChatGPT/);
 	assert.match(markup, /Popular API keys/);

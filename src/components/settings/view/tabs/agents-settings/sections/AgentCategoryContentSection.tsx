@@ -16,9 +16,7 @@ export default function AgentCategoryContentSection({
 }: AgentCategoryContentSectionProps) {
 	return (
 		<div className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-3 md:p-4">
-			{selectedCategory === "account" && (
-				<ProviderAccountsManagerComponent defaultOpen />
-			)}
+			{selectedCategory === "account" && <ProviderAccountsManagerComponent />}
 
 			{selectedCategory === "permissions" && (
 				<PermissionsContent

@@ -20,7 +20,7 @@ export type AgentCategoryTabsSectionProps = {
 
 export type AgentCategoryContentSectionProps = {
 	selectedCategory: AgentCategory;
-	ProviderAccountsManagerComponent?: ComponentType<{ defaultOpen?: boolean }>;
+	ProviderAccountsManagerComponent?: ComponentType;
 	codexPermissionMode: CodexPermissionMode;
 	onCodexPermissionModeChange: (value: CodexPermissionMode) => void;
 	projects: SettingsProject[];
