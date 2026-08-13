@@ -31,7 +31,7 @@ export default function ProviderAccountsManager() {
 			onUpdateAccount={async (id, input) =>
 				Boolean(await controller.updateAccount(id, input))
 			}
-			onTestAccount={async (id) => Boolean(await controller.testAccount(id))}
+			onTestAccount={(id) => controller.testAccount(id)}
 			onDeleteAccount={async (id) =>
 				Boolean(await controller.deleteAccount(id))
 			}

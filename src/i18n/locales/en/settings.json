@@ -709,6 +709,45 @@
         "keepKey": "Leave blank to keep configured",
         "confirmDelete": "Delete {{name}}?",
         "unavailable": "Account details are unavailable for this Provider Router version.",
+        "facts": {
+          "connection": "Connection status",
+          "health": "Health status",
+          "authentication": "Authentication",
+          "enabled": "Enabled",
+          "disabled": "Disabled"
+        },
+        "actions": {
+          "test": "Test",
+          "testing": "Testing",
+          "options": "Account options for {{name}}",
+          "enabled": "Account enabled",
+          "enabledDescription": "Allow this account to provide models for new requests.",
+          "edit": "Edit account",
+          "delete": "Delete account"
+        },
+        "disable": {
+          "title": "Disable {{name}}?",
+          "impact": "Models from this account will no longer be used for new requests. Existing sessions are not affected.",
+          "confirm": "Confirm disable",
+          "cancel": "Cancel"
+        },
+        "testResult": {
+          "success": "Test successful · {{duration}} ms",
+          "failure": "Test failed · {{duration}} ms",
+          "transportFailure": "The Provider Router could not complete the test.",
+          "viewDetails": "View details",
+          "hideDetails": "Hide details",
+          "completedAt": "Completed at",
+          "duration": "Response time",
+          "health": "Health result",
+          "healthy": "Healthy",
+          "unhealthy": "Unhealthy",
+          "credentials": "Credentials",
+          "refreshed": "Credentials refreshed",
+          "notRefreshed": "Credentials unchanged",
+          "error": "Error details",
+          "noError": "No error reported"
+        },
         "status": {
           "healthy": "Healthy",
           "cooling": "Cooling",

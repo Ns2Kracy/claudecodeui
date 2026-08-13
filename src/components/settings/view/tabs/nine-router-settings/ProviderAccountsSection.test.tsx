@@ -62,7 +62,11 @@ async function renderAccounts(
 				activeMutation: null,
 				onRetry: () => {},
 				onUpdateAccount: async () => true,
-				onTestAccount: async () => true,
+				onTestAccount: async () => ({
+					healthy: true,
+					error: null,
+					refreshed: false,
+				}),
 				onDeleteAccount: async () => true,
 			}),
 		),
@@ -105,7 +109,10 @@ test("provider authentication renders OAuth and API keys in separate cards", asy
 	const apiKeyCard = markup.slice(apiKeyStart);
 	assert.match(oauthCard, /work@example\.com/);
 	assert.equal(oauthCard.includes("Production key"), false);
-	assert.match(oauthCard, /Connected/);
+	assert.match(oauthCard, /Connection status/);
+	assert.match(oauthCard, /Enabled/);
+	assert.match(oauthCard, /Not tested/);
+	assert.match(oauthCard, /OAuth/);
 	assert.match(oauthCard, /Add another ChatGPT account/);
 	assert.match(apiKeyCard, /Production key/);
 	assert.equal(apiKeyCard.includes("work@example.com"), false);
@@ -118,7 +125,11 @@ test("authentication sections localize connected and untested states", async () 
 		language: "zh-CN",
 	});
 
-	assert.match(markup, /已连接/);
+	assert.match(markup, /连接状态/);
+	assert.match(markup, /已启用/);
+	assert.match(markup, /健康状态/);
+	assert.match(markup, /认证方式/);
+	assert.match(markup, /测试/);
 	assert.match(markup, /添加另一个 ChatGPT 账户/);
 	assert.match(markup, /API Key 认证/);
 	assert.match(markup, /未测试/);

@@ -605,6 +605,45 @@
         "replacementKey": "替換 API 金鑰",
         "keepKey": "留空以保留現有設定",
         "confirmDelete": "刪除 {{name}}？",
+        "facts": {
+          "connection": "連線狀態",
+          "health": "健康狀態",
+          "authentication": "驗證方式",
+          "enabled": "已啟用",
+          "disabled": "已停用"
+        },
+        "actions": {
+          "test": "測試",
+          "testing": "測試中",
+          "options": "{{name}} 的帳戶選項",
+          "enabled": "帳戶已啟用",
+          "enabledDescription": "允許此帳戶為新請求提供模型。",
+          "edit": "編輯帳戶",
+          "delete": "刪除帳戶"
+        },
+        "disable": {
+          "title": "停用 {{name}}？",
+          "impact": "停用後，此帳戶的模型將不再用於新請求；現有工作階段不受影響。",
+          "confirm": "確認停用",
+          "cancel": "取消"
+        },
+        "testResult": {
+          "success": "測試成功 · {{duration}} ms",
+          "failure": "測試失敗 · {{duration}} ms",
+          "transportFailure": "提供者路由器未能完成測試。",
+          "viewDetails": "查看詳細資料",
+          "hideDetails": "收起詳細資料",
+          "completedAt": "完成時間",
+          "duration": "回應耗時",
+          "health": "健康結果",
+          "healthy": "正常",
+          "unhealthy": "異常",
+          "credentials": "憑證",
+          "refreshed": "憑證已重新整理",
+          "notRefreshed": "憑證未變更",
+          "error": "錯誤詳細資料",
+          "noError": "未回報錯誤"
+        },
         "unavailable": "此提供者路由器版本無法提供帳戶詳細資料。",
         "status": {
           "healthy": "正常",

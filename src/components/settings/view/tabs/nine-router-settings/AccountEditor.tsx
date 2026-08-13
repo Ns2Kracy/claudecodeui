@@ -1,5 +1,15 @@
 import { useId, useState } from "react";
-import { Loader2, Pencil, Power, RefreshCw, Trash2 } from "lucide-react";
+import {
+	CheckCircle2,
+	ChevronDown,
+	Loader2,
+	MoreHorizontal,
+	Pencil,
+	Power,
+	RefreshCw,
+	Trash2,
+	XCircle,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type {
@@ -7,10 +17,20 @@ import type {
 	RoutingModelView,
 	UpdateRoutingAccountInput,
 } from "../../../../../../shared/routing.js";
-import { Badge, Button, Input } from "../../../../../shared/view/ui";
+import {
+	ActionMenu,
+	Badge,
+	Button,
+	Input,
+} from "../../../../../shared/view/ui";
 
+import {
+	collectAccountTestRecord,
+	type AccountTestRecord,
+} from "./accountTestFeedback.js";
 import { NINE_ROUTER_PROVIDER_PROFILES } from "./ProviderCatalog.js";
 import ProviderIcon from "./ProviderIcon.js";
+import type { RoutingAccountTestResult } from "./routingApi.js";
 
 type AccountEditorProps = {
 	accounts: RoutingAccountView[];
@@ -19,10 +39,14 @@ type AccountEditorProps = {
 	canTest: boolean;
 	activeMutation: string | null;
 	onUpdate: (id: string, input: UpdateRoutingAccountInput) => Promise<boolean>;
-	onTest: (id: string) => Promise<boolean>;
+	onTest: (id: string) => Promise<RoutingAccountTestResult | null>;
 	onDelete: (id: string) => Promise<boolean>;
 	defaultEditingId?: string | null;
 	defaultDeleteId?: string | null;
+	defaultPendingDisableId?: string | null;
+	defaultExpandedTestId?: string | null;
+	defaultOpenMenuId?: string | null;
+	defaultTestResults?: Record<string, AccountTestRecord>;
 	title?: string;
 	description?: string;
 	emptyMessage?: string;
@@ -78,6 +102,10 @@ export default function AccountEditor({
 	onDelete,
 	defaultEditingId = null,
 	defaultDeleteId = null,
+	defaultPendingDisableId = null,
+	defaultExpandedTestId = null,
+	defaultOpenMenuId = null,
+	defaultTestResults = {},
 	title = "Connected accounts",
 	description = "Accounts available to Codex through the Provider Router.",
 	emptyMessage = "No accounts connected yet.",
@@ -95,14 +123,21 @@ export default function AccountEditor({
 			: { name: "", priority: "", apiKey: "" },
 	);
 	const [deleteId, setDeleteId] = useState<string | null>(defaultDeleteId);
+	const [pendingDisableId, setPendingDisableId] = useState<string | null>(
+		defaultPendingDisableId,
+	);
+	const [testingId, setTestingId] = useState<string | null>(null);
+	const [testResults, setTestResults] =
+		useState<Record<string, AccountTestRecord>>(defaultTestResults);
+	const [expandedTestId, setExpandedTestId] = useState<string | null>(
+		defaultExpandedTestId,
+	);
 	const busy = activeMutation !== null;
 	const modelCount = (provider: string) =>
 		models.filter((model) => model.provider === provider).length;
 	const statusLabel = (account: RoutingAccountView) =>
 		account.status === "unknown"
-			? isApiKeyAccount(account)
-				? t("nineRouter.management.accounts.status.notTested")
-				: t("nineRouter.connection.status.connected")
+			? t("nineRouter.management.accounts.status.notTested")
 			: t(`nineRouter.management.accounts.status.${account.status}`);
 
 	const saveAccount = async (id: string) => {
@@ -116,6 +151,19 @@ export default function AccountEditor({
 		setEditDraft((current) => ({ ...current, apiKey: "" }));
 		if (await onUpdate(id, input)) setEditingId(null);
 		else setEditDraft(submittedDraft);
+	};
+
+	const testAccount = async (id: string) => {
+		setTestingId(id);
+		try {
+			const record = await collectAccountTestRecord(
+				() => onTest(id),
+				t("nineRouter.management.accounts.testResult.transportFailure"),
+			);
+			setTestResults((current) => ({ ...current, [id]: record }));
+		} finally {
+			setTestingId((current) => (current === id ? null : current));
+		}
 	};
 
 	return (
@@ -143,7 +191,12 @@ export default function AccountEditor({
 						const count = modelCount(account.provider);
 						const editing = editingId === account.id;
 						const deleting = deleteId === account.id;
-						const testing = activeMutation === `account:test:${account.id}`;
+						const pendingDisable = pendingDisableId === account.id;
+						const testing =
+							testingId === account.id ||
+							activeMutation === `account:test:${account.id}`;
+						const testRecord = testResults[account.id];
+						const testDetailsExpanded = expandedTestId === account.id;
 
 						return (
 							<article key={account.id} className="space-y-3 py-4">
@@ -155,36 +208,58 @@ export default function AccountEditor({
 												label={providerName}
 											/>
 										</span>
-										<div className="min-w-0 space-y-1.5">
-											<div className="flex flex-wrap items-center gap-2">
-												<span className="truncate text-sm font-medium text-foreground">
+										<div className="min-w-0 space-y-2">
+											<div>
+												<p className="truncate text-sm font-medium text-foreground">
 													{account.name}
-												</span>
-												<Badge
-													variant="outline"
-													className={
-														account.status === "unknown" &&
-														!isApiKeyAccount(account)
-															? statusTone.healthy
-															: statusTone[account.status]
-													}
-												>
-													{statusLabel(account)}
-												</Badge>
-												<Badge variant="outline">{authLabel(account)}</Badge>
-												{!account.active && (
-													<Badge variant="outline">
-														{t("nineRouter.management.accounts.disabled")}
-													</Badge>
-												)}
+												</p>
+												<p className="mt-0.5 text-xs text-muted-foreground">
+													{providerName} · {count}{" "}
+													{count === 1 ? "model" : "models"}
+													{account.priority !== null
+														? ` · Priority ${account.priority}`
+														: ""}
+												</p>
 											</div>
-											<p className="text-xs text-muted-foreground">
-												{providerName} · {count}{" "}
-												{count === 1 ? "model" : "models"}
-												{account.priority !== null
-													? ` · Priority ${account.priority}`
-													: ""}
-											</p>
+											<dl className="flex flex-wrap gap-x-5 gap-y-2">
+												<div>
+													<dt className="text-[11px] text-muted-foreground">
+														{t(
+															"nineRouter.management.accounts.facts.connection",
+														)}
+													</dt>
+													<dd className="mt-0.5 text-xs font-medium text-foreground">
+														{t(
+															account.active
+																? "nineRouter.management.accounts.facts.enabled"
+																: "nineRouter.management.accounts.facts.disabled",
+														)}
+													</dd>
+												</div>
+												<div>
+													<dt className="text-[11px] text-muted-foreground">
+														{t("nineRouter.management.accounts.facts.health")}
+													</dt>
+													<dd className="mt-0.5">
+														<Badge
+															variant="outline"
+															className={statusTone[account.status]}
+														>
+															{statusLabel(account)}
+														</Badge>
+													</dd>
+												</div>
+												<div>
+													<dt className="text-[11px] text-muted-foreground">
+														{t(
+															"nineRouter.management.accounts.facts.authentication",
+														)}
+													</dt>
+													<dd className="mt-0.5 text-xs font-medium text-foreground">
+														{authLabel(account)}
+													</dd>
+												</div>
+											</dl>
 											{account.lastError && (
 												<p className="text-xs text-destructive">
 													{account.lastError}
@@ -193,66 +268,269 @@ export default function AccountEditor({
 										</div>
 									</div>
 
-									<div className="flex flex-wrap gap-1 sm:justify-end">
+									<div className="flex shrink-0 gap-1 sm:justify-end">
 										{canTest && (
 											<Button
 												type="button"
 												size="sm"
-												variant="ghost"
-												onClick={() => void onTest(account.id)}
-												disabled={busy}
+												variant="outline"
+												onClick={() => void testAccount(account.id)}
+												disabled={busy || testing}
+												aria-busy={testing}
 											>
 												{testing ? (
 													<Loader2 className="animate-spin motion-reduce:animate-none" />
 												) : (
 													<RefreshCw />
 												)}
-												Test
+												{t(
+													testing
+														? "nineRouter.management.accounts.actions.testing"
+														: "nineRouter.management.accounts.actions.test",
+												)}
 											</Button>
 										)}
 										{canWrite && (
+											<ActionMenu
+												label={t(
+													"nineRouter.management.accounts.actions.options",
+													{
+														name: account.name,
+													},
+												)}
+												ariaLabel={t(
+													"nineRouter.management.accounts.actions.options",
+													{
+														name: account.name,
+													},
+												)}
+												icon={MoreHorizontal}
+												iconOnly
+												portal={defaultOpenMenuId !== account.id}
+												variant="ghost"
+												size="icon"
+												triggerClassName="h-9 w-9 text-muted-foreground"
+												disabled={busy}
+												defaultOpen={defaultOpenMenuId === account.id}
+												items={[
+													{
+														key: "enabled",
+														label: t(
+															"nineRouter.management.accounts.actions.enabled",
+														),
+														description: t(
+															"nineRouter.management.accounts.actions.enabledDescription",
+														),
+														icon: Power,
+														checked: account.active,
+														onSelect: () => {
+															if (account.active)
+																setPendingDisableId(account.id);
+															else void onUpdate(account.id, { active: true });
+														},
+													},
+													...(isApiKeyAccount(account)
+														? [
+																{
+																	key: "edit",
+																	label: t(
+																		"nineRouter.management.accounts.actions.edit",
+																	),
+																	icon: Pencil,
+																	disabled: editing,
+																	onSelect: () => {
+																		setEditDraft(editDraftFor(account));
+																		setEditingId(account.id);
+																	},
+																},
+															]
+														: []),
+													{
+														key: "delete",
+														label: t(
+															"nineRouter.management.accounts.actions.delete",
+														),
+														icon: Trash2,
+														isDanger: true,
+														showDividerBefore: true,
+														disabled: deleting,
+														onSelect: () => setDeleteId(account.id),
+													},
+												]}
+											/>
+										)}
+									</div>
+								</div>
+
+								{testRecord && (
+									<div
+										role="status"
+										aria-live="polite"
+										className={
+											testRecord.result.healthy
+												? "border-l-2 border-emerald-500/50 pl-3"
+												: "border-l-2 border-destructive/50 pl-3"
+										}
+									>
+										<div className="flex flex-wrap items-center justify-between gap-2">
+											<div className="flex min-w-0 items-center gap-2 text-sm">
+												{testRecord.result.healthy ? (
+													<CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+												) : (
+													<XCircle className="h-4 w-4 shrink-0 text-destructive" />
+												)}
+												<span className="font-medium text-foreground">
+													{t(
+														testRecord.result.healthy
+															? "nineRouter.management.accounts.testResult.success"
+															: "nineRouter.management.accounts.testResult.failure",
+														{ duration: testRecord.durationMs },
+													)}
+												</span>
+												{testRecord.result.error && (
+													<span className="truncate text-xs text-destructive">
+														{testRecord.result.error}
+													</span>
+												)}
+											</div>
 											<Button
 												type="button"
 												size="sm"
 												variant="ghost"
 												onClick={() =>
-													void onUpdate(account.id, { active: !account.active })
+													setExpandedTestId((current) =>
+														current === account.id ? null : account.id,
+													)
+												}
+												aria-expanded={testDetailsExpanded}
+											>
+												{t(
+													testDetailsExpanded
+														? "nineRouter.management.accounts.testResult.hideDetails"
+														: "nineRouter.management.accounts.testResult.viewDetails",
+												)}
+												<ChevronDown
+													className={`transition-transform ${
+														testDetailsExpanded ? "rotate-180" : ""
+													}`}
+												/>
+											</Button>
+										</div>
+										{testDetailsExpanded && (
+											<dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+												<div>
+													<dt className="text-muted-foreground">
+														{t(
+															"nineRouter.management.accounts.testResult.completedAt",
+														)}
+													</dt>
+													<dd className="mt-0.5 text-foreground">
+														<time dateTime={testRecord.completedAt}>
+															{new Date(
+																testRecord.completedAt,
+															).toLocaleString()}
+														</time>
+													</dd>
+												</div>
+												<div>
+													<dt className="text-muted-foreground">
+														{t(
+															"nineRouter.management.accounts.testResult.duration",
+														)}
+													</dt>
+													<dd className="mt-0.5 text-foreground">
+														{testRecord.durationMs} ms
+													</dd>
+												</div>
+												<div>
+													<dt className="text-muted-foreground">
+														{t(
+															"nineRouter.management.accounts.testResult.health",
+														)}
+													</dt>
+													<dd className="mt-0.5 text-foreground">
+														{t(
+															testRecord.result.healthy
+																? "nineRouter.management.accounts.testResult.healthy"
+																: "nineRouter.management.accounts.testResult.unhealthy",
+														)}
+													</dd>
+												</div>
+												<div>
+													<dt className="text-muted-foreground">
+														{t(
+															"nineRouter.management.accounts.testResult.credentials",
+														)}
+													</dt>
+													<dd className="mt-0.5 text-foreground">
+														{t(
+															testRecord.result.refreshed
+																? "nineRouter.management.accounts.testResult.refreshed"
+																: "nineRouter.management.accounts.testResult.notRefreshed",
+														)}
+													</dd>
+												</div>
+												<div className="sm:col-span-2">
+													<dt className="text-muted-foreground">
+														{t(
+															"nineRouter.management.accounts.testResult.error",
+														)}
+													</dt>
+													<dd className="mt-0.5 break-words text-foreground">
+														{testRecord.result.error ??
+															t(
+																"nineRouter.management.accounts.testResult.noError",
+															)}
+													</dd>
+												</div>
+											</dl>
+										)}
+									</div>
+								)}
+
+								{pendingDisable && (
+									<div
+										role="alert"
+										className="flex flex-col gap-3 border-l-2 border-amber-500/50 pl-3 sm:flex-row sm:items-center sm:justify-between"
+									>
+										<div>
+											<p className="text-sm font-medium text-foreground">
+												{t("nineRouter.management.accounts.disable.title", {
+													name: account.name,
+												})}
+											</p>
+											<p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+												{t("nineRouter.management.accounts.disable.impact")}
+											</p>
+										</div>
+										<div className="flex shrink-0 justify-end gap-2">
+											<Button
+												type="button"
+												size="sm"
+												variant="ghost"
+												onClick={() => setPendingDisableId(null)}
+												disabled={busy}
+											>
+												{t("nineRouter.management.accounts.disable.cancel")}
+											</Button>
+											<Button
+												type="button"
+												size="sm"
+												variant="outline"
+												onClick={() =>
+													void onUpdate(account.id, { active: false }).then(
+														(updated) => {
+															if (updated) setPendingDisableId(null);
+														},
+													)
 												}
 												disabled={busy}
 											>
-												<Power />
-												{account.active ? "Disable" : "Enable"}
+												{t("nineRouter.management.accounts.disable.confirm")}
 											</Button>
-										)}
-										{canWrite && isApiKeyAccount(account) && (
-											<Button
-												type="button"
-												size="sm"
-												variant="ghost"
-												onClick={() => {
-													setEditDraft(editDraftFor(account));
-													setEditingId(account.id);
-												}}
-												disabled={busy || editing}
-											>
-												<Pencil />
-												Edit
-											</Button>
-										)}
-										{canWrite && (
-											<Button
-												type="button"
-												size="sm"
-												variant="ghost"
-												onClick={() => setDeleteId(account.id)}
-												disabled={busy || deleting}
-											>
-												<Trash2 />
-												Delete
-											</Button>
-										)}
+										</div>
 									</div>
-								</div>
+								)}
 
 								{editing && (
 									<div className="grid gap-3 border-l-2 border-primary/40 pl-3 sm:grid-cols-3">

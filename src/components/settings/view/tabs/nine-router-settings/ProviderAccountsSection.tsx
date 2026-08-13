@@ -12,6 +12,7 @@ import SettingsCard from "../../SettingsCard";
 import SettingsSection from "../../SettingsSection";
 
 import AccountEditor from "./AccountEditor.js";
+import type { RoutingAccountTestResult } from "./routingApi.js";
 import ProviderConnections from "./ProviderConnections.js";
 
 type ProviderAccountsSectionProps = {
@@ -28,7 +29,7 @@ type ProviderAccountsSectionProps = {
 		id: string,
 		input: UpdateRoutingAccountInput,
 	) => Promise<boolean>;
-	onTestAccount: (id: string) => Promise<boolean>;
+	onTestAccount: (id: string) => Promise<RoutingAccountTestResult | null>;
 	onDeleteAccount: (id: string) => Promise<boolean>;
 };
 

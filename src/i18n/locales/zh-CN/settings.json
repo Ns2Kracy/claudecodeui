@@ -700,6 +700,45 @@
         "replacementKey": "替换 API 密钥",
         "keepKey": "留空以保留现有配置",
         "confirmDelete": "删除 {{name}}？",
+        "facts": {
+          "connection": "连接状态",
+          "health": "健康状态",
+          "authentication": "认证方式",
+          "enabled": "已启用",
+          "disabled": "已停用"
+        },
+        "actions": {
+          "test": "测试",
+          "testing": "测试中",
+          "options": "{{name}} 的账户选项",
+          "enabled": "账户已启用",
+          "enabledDescription": "允许此账户为新请求提供模型。",
+          "edit": "编辑账户",
+          "delete": "删除账户"
+        },
+        "disable": {
+          "title": "停用 {{name}}？",
+          "impact": "停用后，该账户的模型将不再用于新请求；现有会话不受影响。",
+          "confirm": "确认停用",
+          "cancel": "取消"
+        },
+        "testResult": {
+          "success": "测试成功 · {{duration}} ms",
+          "failure": "测试失败 · {{duration}} ms",
+          "transportFailure": "提供商路由器未能完成测试。",
+          "viewDetails": "查看详情",
+          "hideDetails": "收起详情",
+          "completedAt": "完成时间",
+          "duration": "响应耗时",
+          "health": "健康结果",
+          "healthy": "正常",
+          "unhealthy": "异常",
+          "credentials": "凭据",
+          "refreshed": "凭据已刷新",
+          "notRefreshed": "凭据未变化",
+          "error": "错误详情",
+          "noError": "未报告错误"
+        },
         "unavailable": "此提供商路由器版本无法提供账户详情。",
         "status": {
           "healthy": "正常",
