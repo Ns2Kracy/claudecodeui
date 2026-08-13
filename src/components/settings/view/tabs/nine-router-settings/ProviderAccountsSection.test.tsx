@@ -63,9 +63,10 @@ test("open Codex account surface exposes Provider Router connection methods", as
 
 	assert.match(markup, /Provider accounts/);
 	assert.equal(markup.includes("Manage provider accounts"), false);
-	assert.match(markup, /Connect Codex/);
+	assert.match(markup, /Codex OAuth/);
 	assert.match(markup, /Continue with ChatGPT/);
-	assert.match(markup, /Popular API keys/);
+	assert.match(markup, /API Key authentication/);
+	assert.equal(markup.includes("Popular API keys"), false);
 	assert.match(markup, /OpenAI Compatible/);
 	assert.match(markup, /Connected accounts/);
 	assert.equal(markup.includes("Add account"), false);

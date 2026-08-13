@@ -8,12 +8,11 @@ Replace the confusing provider-account surface under **Agents → Codex → Acco
 
 ## User Experience
 
-The expanded account surface has three ordered connection paths followed by one account list:
+The account surface has two authentication paths followed by one account list:
 
-1. **Codex OAuth** is the primary path. It uses the Codex mark, explains that ChatGPT authorization is owned by 9Router, and offers one prominent “Continue with ChatGPT” action. Once connected, the same area reports that Codex OAuth is connected and offers reauthorization rather than presenting another account form.
-2. **Popular API keys** are secondary quick choices: OpenAI, Anthropic, Google Gemini, DeepSeek, and OpenRouter. Each choice has a recognizable, accessible icon treatment and only the selected provider reveals a compact account-name/API-key form.
-3. **OpenAI Compatible** is a separate custom-endpoint path. The first view asks for name, base URL, and API key. Prefix, API type, and optional model ID live under advanced settings. The endpoint is validated before its provider node is saved.
-4. **Connected accounts** is one compact list. Each row includes provider identity, account name, health, authentication type, model count, and available test/edit/enable/delete actions. The old generic API-key creation form is removed so there is only one add flow.
+1. **Codex OAuth** is the primary path. It uses the Codex mark, explains that ChatGPT authorization is owned by 9Router, and offers one prominent “Continue with ChatGPT” action.
+2. **API Key authentication** contains six equal provider choices: OpenAI, Anthropic, Google Gemini, DeepSeek, OpenRouter, and OpenAI Compatible. Selecting any choice reveals the same account-name, editable Base URL, and write-only API-key form. Presets start with their official compatible endpoint; OpenAI Compatible starts blank. Prefix, API type, and optional model ID remain advanced fields where applicable. Saving creates a provider node for the chosen endpoint and then attaches the API-key account to that node.
+3. **Connected accounts** is one compact list. Each row includes provider identity, account name, health, authentication type, model count, and available test/edit/enable/delete actions. There is no duplicate generic add form.
 
 ## Interaction Model
 

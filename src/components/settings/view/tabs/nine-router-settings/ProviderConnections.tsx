@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronRight, ExternalLink, Loader2 } from "lucide-react";
+import { ExternalLink, Loader2 } from "lucide-react";
 
 import type { RoutingDeviceCodeChallengeView } from "../../../../../../shared/routing.js";
 import { Button } from "../../../../../shared/view/ui";
 
-import type { CustomProviderDraft } from "./CustomProviderEditor.js";
+import {
+	connectApiKeyProvider,
+	type ApiKeyProviderDraft,
+} from "./apiKeyProvider.js";
 import { NINE_ROUTER_PROVIDER_PROFILES } from "./ProviderCatalog.js";
 import ProviderConnectionDialog, {
 	isAllowedOAuthUrl,
@@ -58,8 +61,7 @@ export default function ProviderConnections({
 	} | null>(null);
 	const profiles = NINE_ROUTER_PROVIDER_PROFILES;
 	const codex = profiles.find((item) => item.id === "codex")!;
-	const popular = profiles.filter((item) => item.group === "popular");
-	const custom = profiles.find((item) => item.group === "custom")!;
+	const apiKeyProfiles = profiles.filter((item) => item.group === "api_key");
 	const profile = profiles.find((item) => item.id === selectedId) ?? null;
 
 	useEffect(() => {
@@ -182,7 +184,7 @@ export default function ProviderConnections({
 							id="codex-oauth-title"
 							className="text-sm font-semibold text-foreground"
 						>
-							Connect Codex
+							Codex OAuth
 						</h4>
 						<p className="mt-1 max-w-xl text-sm leading-relaxed text-muted-foreground">
 							Sign in with ChatGPT. OAuth credentials stay in 9Router and are
@@ -205,24 +207,24 @@ export default function ProviderConnections({
 				</Button>
 			</section>
 
-			<section aria-labelledby="popular-providers-title" className="space-y-3">
+			<section aria-labelledby="api-key-providers-title" className="space-y-3">
 				<div>
 					<h4
-						id="popular-providers-title"
+						id="api-key-providers-title"
 						className="text-sm font-semibold text-foreground"
 					>
-						Popular API keys
+						API Key authentication
 					</h4>
 					<p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-						Choose a provider, then add a write-only API key.
+						Choose a provider and confirm its API endpoint.
 					</p>
 				</div>
 				<div
 					className="flex flex-wrap gap-2"
 					role="list"
-					aria-label="Popular API key providers"
+					aria-label="API Key providers"
 				>
-					{popular.map((item) => (
+					{apiKeyProfiles.map((item) => (
 						<Button
 							key={item.id}
 							type="button"
@@ -238,34 +240,6 @@ export default function ProviderConnections({
 				</div>
 			</section>
 
-			<section aria-labelledby="custom-provider-title" className="space-y-3">
-				<button
-					type="button"
-					disabled={disabled}
-					aria-expanded={selectedId === custom.id}
-					onClick={() => select(custom.id)}
-					className="flex w-full items-center gap-3 border-y border-border py-3 text-left transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
-				>
-					<span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-muted/40">
-						<ProviderIcon icon={custom.icon} label={custom.name} />
-					</span>
-					<span className="min-w-0 flex-1">
-						<span
-							id="custom-provider-title"
-							className="block text-sm font-medium text-foreground"
-						>
-							{custom.name}
-						</span>
-						<span className="block text-xs text-muted-foreground">
-							{custom.description}
-						</span>
-					</span>
-					<ChevronRight
-						className={`h-4 w-4 text-muted-foreground transition-transform ${selectedId === custom.id ? "rotate-90" : ""}`}
-					/>
-				</button>
-			</section>
-
 			{profile && (
 				<div className="border-l-2 border-primary/50 pl-4">
 					<ProviderConnectionDialog
@@ -275,9 +249,9 @@ export default function ProviderConnections({
 						error={error}
 						deviceChallenge={challenge}
 						deviceStatus={deviceStatus}
-						onConnectApiKey={(provider, name, apiKey) =>
+						onConnectApiKey={(draft: ApiKeyProviderDraft) =>
 							run(async () => {
-								await routingApi.createAccount({ provider, name, apiKey });
+								await connectApiKeyProvider(routingApi, profile, draft);
 								setSelectedId(null);
 								await onConnected();
 							})
@@ -296,29 +270,6 @@ export default function ProviderConnections({
 								setDeviceStatus("idle");
 							});
 						}}
-						onCreateCustomProvider={(draft: CustomProviderDraft) =>
-							run(async () => {
-								const validation = await routingApi.validateProviderNode({
-									baseUrl: draft.baseUrl,
-									apiKey: draft.apiKey,
-									type: draft.type,
-									...(draft.modelId ? { modelId: draft.modelId } : {}),
-								});
-								if (!validation.valid)
-									throw new Error(
-										validation.message ?? "Provider validation failed",
-									);
-								await routingApi.createProviderNode({
-									name: draft.name,
-									prefix: draft.prefix,
-									type: draft.type,
-									apiType: draft.apiType,
-									baseUrl: draft.baseUrl,
-								});
-								setSelectedId(null);
-								await onConnected();
-							})
-						}
 					/>
 				</div>
 			)}

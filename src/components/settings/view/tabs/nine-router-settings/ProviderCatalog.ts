@@ -1,4 +1,8 @@
-import type { RoutingProviderConnectionMethod } from "../../../../../../shared/routing.js";
+import type {
+	RoutingOpenAiProviderNodeApiType,
+	RoutingProviderConnectionMethod,
+	RoutingProviderNodeType,
+} from "../../../../../../shared/routing.js";
 
 export type NineRouterProviderIcon =
 	| "codex"
@@ -13,9 +17,12 @@ export type NineRouterProviderProfile = {
 	id: string;
 	name: string;
 	description: string;
-	group: "oauth" | "popular" | "custom";
+	group: "oauth" | "api_key";
 	icon: NineRouterProviderIcon;
 	methods: RoutingProviderConnectionMethod[];
+	defaultBaseUrl?: string;
+	nodeType?: RoutingProviderNodeType;
+	apiType?: RoutingOpenAiProviderNodeApiType;
 };
 
 export const NINE_ROUTER_PROVIDER_PROFILES: NineRouterProviderProfile[] = [
@@ -31,49 +38,66 @@ export const NINE_ROUTER_PROVIDER_PROFILES: NineRouterProviderProfile[] = [
 		id: "openai",
 		name: "OpenAI",
 		description: "GPT and o-series models.",
-		group: "popular",
+		group: "api_key",
 		icon: "openai",
 		methods: ["api_key"],
+		defaultBaseUrl: "https://api.openai.com/v1",
+		nodeType: "openai-compatible",
+		apiType: "responses",
 	},
 	{
 		id: "anthropic",
 		name: "Anthropic",
 		description: "Claude models with an Anthropic API key.",
-		group: "popular",
+		group: "api_key",
 		icon: "anthropic",
 		methods: ["api_key"],
+		defaultBaseUrl: "https://api.anthropic.com/v1",
+		nodeType: "anthropic-compatible",
 	},
 	{
 		id: "gemini",
 		name: "Google Gemini",
 		description: "Gemini models from Google AI Studio.",
-		group: "popular",
+		group: "api_key",
 		icon: "gemini",
 		methods: ["api_key"],
+		defaultBaseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
+		nodeType: "openai-compatible",
+		apiType: "chat",
 	},
 	{
 		id: "deepseek",
 		name: "DeepSeek",
 		description: "DeepSeek chat and reasoning models.",
-		group: "popular",
+		group: "api_key",
 		icon: "deepseek",
 		methods: ["api_key"],
+		defaultBaseUrl: "https://api.deepseek.com/v1",
+		nodeType: "openai-compatible",
+		apiType: "chat",
 	},
 	{
 		id: "openrouter",
 		name: "OpenRouter",
 		description: "One API key for models across providers.",
-		group: "popular",
+		group: "api_key",
 		icon: "openrouter",
 		methods: ["api_key"],
+		defaultBaseUrl: "https://openrouter.ai/api/v1",
+		nodeType: "openai-compatible",
+		apiType: "chat",
 	},
 	{
 		id: "openai-compatible",
 		name: "OpenAI Compatible",
 		description: "Connect another OpenAI-compatible endpoint.",
-		group: "custom",
+		group: "api_key",
 		icon: "compatible",
-		methods: ["custom"],
+		methods: ["api_key"],
+		defaultBaseUrl: "",
+		nodeType: "openai-compatible",
+		apiType: "responses",
 	},
 ];
 
