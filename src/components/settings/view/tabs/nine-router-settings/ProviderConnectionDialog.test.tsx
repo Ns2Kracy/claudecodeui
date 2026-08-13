@@ -13,6 +13,7 @@ import CustomProviderEditor, {
   validateCustomProviderDraft,
 } from './CustomProviderEditor.js';
 import OAuthDeviceFlow from './OAuthDeviceFlow.js';
+import ProviderConnections from './ProviderConnections.js';
 import {
   NINE_ROUTER_PROVIDER_PROFILES,
   methodsForProvider,
@@ -51,6 +52,44 @@ test('provider catalog exposes Codex OAuth, five popular API-key providers, and 
     ),
     true,
   );
+});
+
+test('connection chooser prioritizes ChatGPT OAuth and exposes five popular API-key choices', async () => {
+  const markup = await render(createElement(ProviderConnections, {
+    disabled: false,
+    onConnected: () => {},
+  }));
+
+  assert.match(markup, /Continue with ChatGPT/);
+  assert.match(markup, /Connect Codex/);
+  for (const provider of ['OpenAI', 'Anthropic', 'Google Gemini', 'DeepSeek', 'OpenRouter']) {
+    assert.match(markup, new RegExp(provider));
+  }
+  assert.match(markup, /OpenAI Compatible/);
+  assert.match(markup, /aria-label="Codex"/);
+});
+
+test('OpenAI Compatible keeps endpoint essentials visible and advanced routing fields disclosed', async () => {
+  const profile = NINE_ROUTER_PROVIDER_PROFILES.find((item) => item.id === 'openai-compatible');
+  assert.ok(profile);
+  const markup = await render(createElement(ProviderConnectionDialog, {
+    profile,
+    busy: false,
+    error: null,
+    deviceChallenge: null,
+    deviceStatus: 'idle',
+    onConnectApiKey: async () => false,
+    onStartOAuth: async () => false,
+    onStartDeviceCode: async () => false,
+    onCancelDeviceCode: async () => {},
+    onCreateCustomProvider: async () => false,
+  }));
+
+  assert.match(markup, /Base URL/);
+  assert.match(markup, /API key/);
+  assert.match(markup, /Advanced settings/);
+  assert.match(markup, /Responses API/);
+  assert.match(markup, /Chat Completions/);
 });
 
 test('OAuth launch allowlist accepts HTTPS and loopback HTTP only', () => {
