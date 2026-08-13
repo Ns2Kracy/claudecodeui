@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Loader2, Pencil, Power, RefreshCw, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -23,6 +23,9 @@ type AccountEditorProps = {
 	onDelete: (id: string) => Promise<boolean>;
 	defaultEditingId?: string | null;
 	defaultDeleteId?: string | null;
+	title?: string;
+	description?: string;
+	emptyMessage?: string;
 };
 
 type EditDraft = { name: string; priority: string; apiKey: string };
@@ -75,8 +78,12 @@ export default function AccountEditor({
 	onDelete,
 	defaultEditingId = null,
 	defaultDeleteId = null,
+	title = "Connected accounts",
+	description = "Accounts available to Codex through the Provider Router.",
+	emptyMessage = "No accounts connected yet.",
 }: AccountEditorProps) {
 	const { t } = useTranslation("settings");
+	const headingId = useId();
 	const initialEditingAccount =
 		accounts.find((account) => account.id === defaultEditingId) ?? null;
 	const [editingId, setEditingId] = useState<string | null>(
@@ -91,6 +98,12 @@ export default function AccountEditor({
 	const busy = activeMutation !== null;
 	const modelCount = (provider: string) =>
 		models.filter((model) => model.provider === provider).length;
+	const statusLabel = (account: RoutingAccountView) =>
+		account.status === "unknown"
+			? isApiKeyAccount(account)
+				? t("nineRouter.management.accounts.status.notTested")
+				: t("nineRouter.connection.status.connected")
+			: t(`nineRouter.management.accounts.status.${account.status}`);
 
 	const saveAccount = async (id: string) => {
 		const submittedDraft = { ...editDraft };
@@ -106,23 +119,19 @@ export default function AccountEditor({
 	};
 
 	return (
-		<section aria-labelledby="nine-router-accounts-title" className="space-y-3">
+		<section aria-labelledby={headingId} className="space-y-3">
 			<div>
-				<h3
-					id="nine-router-accounts-title"
-					className="text-sm font-semibold text-foreground"
-				>
-					Connected accounts
+				<h3 id={headingId} className="text-sm font-semibold text-foreground">
+					{title}
 				</h3>
 				<p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-					Accounts available to Codex through the Provider Router.
+					{description}
 				</p>
 			</div>
 
 			{accounts.length === 0 ? (
 				<div className="border-y border-dashed border-border py-5 text-sm text-muted-foreground">
-					No accounts connected yet. Choose an option above to load its
-					available models.
+					{emptyMessage}
 				</div>
 			) : (
 				<div className="divide-y divide-border border-y border-border">
@@ -153,11 +162,14 @@ export default function AccountEditor({
 												</span>
 												<Badge
 													variant="outline"
-													className={statusTone[account.status]}
+													className={
+														account.status === "unknown" &&
+														!isApiKeyAccount(account)
+															? statusTone.healthy
+															: statusTone[account.status]
+													}
 												>
-													{t(
-														`nineRouter.management.accounts.status.${account.status}`,
-													)}
+													{statusLabel(account)}
 												</Badge>
 												<Badge variant="outline">{authLabel(account)}</Badge>
 												{!account.active && (

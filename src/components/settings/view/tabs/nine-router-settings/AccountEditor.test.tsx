@@ -38,7 +38,7 @@ async function renderAccountEditor(): Promise<string> {
 						authType: "oauth",
 						priority: null,
 						active: true,
-						status: "healthy",
+						status: "unknown",
 						lastError: null,
 						expiresAt: null,
 					},
@@ -49,7 +49,7 @@ async function renderAccountEditor(): Promise<string> {
 						authType: "apikey",
 						priority: 1,
 						active: true,
-						status: "limited",
+						status: "unknown",
 						lastError: null,
 						expiresAt: null,
 					},
@@ -70,19 +70,17 @@ async function renderAccountEditor(): Promise<string> {
 	);
 }
 
-test("connected accounts show provider identity, health, auth type, model count, and management actions", async () => {
+test("unknown account status uses authentication-specific language", async () => {
 	const markup = await renderAccountEditor();
 
-	assert.match(markup, /aria-label="Codex"/);
-	assert.match(markup, /work@example\.com/);
-	assert.match(markup, /Healthy/);
-	assert.match(markup, /OAuth/);
+	const oauthStart = markup.indexOf("work@example.com");
+	const apiKeyStart = markup.indexOf("Production");
+	assert.ok(oauthStart >= 0 && apiKeyStart > oauthStart);
+	assert.match(markup.slice(oauthStart, apiKeyStart), /Connected/);
+	assert.match(markup.slice(apiKeyStart), /Not tested/);
+	assert.equal(markup.includes(">Unknown<"), false);
 	assert.match(markup, /2 models/);
-	assert.match(markup, /Production/);
-	assert.match(markup, /Limited/);
-	assert.match(markup, /API key/);
 	assert.match(markup, /1 model/);
 	for (const action of ["Test", "Edit", "Disable", "Delete"])
 		assert.match(markup, new RegExp(action));
-	assert.equal(markup.includes("Add account"), false);
 });

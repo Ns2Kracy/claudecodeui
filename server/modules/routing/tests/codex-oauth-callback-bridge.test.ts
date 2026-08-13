@@ -42,7 +42,7 @@ test("Codex callback bridge is loopback-addressed, bounded, static, and short-li
 	});
 	try {
 		const callbackUrl = new URL(await bridge.start());
-		assert.equal(callbackUrl.hostname, "127.0.0.1");
+		assert.equal(callbackUrl.hostname, "localhost");
 		const port = Number(callbackUrl.port);
 
 		const response = await requestLoopback(

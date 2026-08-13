@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { ExternalLink, Loader2 } from "lucide-react";
+import { CheckCircle2, ExternalLink, Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import type { RoutingDeviceCodeChallengeView } from "../../../../../../shared/routing.js";
 import { Button } from "../../../../../shared/view/ui";
@@ -19,6 +20,8 @@ import { routingApi, RoutingApiError } from "./routingApi.js";
 type ProviderConnectionsProps = {
 	disabled: boolean;
 	onConnected: () => Promise<void> | void;
+	mode?: "all" | "oauth" | "apiKey";
+	hasCodexAccount?: boolean;
 };
 
 type SafeError = {
@@ -44,7 +47,10 @@ function safeError(error: unknown): SafeError {
 export default function ProviderConnections({
 	disabled,
 	onConnected,
+	mode = "all",
+	hasCodexAccount = false,
 }: ProviderConnectionsProps) {
+	const { t } = useTranslation("settings");
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<SafeError | null>(null);
@@ -171,76 +177,101 @@ export default function ProviderConnections({
 
 	return (
 		<div className="space-y-6">
-			<section
-				aria-labelledby="codex-oauth-title"
-				className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-center sm:justify-between"
-			>
-				<div className="flex min-w-0 gap-3">
-					<span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-foreground text-background">
-						<ProviderIcon icon={codex.icon} label="Codex" className="h-6 w-6" />
-					</span>
+			{mode !== "apiKey" && (
+				<section
+					aria-labelledby="codex-oauth-title"
+					className={`flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between ${mode === "all" ? "border-b border-border pb-6" : ""}`}
+				>
+					<div className="flex min-w-0 gap-3">
+						<span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-foreground text-background">
+							<ProviderIcon
+								icon={codex.icon}
+								label="Codex"
+								className="h-6 w-6"
+							/>
+						</span>
+						<div>
+							<h4
+								id="codex-oauth-title"
+								className="text-sm font-semibold text-foreground"
+							>
+								{t("nineRouter.management.authentication.oauth.title")}
+							</h4>
+							<p className="mt-1 max-w-xl text-sm leading-relaxed text-muted-foreground">
+								{t("nineRouter.management.authentication.oauth.description")}
+							</p>
+						</div>
+					</div>
+					<div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
+						{hasCodexAccount && (
+							<span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700 dark:text-emerald-300">
+								<CheckCircle2 className="h-4 w-4" />
+								{t("nineRouter.management.authentication.oauth.connected")}
+							</span>
+						)}
+						<Button
+							type="button"
+							variant={hasCodexAccount ? "outline" : "default"}
+							className="shrink-0"
+							disabled={disabled || busy}
+							onClick={() => void startOAuth(codex.id)}
+						>
+							{busy && selectedId === null ? (
+								<Loader2 className="animate-spin motion-reduce:animate-none" />
+							) : (
+								<ExternalLink />
+							)}
+							{t(
+								hasCodexAccount
+									? "nineRouter.management.authentication.oauth.addAnother"
+									: "nineRouter.management.authentication.oauth.continue",
+							)}
+						</Button>
+					</div>
+				</section>
+			)}
+
+			{mode !== "oauth" && (
+				<section
+					aria-labelledby="api-key-providers-title"
+					className="space-y-3"
+				>
 					<div>
 						<h4
-							id="codex-oauth-title"
+							id="api-key-providers-title"
 							className="text-sm font-semibold text-foreground"
 						>
-							Codex OAuth
+							{t("nineRouter.management.authentication.apiKey.title")}
 						</h4>
-						<p className="mt-1 max-w-xl text-sm leading-relaxed text-muted-foreground">
-							Sign in with ChatGPT. OAuth credentials stay in 9Router and are
-							never stored by CloudCLI.
+						<p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+							{t("nineRouter.management.authentication.apiKey.description")}
 						</p>
 					</div>
-				</div>
-				<Button
-					type="button"
-					className="shrink-0"
-					disabled={disabled || busy}
-					onClick={() => void startOAuth(codex.id)}
-				>
-					{busy && selectedId === null ? (
-						<Loader2 className="animate-spin motion-reduce:animate-none" />
-					) : (
-						<ExternalLink />
-					)}
-					Continue with ChatGPT
-				</Button>
-			</section>
-
-			<section aria-labelledby="api-key-providers-title" className="space-y-3">
-				<div>
-					<h4
-						id="api-key-providers-title"
-						className="text-sm font-semibold text-foreground"
+					<div
+						className="flex flex-wrap gap-2"
+						role="group"
+						aria-label={t(
+							"nineRouter.management.authentication.apiKey.providersLabel",
+						)}
 					>
-						API Key authentication
-					</h4>
-					<p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-						Choose a provider and confirm its API endpoint.
-					</p>
-				</div>
-				<div
-					className="flex flex-wrap gap-2"
-					role="list"
-					aria-label="API Key providers"
-				>
-					{apiKeyProfiles.map((item) => (
-						<Button
-							key={item.id}
-							type="button"
-							variant={selectedId === item.id ? "secondary" : "outline"}
-							disabled={disabled}
-							aria-expanded={selectedId === item.id}
-							onClick={() => select(item.id)}
-						>
-							<ProviderIcon icon={item.icon} label={item.name} />
-							{item.name}
-						</Button>
-					))}
-				</div>
-			</section>
+						{apiKeyProfiles.map((item) => (
+							<Button
+								key={item.id}
+								type="button"
+								variant={selectedId === item.id ? "secondary" : "outline"}
+								disabled={disabled}
+								aria-expanded={selectedId === item.id}
+								onClick={() => select(item.id)}
+							>
+								<ProviderIcon icon={item.icon} label={item.name} />
+								{item.name}
+							</Button>
+						))}
+					</div>
+				</section>
+			)}
 
-			{profile && (
+			{mode !== "oauth" && profile && (
 				<div className="border-l-2 border-primary/50 pl-4">
 					<ProviderConnectionDialog
 						key={profile.id}

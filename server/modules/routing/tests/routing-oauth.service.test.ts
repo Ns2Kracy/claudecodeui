@@ -272,15 +272,15 @@ test("codex auth-code starts a bounded localhost callback bridge without exposin
 		now: () => new Date(0),
 		randomId: () => "codex-transaction",
 		topology: { kind: "local", serverPort: 3001 },
-		codexCallback: { start: async () => "http://127.0.0.1:1455/auth/callback" },
+		codexCallback: { start: async () => "http://localhost:1455/auth/callback" },
 	});
 
 	const started = await service.startAuthorizationCode(7, "codex");
 
 	assert.deepEqual(calls, [
-		{ provider: "codex", redirectUri: "http://127.0.0.1:1455/auth/callback" },
+		{ provider: "codex", redirectUri: "http://localhost:1455/auth/callback" },
 	]);
-	assert.equal(started.redirectUri, "http://127.0.0.1:1455/auth/callback");
+	assert.equal(started.redirectUri, "http://localhost:1455/auth/callback");
 	assert.equal("state" in started, false);
 	assert.equal("codeVerifier" in started, false);
 });

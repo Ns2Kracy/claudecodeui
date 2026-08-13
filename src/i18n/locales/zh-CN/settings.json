@@ -660,6 +660,26 @@
         "delete": "删除",
         "confirmDelete": "确认删除"
       },
+      "authentication": {
+        "oauth": {
+          "title": "Codex OAuth",
+          "description": "使用 ChatGPT 登录。OAuth 凭据保存在 9Router 中，CloudCLI 不会存储。",
+          "connected": "已连接",
+          "continue": "使用 ChatGPT 登录",
+          "addAnother": "添加另一个 ChatGPT 账户",
+          "accountsTitle": "已连接的 ChatGPT 账户",
+          "accountsDescription": "Codex 可通过提供商路由器使用这些 ChatGPT 账户。",
+          "empty": "尚未连接 ChatGPT 账户。"
+        },
+        "apiKey": {
+          "title": "API Key 认证",
+          "description": "选择提供商并确认其 API 地址。",
+          "providersLabel": "API Key 提供商",
+          "accountsTitle": "已连接的 API Key 账户",
+          "accountsDescription": "Codex 可通过提供商路由器使用这些 API Key 账户。",
+          "empty": "尚未连接 API Key 账户。"
+        }
+      },
       "accounts": {
         "title": "上游账户",
         "description": "账户仍由提供商路由器权威管理。CloudCLI 仅显示安全的状态字段。",
@@ -686,7 +706,8 @@
           "cooling": "冷却中",
           "limited": "受限",
           "failed": "失败",
-          "unknown": "未知"
+          "unknown": "未知",
+          "notTested": "未测试"
         }
       },
       "connectProvider": "连接提供商",

@@ -6,8 +6,14 @@ import React, { createElement } from "react";
 import { I18nextProvider } from "react-i18next";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { emptyRoutingSettingsView } from "../../../../../../shared/routing.js";
+import {
+	emptyRoutingSettingsView,
+	type RoutingAccountView,
+} from "../../../../../../shared/routing.js";
 import englishSettings from "../../../../../i18n/locales/en/settings.json" with {
+	type: "json",
+};
+import chineseSettings from "../../../../../i18n/locales/zh-CN/settings.json" with {
 	type: "json",
 };
 
@@ -20,6 +26,8 @@ async function renderAccounts(
 		configured?: boolean;
 		loading?: boolean;
 		detailsError?: boolean;
+		accounts?: RoutingAccountView[];
+		language?: "en" | "zh-CN";
 	} = {},
 ): Promise<string> {
 	const settings = emptyRoutingSettingsView();
@@ -28,11 +36,14 @@ async function renderAccounts(
 	settings.runtime.capabilities.testAccounts = true;
 	const i18n = createInstance();
 	await i18n.init({
-		lng: "en",
+		lng: options.language ?? "en",
 		fallbackLng: "en",
 		ns: ["settings"],
 		defaultNS: "settings",
-		resources: { en: { settings: englishSettings } },
+		resources: {
+			en: { settings: englishSettings },
+			"zh-CN": { settings: chineseSettings },
+		},
 		interpolation: { escapeValue: false },
 	});
 
@@ -44,7 +55,7 @@ async function renderAccounts(
 				configured: options.configured ?? true,
 				connectionStatus: "connected",
 				capabilities: settings.runtime.capabilities,
-				accounts: [],
+				accounts: options.accounts ?? [],
 				models: [],
 				loading: options.loading ?? false,
 				detailsError: options.detailsError ?? false,
@@ -58,18 +69,70 @@ async function renderAccounts(
 	);
 }
 
-test("open Codex account surface exposes Provider Router connection methods", async () => {
+const codexAccount: RoutingAccountView = {
+	id: "codex-1",
+	provider: "codex",
+	name: "work@example.com",
+	authType: "oauth",
+	priority: null,
+	active: true,
+	status: "unknown",
+	lastError: null,
+	expiresAt: null,
+};
+
+const apiKeyAccount: RoutingAccountView = {
+	id: "deepseek-1",
+	provider: "deepseek",
+	name: "Production key",
+	authType: "apikey",
+	priority: null,
+	active: true,
+	status: "unknown",
+	lastError: null,
+	expiresAt: null,
+};
+
+test("provider authentication renders OAuth and API keys in separate cards", async () => {
+	const markup = await renderAccounts({
+		accounts: [codexAccount, apiKeyAccount],
+	});
+
+	const oauthStart = markup.indexOf("Codex OAuth");
+	const apiKeyStart = markup.indexOf("API Key authentication");
+	assert.ok(oauthStart >= 0 && apiKeyStart > oauthStart);
+	const oauthCard = markup.slice(oauthStart, apiKeyStart);
+	const apiKeyCard = markup.slice(apiKeyStart);
+	assert.match(oauthCard, /work@example\.com/);
+	assert.equal(oauthCard.includes("Production key"), false);
+	assert.match(oauthCard, /Connected/);
+	assert.match(oauthCard, /Add another ChatGPT account/);
+	assert.match(apiKeyCard, /Production key/);
+	assert.equal(apiKeyCard.includes("work@example.com"), false);
+	assert.match(apiKeyCard, /Not tested/);
+});
+
+test("authentication sections localize connected and untested states", async () => {
+	const markup = await renderAccounts({
+		accounts: [codexAccount, apiKeyAccount],
+		language: "zh-CN",
+	});
+
+	assert.match(markup, /已连接/);
+	assert.match(markup, /添加另一个 ChatGPT 账户/);
+	assert.match(markup, /API Key 认证/);
+	assert.match(markup, /未测试/);
+});
+
+test("empty account surface exposes both Provider Router connection methods", async () => {
 	const markup = await renderAccounts();
 
 	assert.match(markup, /Provider accounts/);
-	assert.equal(markup.includes("Manage provider accounts"), false);
 	assert.match(markup, /Codex OAuth/);
 	assert.match(markup, /Continue with ChatGPT/);
 	assert.match(markup, /API Key authentication/);
 	assert.equal(markup.includes("Popular API keys"), false);
 	assert.match(markup, /OpenAI Compatible/);
-	assert.match(markup, /Connected accounts/);
-	assert.equal(markup.includes("Add account"), false);
 });
 
 test("provider detail failures stay inside the account retry surface", async () => {

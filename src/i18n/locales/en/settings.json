@@ -668,6 +668,26 @@
         "delete": "Delete",
         "confirmDelete": "Confirm delete"
       },
+      "authentication": {
+        "oauth": {
+          "title": "Codex OAuth",
+          "description": "Sign in with ChatGPT. OAuth credentials stay in 9Router and are never stored by CloudCLI.",
+          "connected": "Connected",
+          "continue": "Continue with ChatGPT",
+          "addAnother": "Add another ChatGPT account",
+          "accountsTitle": "Connected ChatGPT accounts",
+          "accountsDescription": "ChatGPT accounts available to Codex through the Provider Router.",
+          "empty": "No ChatGPT accounts connected yet."
+        },
+        "apiKey": {
+          "title": "API Key authentication",
+          "description": "Choose a provider and confirm its API endpoint.",
+          "providersLabel": "API Key providers",
+          "accountsTitle": "Connected API key accounts",
+          "accountsDescription": "API key accounts available to Codex through the Provider Router.",
+          "empty": "No API key accounts connected yet."
+        }
+      },
       "accounts": {
         "title": "Upstream accounts",
         "description": "Accounts remain authoritative in the Provider Router. CloudCLI displays only safe status fields.",
@@ -694,7 +714,8 @@
           "cooling": "Cooling",
           "limited": "Limited",
           "failed": "Failed",
-          "unknown": "Unknown"
+          "unknown": "Unknown",
+          "notTested": "Not tested"
         }
       },
       "connectProvider": "Connect a provider",

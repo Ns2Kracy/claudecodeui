@@ -92,7 +92,7 @@ export function createCodexOAuthCallbackBridge(
 			const address = server.address();
 			if (!address || typeof address === "string")
 				throw new Error("Codex callback bridge did not bind a TCP port");
-			return `http://127.0.0.1:${address.port}${CALLBACK_PATH}`;
+			return `http://localhost:${address.port}${CALLBACK_PATH}`;
 		},
 		close,
 	};

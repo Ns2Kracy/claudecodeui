@@ -196,7 +196,9 @@ function sanitizeAccount(value: unknown, now: Date): RoutingAccountView {
 		errorCode.includes("rate")
 	) {
 		status = "limited";
-	} else if (["success", "valid", "healthy", "passed"].includes(testStatus)) {
+	} else if (
+		["active", "success", "valid", "healthy", "passed"].includes(testStatus)
+	) {
 		status = "healthy";
 	} else if (
 		["error", "failed", "invalid"].includes(testStatus) ||

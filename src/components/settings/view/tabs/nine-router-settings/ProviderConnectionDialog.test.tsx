@@ -108,6 +108,8 @@ test("connection chooser prioritizes ChatGPT OAuth and exposes one peer API-key 
 	}
 	assert.match(markup, /OpenAI Compatible/);
 	assert.match(markup, /aria-label="Codex"/);
+	assert.match(markup, /role="group" aria-label="API Key providers"/);
+	assert.equal(markup.includes('role="list"'), false);
 });
 
 test("API-key profiles expose editable Base URL and endpoint essentials", async () => {
@@ -158,29 +160,29 @@ test("Codex OAuth callback accepts only the started localhost redirect and popup
 	const popup = {} as Window;
 	const accepted = parseProviderOAuthCallback(
 		{
-			origin: "http://127.0.0.1:1455",
+			origin: "http://localhost:1455",
 			source: popup,
 			data: {
 				type: "routing-oauth-callback",
-				url: "http://127.0.0.1:1455/auth/callback?state=s&code=c",
+				url: "http://localhost:1455/auth/callback?state=s&code=c",
 			},
 		} as MessageEvent,
 		popup,
-		"http://127.0.0.1:1455/auth/callback",
+		"http://localhost:1455/auth/callback",
 	);
 	assert.deepEqual(accepted, { state: "s", code: "c" });
 	assert.equal(
 		parseProviderOAuthCallback(
 			{
-				origin: "http://127.0.0.1:1455",
+				origin: "http://localhost:1455",
 				source: {},
 				data: {
 					type: "routing-oauth-callback",
-					url: "http://127.0.0.1:1455/auth/callback?state=s&code=c",
+					url: "http://localhost:1455/auth/callback?state=s&code=c",
 				},
 			} as MessageEvent,
 			popup,
-			"http://127.0.0.1:1455/auth/callback",
+			"http://localhost:1455/auth/callback",
 		),
 		null,
 	);
@@ -195,7 +197,7 @@ test("Codex OAuth callback accepts only the started localhost redirect and popup
 				},
 			} as MessageEvent,
 			popup,
-			"http://127.0.0.1:1455/auth/callback",
+			"http://localhost:1455/auth/callback",
 		),
 		null,
 	);

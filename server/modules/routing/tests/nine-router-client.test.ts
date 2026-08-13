@@ -69,7 +69,7 @@ async function withFakeRouter(
 			authType: "apikey",
 			priority: 1,
 			isActive: true,
-			testStatus: "success",
+			testStatus: "active",
 			expiresAt: null,
 			apiKey: "planted-upstream-key",
 			accessToken: "planted-access-token",
