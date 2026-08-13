@@ -38,7 +38,7 @@ type ProviderModelsSessionStore = {
 
 type ProviderModelsServiceDependencies = {
 	resolveProvider?: (provider: LLMProvider) => Pick<IProvider, "models">;
-	listRoutingModels?: () => Promise<RoutingModelView[]>;
+	listRoutingModels?: (forceRefresh?: boolean) => Promise<RoutingModelView[]>;
 	cachePath?: string;
 	sessions?: ProviderModelsSessionStore;
 	now?: () => number;
@@ -163,7 +163,8 @@ export const createProviderModelsService = (
 	const resolveProvider =
 		dependencies.resolveProvider ?? providerRegistry.resolveProvider;
 	const listRoutingModels =
-		dependencies.listRoutingModels ?? (() => routingService.listModels(0));
+		dependencies.listRoutingModels ??
+		((forceRefresh = false) => routingService.listModels(0, forceRefresh));
 	const cachePath = dependencies.cachePath ?? getProviderModelsCachePath();
 	const sessions = dependencies.sessions ?? sessionsDb;
 	const now = dependencies.now ?? (() => Date.now());
@@ -278,8 +279,10 @@ export const createProviderModelsService = (
 		return { OPTIONS: options, DEFAULT: options[0]?.value ?? "" };
 	};
 
-	const loadRoutedCodexModels = (): Promise<ProviderModelsResult> => {
-		const request = listRoutingModels()
+	const loadRoutedCodexModels = (
+		forceRefresh = false,
+	): Promise<ProviderModelsResult> => {
+		const request = listRoutingModels(forceRefresh)
 			.then((routingModels) => {
 				const currentTime = now();
 				return {
@@ -398,7 +401,10 @@ export const createProviderModelsService = (
 		options: ProviderModelsOptions = {},
 	): Promise<ProviderModelsResult> => {
 		if (provider === "codex") {
-			return pendingRequests.get(provider) ?? loadRoutedCodexModels();
+			return (
+				pendingRequests.get(provider) ??
+				loadRoutedCodexModels(options.bypassCache === true)
+			);
 		}
 
 		if (UNCACHED_PROVIDERS.has(provider)) {

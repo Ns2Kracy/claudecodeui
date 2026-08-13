@@ -9,6 +9,7 @@ import type {
 	CreateRoutingApiKeyAccountInput,
 	CreateRoutingProviderNodeInput,
 	RoutingAccountView,
+	RoutingModelView,
 	RoutingOAuthPollingStateView,
 	RoutingRuntimeView,
 	RoutingSettingsView,
@@ -101,6 +102,21 @@ function runtimeView(
  */
 export function createRoutingService(dependencies: RoutingServiceDependencies) {
 	const now = dependencies.now ?? (() => new Date());
+	const modelSnapshotTtlMs = 5 * 60 * 1_000;
+	const modelSnapshots = new Map<
+		string,
+		{ models: RoutingModelView[]; expiresAt: number }
+	>();
+	let modelSnapshotGeneration = 0;
+	const pendingModelRequests = new Map<
+		string,
+		{ generation: number; request: Promise<RoutingModelView[]> }
+	>();
+
+	const expireModelSnapshots = (): void => {
+		modelSnapshotGeneration += 1;
+		for (const snapshot of modelSnapshots.values()) snapshot.expiresAt = 0;
+	};
 
 	function runtimeCredentials(): RoutingClientCredentials {
 		const status = dependencies.runtime.getStatus();
@@ -130,6 +146,77 @@ export function createRoutingService(dependencies: RoutingServiceDependencies) {
 		}
 	}
 
+	async function modelsForAccount(
+		client: IRoutingNineRouterClient,
+		account: RoutingAccountView,
+		forceRefresh: boolean,
+	): Promise<RoutingModelView[]> {
+		const snapshot = modelSnapshots.get(account.id);
+		if (!forceRefresh && snapshot && snapshot.expiresAt > now().getTime()) {
+			return snapshot.models;
+		}
+
+		const generation = modelSnapshotGeneration;
+		const pending = pendingModelRequests.get(account.id);
+		if (pending?.generation === generation) return pending.request;
+
+		const request = client
+			.listProviderModels(account.id)
+			.then((result) => {
+				if (generation === modelSnapshotGeneration) {
+					modelSnapshots.set(account.id, {
+						models: result.models,
+						expiresAt: now().getTime() + modelSnapshotTtlMs,
+					});
+				}
+				return result.models;
+			})
+			.catch((error) => {
+				if (snapshot) return snapshot.models;
+				throw error;
+			})
+			.finally(() => {
+				if (pendingModelRequests.get(account.id)?.request === request) {
+					pendingModelRequests.delete(account.id);
+				}
+			});
+		pendingModelRequests.set(account.id, { generation, request });
+		return request;
+	}
+
+	async function listConfiguredModels(
+		forceRefresh = false,
+		accountSnapshot?: RoutingAccountView[],
+		existingClient?: IRoutingNineRouterClient,
+	) {
+		const client = existingClient ?? clientForRuntime();
+		const accounts = (accountSnapshot ?? (await client.listAccounts())).filter(
+			(account) => account.active,
+		);
+		if (accounts.length === 0) return [];
+
+		const results = await Promise.allSettled(
+			accounts.map((account) =>
+				modelsForAccount(client, account, forceRefresh),
+			),
+		);
+		const models = new Map<string, RoutingModelView>();
+		let fulfilledAccounts = 0;
+		let firstError: unknown;
+		for (const result of results) {
+			if (result.status === "rejected") {
+				firstError ??= result.reason;
+				continue;
+			}
+			fulfilledAccounts += 1;
+			for (const model of result.value) {
+				if (!models.has(model.id)) models.set(model.id, model);
+			}
+		}
+		if (fulfilledAccounts === 0) throw firstError;
+		return [...models.values()];
+	}
+
 	return {
 		async getSettings(
 			_userId: number,
@@ -154,7 +241,9 @@ export function createRoutingService(dependencies: RoutingServiceDependencies) {
 					).length,
 				};
 				if (details.accounts) settings.accounts = accounts;
-				if (details.models) settings.models = await client.listModels(accounts);
+				if (details.models) {
+					settings.models = await listConfiguredModels(false, accounts, client);
+				}
 			} catch (error) {
 				const safeError = safeAppError(error);
 				settings.runtime.status =
@@ -170,8 +259,8 @@ export function createRoutingService(dependencies: RoutingServiceDependencies) {
 			return settings;
 		},
 
-		async listModels(_userId: number) {
-			return callSafely(() => clientForRuntime().listModels());
+		async listModels(_userId: number, forceRefresh = false) {
+			return callSafely(() => listConfiguredModels(forceRefresh));
 		},
 		async listAccounts(_userId: number) {
 			return callSafely(() => clientForRuntime().listAccounts());
@@ -192,10 +281,13 @@ export function createRoutingService(dependencies: RoutingServiceDependencies) {
 			provider: string,
 			input: { transactionId: string; state: string; code: string },
 		): Promise<RoutingAccountView> {
-			if (!dependencies.oauth) throw runtimeUnavailable();
-			return callSafely(() =>
-				dependencies.oauth!.completeAuthorizationCode(userId, provider, input),
+			const oauth = dependencies.oauth;
+			if (!oauth) throw runtimeUnavailable();
+			const account = await callSafely(() =>
+				oauth.completeAuthorizationCode(userId, provider, input),
 			);
+			expireModelSnapshots();
+			return account;
 		},
 		async startDeviceCode(userId: number, provider: string) {
 			if (!dependencies.oauth) throw runtimeUnavailable();
@@ -206,10 +298,13 @@ export function createRoutingService(dependencies: RoutingServiceDependencies) {
 			provider: string,
 			input: { transactionId: string },
 		): Promise<RoutingOAuthPollingStateView> {
-			if (!dependencies.oauth) throw runtimeUnavailable();
-			return callSafely(() =>
-				dependencies.oauth!.pollDeviceCode(userId, provider, input),
+			const oauth = dependencies.oauth;
+			if (!oauth) throw runtimeUnavailable();
+			const result = await callSafely(() =>
+				oauth.pollDeviceCode(userId, provider, input),
 			);
+			if (result.account) expireModelSnapshots();
+			return result;
 		},
 		async cancelDeviceCode(
 			userId: number,
@@ -226,7 +321,11 @@ export function createRoutingService(dependencies: RoutingServiceDependencies) {
 			_userId: number,
 			input: CreateRoutingProviderNodeInput,
 		) {
-			return callSafely(() => clientForRuntime().createProviderNode(input));
+			const node = await callSafely(() =>
+				clientForRuntime().createProviderNode(input),
+			);
+			expireModelSnapshots();
+			return node;
 		},
 		async validateProviderNode(
 			_userId: number,
@@ -239,29 +338,46 @@ export function createRoutingService(dependencies: RoutingServiceDependencies) {
 			id: string,
 			input: UpdateRoutingProviderNodeInput,
 		) {
-			return callSafely(() => clientForRuntime().updateProviderNode(id, input));
+			const node = await callSafely(() =>
+				clientForRuntime().updateProviderNode(id, input),
+			);
+			expireModelSnapshots();
+			return node;
 		},
 		async deleteProviderNode(_userId: number, id: string): Promise<void> {
 			await callSafely(() => clientForRuntime().deleteProviderNode(id));
+			expireModelSnapshots();
 		},
 		async createApiKeyAccount(
 			_userId: number,
 			input: CreateRoutingApiKeyAccountInput,
 		) {
-			return callSafely(() => clientForRuntime().createApiKeyAccount(input));
+			const account = await callSafely(() =>
+				clientForRuntime().createApiKeyAccount(input),
+			);
+			expireModelSnapshots();
+			return account;
 		},
 		async updateAccount(
 			_userId: number,
 			id: string,
 			input: UpdateRoutingAccountInput,
 		) {
-			return callSafely(() => clientForRuntime().updateAccount(id, input));
+			const account = await callSafely(() =>
+				clientForRuntime().updateAccount(id, input),
+			);
+			expireModelSnapshots();
+			return account;
 		},
 		async deleteAccount(_userId: number, id: string): Promise<void> {
 			await callSafely(() => clientForRuntime().deleteAccount(id));
+			modelSnapshots.delete(id);
+			expireModelSnapshots();
 		},
 		async testAccount(_userId: number, id: string) {
-			return callSafely(() => clientForRuntime().testAccount(id));
+			const result = await callSafely(() => clientForRuntime().testAccount(id));
+			if (result.refreshed) expireModelSnapshots();
+			return result;
 		},
 	};
 }

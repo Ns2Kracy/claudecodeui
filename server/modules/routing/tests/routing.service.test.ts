@@ -182,7 +182,7 @@ test("settings report sidecar runtime without connection storage", async () => {
 	assert.equal(settings.accounts?.length, 1);
 	assert.equal(settings.models?.length, 1);
 	assert.deepEqual(settings.runtime.capabilities.cursorRuntime, false);
-	assert.equal(calls.includes("client"), true);
+	assert.equal(calls.filter((call) => call === "client").length, 1);
 });
 
 test("unavailable embedded runtime is safe and typed for explicit 9router operations", async () => {
@@ -219,4 +219,279 @@ test("provider management workflows delegate through sanitized 9router client co
 		models: [{ id: "openai/gpt-4o", provider: "openai", name: "GPT-4o" }],
 	});
 	assert.equal((await service.listProviderNodes(7))[0].id, "node1");
+});
+
+type CatalogAccount = {
+	id: string;
+	provider: string;
+	name: string;
+	authType: "oauth" | "apikey";
+	priority: number | null;
+	active: boolean;
+	status: "healthy";
+	lastError: null;
+	expiresAt: null;
+};
+
+const catalogAccount = (id: string, provider: string): CatalogAccount => ({
+	id,
+	provider,
+	name: provider,
+	authType: provider === "codex" ? "oauth" : "apikey",
+	priority: null,
+	active: true,
+	status: "healthy",
+	lastError: null,
+	expiresAt: null,
+});
+
+function createCatalogHarness(options: {
+	accounts: CatalogAccount[];
+	listProviderModels: (id: string) => Promise<any>;
+	now?: () => Date;
+	updateAccount?: (id: string) => Promise<any>;
+}) {
+	const client = {
+		listAccounts: async () => options.accounts,
+		listProviderModels: options.listProviderModels,
+		listModels: async () => {
+			const entries = await Promise.all(
+				options.accounts.map((account) =>
+					options.listProviderModels(account.id),
+				),
+			);
+			return entries.flatMap((entry: any) => entry.models);
+		},
+		updateAccount:
+			options.updateAccount ??
+			(async (id: string) => ({ ...options.accounts[0], id })),
+	};
+	return createRoutingService({
+		runtime: {
+			getStatus: () => ({
+				state: "ready" as const,
+				origin: "http://127.0.0.1:20128",
+				version: "0.5.45",
+				lastError: null,
+			}),
+			getInternalCredentials: () => ({
+				jwtSecret: "jwt",
+				initialPassword: "admin",
+				apiKeySecret: "hmac-secret",
+				dataPlaneKey: "data-plane-key",
+				machineIdSalt: "salt",
+				dataDir: "/db/9router",
+			}),
+		},
+		clientFactory: () => client as never,
+		now: options.now,
+	});
+}
+
+test("concurrent model catalog reads share one account refresh", async () => {
+	const account = catalogAccount("codex-1", "codex");
+	let calls = 0;
+	let release!: () => void;
+	const gate = new Promise<void>((resolve) => {
+		release = resolve;
+	});
+	const service = createCatalogHarness({
+		accounts: [account],
+		listProviderModels: async (id) => {
+			calls += 1;
+			await gate;
+			return {
+				provider: "codex",
+				connectionId: id,
+				models: [{ id: "codex/gpt-5.4", provider: "codex", name: "GPT 5.4" }],
+			};
+		},
+	});
+
+	const first = service.listModels(1);
+	const second = service.listModels(2);
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.equal(calls, 1);
+	release();
+	assert.deepEqual(await first, await second);
+});
+
+test("an expired account catalog falls back to its last successful snapshot", async () => {
+	const account = catalogAccount("codex-1", "codex");
+	let currentTime = new Date("2026-08-13T00:00:00.000Z");
+	let fail = false;
+	const service = createCatalogHarness({
+		accounts: [account],
+		now: () => currentTime,
+		listProviderModels: async (id) => {
+			if (fail) throw new Error("headers timeout");
+			return {
+				provider: "codex",
+				connectionId: id,
+				models: [{ id: "codex/gpt-5.4", provider: "codex", name: "GPT 5.4" }],
+			};
+		},
+	});
+
+	const initial = await service.listModels(1);
+	currentTime = new Date(currentTime.getTime() + 5 * 60 * 1_000 + 1);
+	fail = true;
+	assert.deepEqual(await service.listModels(1), initial);
+});
+
+test("one account model failure does not discard another account catalog", async () => {
+	const service = createCatalogHarness({
+		accounts: [
+			catalogAccount("codex-1", "codex"),
+			catalogAccount("deepseek-1", "deepseek"),
+		],
+		listProviderModels: async (id) => {
+			if (id === "codex-1") throw new Error("headers timeout");
+			return {
+				provider: "deepseek",
+				connectionId: id,
+				models: [
+					{
+						id: "deepseek/deepseek-v4-flash",
+						provider: "deepseek",
+						name: "DeepSeek V4 Flash",
+					},
+				],
+			};
+		},
+	});
+
+	assert.deepEqual(await service.listModels(1), [
+		{
+			id: "deepseek/deepseek-v4-flash",
+			provider: "deepseek",
+			name: "DeepSeek V4 Flash",
+		},
+	]);
+});
+
+test("account updates expire a fresh snapshot without deleting its fallback", async () => {
+	const account = catalogAccount("codex-1", "codex");
+	let calls = 0;
+	const service = createCatalogHarness({
+		accounts: [account],
+		listProviderModels: async (id) => {
+			calls += 1;
+			return {
+				provider: "codex",
+				connectionId: id,
+				models: [{ id: "codex/gpt-5.4", provider: "codex", name: "GPT 5.4" }],
+			};
+		},
+	});
+
+	await service.listModels(1);
+	await service.listModels(1);
+	assert.equal(calls, 1);
+	await service.updateAccount(1, account.id, { name: "Updated" });
+	await service.listModels(1);
+	assert.equal(calls, 2);
+});
+
+test("account mutation detaches an in-flight pre-mutation model refresh", async () => {
+	const account = catalogAccount("codex-1", "codex");
+	let calls = 0;
+	const releases: Array<() => void> = [];
+	const service = createCatalogHarness({
+		accounts: [account],
+		listProviderModels: async (id) => {
+			calls += 1;
+			const call = calls;
+			await new Promise<void>((resolve) => {
+				releases[call - 1] = resolve;
+			});
+			return {
+				provider: "codex",
+				connectionId: id,
+				models: [
+					{
+						id: `codex/gpt-generation-${call}`,
+						provider: "codex",
+						name: `Generation ${call}`,
+					},
+				],
+			};
+		},
+	});
+
+	const beforeMutation = service.listModels(1);
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.equal(calls, 1);
+
+	await service.updateAccount(1, account.id, { name: "Updated" });
+	const afterMutation = service.listModels(1);
+	await new Promise((resolve) => setImmediate(resolve));
+	const callsAfterMutation = calls;
+
+	releases[1]?.();
+	releases[0]?.();
+	await beforeMutation;
+	const refreshed = await afterMutation;
+
+	assert.equal(callsAfterMutation, 2);
+	assert.equal(refreshed[0]?.id, "codex/gpt-generation-2");
+	assert.equal((await service.listModels(1))[0]?.id, "codex/gpt-generation-2");
+});
+
+test("hard refresh bypasses a fresh model snapshot", async () => {
+	const account = catalogAccount("codex-1", "codex");
+	let calls = 0;
+	const service = createCatalogHarness({
+		accounts: [account],
+		listProviderModels: async (id) => {
+			calls += 1;
+			return {
+				provider: "codex",
+				connectionId: id,
+				models: [{ id: "codex/gpt-5.4", provider: "codex", name: "GPT 5.4" }],
+			};
+		},
+	});
+
+	await service.listModels(1);
+	await service.listModels(1, true);
+	assert.equal(calls, 2);
+});
+
+test("a successful empty account catalog prevents another failure from failing the aggregate", async () => {
+	const service = createCatalogHarness({
+		accounts: [
+			catalogAccount("codex-1", "codex"),
+			catalogAccount("deepseek-1", "deepseek"),
+		],
+		listProviderModels: async (id) => {
+			if (id === "codex-1") throw new Error("headers timeout");
+			return { provider: "deepseek", connectionId: id, models: [] };
+		},
+	});
+
+	assert.deepEqual(await service.listModels(1), []);
+});
+
+test("all-account failure throws even when a provider rejects without an error value", async () => {
+	const service = createCatalogHarness({
+		accounts: [catalogAccount("codex-1", "codex")],
+		listProviderModels: async () => Promise.reject(undefined),
+	});
+
+	await assert.rejects(() => service.listModels(1));
+});
+
+test("the first catalog load still fails when every active account fails", async () => {
+	const service = createCatalogHarness({
+		accounts: [catalogAccount("codex-1", "codex")],
+		listProviderModels: async () => {
+			throw new Error("headers timeout");
+		},
+	});
+
+	await assert.rejects(
+		() => service.listModels(1),
+		(error: any) => error.code === "ROUTING_OPERATION_FAILED",
+	);
 });

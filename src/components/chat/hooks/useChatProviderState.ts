@@ -19,8 +19,10 @@ import {
 export function withUnavailableSelectedModel(
 	options: ProviderModelOption[],
 	selectedModel: string,
+	catalogLoaded = true,
 ): ProviderModelOption[] {
 	if (
+		!catalogLoaded ||
 		!selectedModel ||
 		options.some((option) => option.value === selectedModel)
 	) {
@@ -36,7 +38,22 @@ export function withUnavailableSelectedModel(
 	];
 }
 
-const FALLBACK_CODEX_MODEL = "gpt-5.4";
+export function initialCodexModel(storedModel: string | null): string {
+	const normalized = storedModel?.trim() ?? "";
+	return normalized.includes("/") ? normalized : "";
+}
+
+export function resolveCatalogModel(
+	options: ProviderModelOption[],
+	model: string,
+): string {
+	if (!model || options.some((option) => option.value === model)) return model;
+	if (model.includes("/")) return model;
+	const matches = options.filter((option) =>
+		option.value.endsWith(`/${model}`),
+	);
+	return matches.length === 1 ? matches[0].value : model;
+}
 
 export const ACTIVE_PROVIDERS = [
 	"codex",
@@ -128,9 +145,9 @@ export function useChatProviderState({
 		PendingPermissionRequest[]
 	>([]);
 	const provider = readStoredProvider();
-	const [codexModel, setCodexModel] = useState<string>(() => {
-		return localStorage.getItem("codex-model") || FALLBACK_CODEX_MODEL;
-	});
+	const [codexModel, setCodexModel] = useState<string>(() =>
+		initialCodexModel(localStorage.getItem("codex-model")),
+	);
 	const [providerEfforts, setProviderEfforts] = useState<
 		Partial<Record<LLMProvider, string>>
 	>(() => {
@@ -240,8 +257,14 @@ export function useChatProviderState({
 					nextCacheCatalog[p] = entry.cache;
 				});
 
-				setProviderModelCatalog(nextCatalog);
-				setProviderModelCacheCatalog(nextCacheCatalog);
+				setProviderModelCatalog((previous) => ({
+					...previous,
+					...nextCatalog,
+				}));
+				setProviderModelCacheCatalog((previous) => ({
+					...previous,
+					...nextCacheCatalog,
+				}));
 			} catch (error) {
 				console.error("Error loading provider models:", error);
 			} finally {
@@ -458,7 +481,7 @@ export function useChatProviderState({
 		if (hasUpdates) {
 			setProviderEfforts((previous) => ({ ...previous, ...nextEfforts }));
 		}
-	}, [providerEfforts, providerModels, reconcileStoredEffort]);
+	}, [codexModel, providerEfforts, providerModels, reconcileStoredEffort]);
 
 	useEffect(() => {
 		const validModes = getPermissionModesForProvider(provider);
@@ -641,7 +664,12 @@ export function useChatProviderState({
 
 	// The open session's model wins over the per-provider default, so switching
 	// sessions shows (and sends) what each session actually runs with.
-	const currentProviderModel = sessionModel ?? codexModel;
+	const selectedProviderModel = sessionModel ?? codexModel;
+	const currentCatalog = providerModelCatalog[provider];
+	const currentProviderModel = resolveCatalogModel(
+		currentCatalog?.OPTIONS ?? [],
+		selectedProviderModel,
+	);
 	const currentProviderEffortOptions = useMemo(() => {
 		return getEffortOptionsForModel(provider, currentProviderModel);
 	}, [currentProviderModel, getEffortOptionsForModel, provider]);
@@ -653,17 +681,18 @@ export function useChatProviderState({
 		);
 	}, [currentProviderModel, provider, providerEfforts, reconcileStoredEffort]);
 	const currentProviderModelAvailable = Boolean(
-		providerModelCatalog[provider]?.OPTIONS.some(
+		currentCatalog?.OPTIONS.some(
 			(option) => option.value === currentProviderModel,
 		),
 	);
 	const currentProviderModelOptions = useMemo(
 		() =>
 			withUnavailableSelectedModel(
-				providerModelCatalog[provider]?.OPTIONS ?? [],
+				currentCatalog?.OPTIONS ?? [],
 				currentProviderModel,
+				Boolean(currentCatalog),
 			),
-		[currentProviderModel, provider, providerModelCatalog],
+		[currentCatalog, currentProviderModel],
 	);
 
 	return {
