@@ -36,12 +36,21 @@ async function render(element: ReactElement): Promise<string> {
   return renderToStaticMarkup(createElement(I18nextProvider, { i18n }, element));
 }
 
-test('provider runtime profiles expose only supported connection methods', () => {
-  assert.deepEqual(methodsForProvider('openai'), ['api_key']);
-  assert.deepEqual(methodsForProvider('claude'), ['oauth']);
-  assert.deepEqual(methodsForProvider('github'), ['device_code']);
-  assert.deepEqual(methodsForProvider('custom'), ['custom']);
-  assert.equal(NINE_ROUTER_PROVIDER_PROFILES.some((profile) => profile.methods.length === 0), false);
+test('provider catalog exposes Codex OAuth, five popular API-key providers, and OpenAI Compatible', () => {
+  assert.deepEqual(methodsForProvider('codex'), ['oauth']);
+  assert.deepEqual(
+    NINE_ROUTER_PROVIDER_PROFILES
+      .filter((profile) => profile.group === 'popular')
+      .map((profile) => profile.id),
+    ['openai', 'anthropic', 'gemini', 'deepseek', 'openrouter'],
+  );
+  assert.deepEqual(methodsForProvider('openai-compatible'), ['custom']);
+  assert.equal(
+    NINE_ROUTER_PROVIDER_PROFILES.every(
+      (profile) => profile.methods.length > 0 && profile.icon.length > 0,
+    ),
+    true,
+  );
 });
 
 test('OAuth launch allowlist accepts HTTPS and loopback HTTP only', () => {
@@ -85,7 +94,7 @@ test('device flow renders verification, code, expiry, pending, cancellation, and
 
 test('topology errors explain the problem and offer a device-code alternative when supported', async () => {
   const markup = await render(createElement(ProviderConnectionDialog, {
-    profile: { id: 'example', name: 'Example', methods: ['oauth', 'device_code'] },
+    profile: { id: 'example', name: 'Example', description: 'Example provider', group: 'oauth', icon: 'openai', methods: ['oauth', 'device_code'] },
     busy: false,
     error: {
       code: 'ROUTING_OAUTH_TOPOLOGY_UNSUPPORTED',
