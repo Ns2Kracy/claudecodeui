@@ -112,8 +112,7 @@
     "browser": "浏览器",
     "notifications": "通知",
     "plugins": "插件",
-    "about": "关于",
-    "routing": "提供商"
+    "about": "关于"
   },
   "notifications": {
     "title": "通知",

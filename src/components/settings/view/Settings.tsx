@@ -14,7 +14,6 @@ import NotificationsSettingsTab from "../view/tabs/NotificationsSettingsTab";
 import TasksSettingsTab from "../view/tabs/tasks-settings/TasksSettingsTab";
 import PluginSettingsTab from "../../plugins/view/PluginSettingsTab";
 import AboutTab from "../view/tabs/AboutTab";
-import NineRouterSettingsTab from "../view/tabs/nine-router-settings/NineRouterSettingsTab";
 import { useSettingsController } from "../hooks/useSettingsController";
 import { useWebPush } from "../../../hooks/useWebPush";
 import type { SettingsProps } from "../types/types";
@@ -190,8 +189,6 @@ function Settings({
 							)}
 
 							{activeTab === "git" && <GitSettingsTab />}
-
-							{activeTab === "routing" && <NineRouterSettingsTab />}
 
 							{activeTab === "agents" && (
 								<AgentsSettingsTab

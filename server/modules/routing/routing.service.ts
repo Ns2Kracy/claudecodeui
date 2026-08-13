@@ -29,19 +29,11 @@ type RuntimeCredentialsProvider = {
 	getInternalCredentials(): NineRouterInternalCredentials;
 };
 
-type CodexConfigPort = {
-	applyCustomProvider(input: {
-		baseUrl: string;
-		apiKey: string;
-	}): Promise<{ provider: "Custom" }>;
-};
-
 type RoutingServiceDependencies = {
 	runtime: RuntimeCredentialsProvider;
 	clientFactory(
 		credentials: RoutingClientCredentials,
 	): IRoutingNineRouterClient;
-	codexConfig: CodexConfigPort;
 	oauth?: ReturnType<typeof createRoutingOAuthService>;
 	now?: () => Date;
 };
@@ -176,16 +168,6 @@ export function createRoutingService(dependencies: RoutingServiceDependencies) {
 				};
 			}
 			return settings;
-		},
-
-		async applyToCodex(_userId: number): Promise<{ provider: "Custom" }> {
-			return callSafely(async () => {
-				const credentials = runtimeCredentials();
-				return dependencies.codexConfig.applyCustomProvider({
-					baseUrl: `${credentials.baseUrl}/api/v1`,
-					apiKey: credentials.dataPlaneKey,
-				});
-			});
 		},
 
 		async listModels(_userId: number) {

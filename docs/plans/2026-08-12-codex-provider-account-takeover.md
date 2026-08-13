@@ -4,7 +4,7 @@
 
 **Goal:** Fix current 9Router model parsing and make the Codex account settings screen reuse the Provider Router account manager.
 
-**Architecture:** Extend the existing trust-boundary sanitizer for the current OpenAI model shape without synthesizing IDs. Extract one data-owning Provider Accounts manager and reuse it in both settings locations.
+**Architecture:** Extend the existing trust-boundary sanitizer for the current OpenAI model shape without synthesizing IDs. Use one data-owning Provider Accounts manager as the sole account surface under Agents → Codex → Account.
 
 **Tech Stack:** TypeScript, React, node:test, react-dom/server, Docker Compose
 
@@ -22,16 +22,17 @@
 3. Pass the envelope provider into model sanitation; accept authoritative `id`, derive display name from optional alias/name/model or ID, and preserve old shape support.
 4. Run the routing client tests.
 
-### Task 2: Shared Provider Accounts manager
+### Task 2: Provider Accounts manager
 
 **Files:**
 
 - Create: `src/components/settings/view/tabs/nine-router-settings/ProviderAccountsManager.tsx`
-- Modify: `src/components/settings/view/tabs/nine-router-settings/NineRouterSettingsTab.tsx`
+- Delete: `src/components/settings/view/tabs/nine-router-settings/NineRouterSettingsTab.tsx`
+- Delete: `src/components/settings/view/tabs/nine-router-settings/NineRouterSettingsTab.test.tsx`
 
-1. Extract the hook-owned account props from `NineRouterSettingsTab` into `ProviderAccountsManager`.
-2. Keep `NineRouterSettingsTabView` unchanged for presentation tests.
-3. Replace the routing page’s container-level account section with the shared manager without duplicating state.
+1. Move hook-owned account props into `ProviderAccountsManager`.
+2. Render it only from Agents → Codex → Account.
+3. Remove the duplicate Provider settings navigation and the manual Apply-to-Codex frontend action.
 
 ### Task 3: Codex account takeover
 

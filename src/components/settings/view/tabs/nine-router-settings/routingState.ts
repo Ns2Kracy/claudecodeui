@@ -27,7 +27,6 @@ export type RoutingState = {
 	error: RoutingUiError | null;
 	errorContext: RoutingErrorContext | null;
 	activeMutation: string | null;
-	codexApplied: boolean;
 	detailStatus: Partial<Record<RoutingDetailKey, RoutingDetailStatus>>;
 };
 
@@ -63,7 +62,6 @@ export function createInitialRoutingState(): RoutingState {
 		error: null,
 		errorContext: null,
 		activeMutation: null,
-		codexApplied: false,
 		detailStatus: {},
 	};
 }
@@ -219,7 +217,6 @@ export function routingStateReducer(
 			return {
 				...state,
 				activeMutation: action.key,
-				codexApplied: action.key === "codex:apply" ? false : state.codexApplied,
 				error: null,
 				errorContext: null,
 			};
@@ -228,7 +225,6 @@ export function routingStateReducer(
 				...state,
 				loading: false,
 				activeMutation: null,
-				codexApplied: action.key === "codex:apply" ? true : state.codexApplied,
 				error: null,
 				errorContext: null,
 			};

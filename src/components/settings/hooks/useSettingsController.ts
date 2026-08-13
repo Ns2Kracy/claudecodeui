@@ -1,367 +1,426 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from "react";
 
-import { useTheme } from '../../../contexts/ThemeContext';
-import { authenticatedFetch } from '../../../utils/api';
-import { setNotificationSoundEnabled } from '../../../utils/notificationSound';
+import { useTheme } from "../../../contexts/ThemeContext";
+import { authenticatedFetch } from "../../../utils/api";
+import { setNotificationSoundEnabled } from "../../../utils/notificationSound";
 import {
-  DEFAULT_CODE_EDITOR_SETTINGS,
-  DEFAULT_CURSOR_PERMISSIONS,
-} from '../constants/constants';
+	DEFAULT_CODE_EDITOR_SETTINGS,
+	DEFAULT_CURSOR_PERMISSIONS,
+} from "../constants/constants";
 import type {
-  ClaudePermissionsState,
-  CodeEditorSettingsState,
-  CodexPermissionMode,
-  CursorPermissionsState,
-  NotificationPreferencesState,
-  ProjectSortOrder,
-  SettingsMainTab,
-} from '../types/types';
+	ClaudePermissionsState,
+	CodeEditorSettingsState,
+	CodexPermissionMode,
+	CursorPermissionsState,
+	NotificationPreferencesState,
+	ProjectSortOrder,
+	SettingsMainTab,
+} from "../types/types";
 
 type ThemeContextValue = {
-  isDarkMode: boolean;
-  toggleDarkMode: () => void;
+	isDarkMode: boolean;
+	toggleDarkMode: () => void;
 };
 
 type UseSettingsControllerArgs = {
-  isOpen: boolean;
-  initialTab: string;
+	isOpen: boolean;
+	initialTab: string;
 };
 
 type ClaudeSettingsStorage = {
-  allowedTools?: string[];
-  disallowedTools?: string[];
-  skipPermissions?: boolean;
-  projectSortOrder?: ProjectSortOrder;
+	allowedTools?: string[];
+	disallowedTools?: string[];
+	skipPermissions?: boolean;
+	projectSortOrder?: ProjectSortOrder;
 };
 
 type CursorSettingsStorage = {
-  allowedCommands?: string[];
-  disallowedCommands?: string[];
-  skipPermissions?: boolean;
+	allowedCommands?: string[];
+	disallowedCommands?: string[];
+	skipPermissions?: boolean;
 };
 
 type CodexSettingsStorage = {
-  permissionMode?: CodexPermissionMode;
+	permissionMode?: CodexPermissionMode;
 };
 
 type NotificationPreferencesResponse = {
-  success?: boolean;
-  preferences?: NotificationPreferencesState;
+	success?: boolean;
+	preferences?: NotificationPreferencesState;
 };
 
+const KNOWN_MAIN_TABS: SettingsMainTab[] = [
+	"agents",
+	"appearance",
+	"git",
+	"api",
+	"voice",
+	"tasks",
+	"browser",
+	"notifications",
+	"plugins",
+	"about",
+];
 
-const KNOWN_MAIN_TABS: SettingsMainTab[] = ['agents', 'routing', 'appearance', 'git', 'api', 'voice', 'tasks', 'browser', 'notifications', 'plugins', 'about'];
+export const normalizeMainTab = (tab: string): SettingsMainTab => {
+	// Keep old links on the sole Codex settings surface after tab consolidation.
+	if (tab === "tools" || tab === "routing") {
+		return "agents";
+	}
 
-const normalizeMainTab = (tab: string): SettingsMainTab => {
-  // Keep backwards compatibility with older callers that still pass "tools".
-  if (tab === 'tools') {
-    return 'agents';
-  }
-
-  return KNOWN_MAIN_TABS.includes(tab as SettingsMainTab) ? (tab as SettingsMainTab) : 'agents';
+	return KNOWN_MAIN_TABS.includes(tab as SettingsMainTab)
+		? (tab as SettingsMainTab)
+		: "agents";
 };
 
 const parseJson = <T>(value: string | null, fallback: T): T => {
-  if (!value) {
-    return fallback;
-  }
+	if (!value) {
+		return fallback;
+	}
 
-  try {
-    return JSON.parse(value) as T;
-  } catch {
-    return fallback;
-  }
+	try {
+		return JSON.parse(value) as T;
+	} catch {
+		return fallback;
+	}
 };
 
 const toCodexPermissionMode = (value: unknown): CodexPermissionMode => {
-  if (value === 'acceptEdits' || value === 'bypassPermissions') {
-    return value;
-  }
+	if (value === "acceptEdits" || value === "bypassPermissions") {
+		return value;
+	}
 
-  return 'default';
+	return "default";
 };
 
 const readCodeEditorSettings = (): CodeEditorSettingsState => ({
-  wordWrap: localStorage.getItem('codeEditorWordWrap') === 'true',
-  showMinimap: localStorage.getItem('codeEditorShowMinimap') !== 'false',
-  lineNumbers: localStorage.getItem('codeEditorLineNumbers') !== 'false',
-  fontSize: localStorage.getItem('codeEditorFontSize') ?? DEFAULT_CODE_EDITOR_SETTINGS.fontSize,
+	wordWrap: localStorage.getItem("codeEditorWordWrap") === "true",
+	showMinimap: localStorage.getItem("codeEditorShowMinimap") !== "false",
+	lineNumbers: localStorage.getItem("codeEditorLineNumbers") !== "false",
+	fontSize:
+		localStorage.getItem("codeEditorFontSize") ??
+		DEFAULT_CODE_EDITOR_SETTINGS.fontSize,
 });
 
-const toResponseJson = async <T>(response: Response): Promise<T> => response.json() as Promise<T>;
+const toResponseJson = async <T>(response: Response): Promise<T> =>
+	response.json() as Promise<T>;
 
 const createEmptyClaudePermissions = (): ClaudePermissionsState => ({
-  allowedTools: [],
-  disallowedTools: [],
-  skipPermissions: false,
+	allowedTools: [],
+	disallowedTools: [],
+	skipPermissions: false,
 });
 
 const createEmptyCursorPermissions = (): CursorPermissionsState => ({
-  ...DEFAULT_CURSOR_PERMISSIONS,
+	...DEFAULT_CURSOR_PERMISSIONS,
 });
 
-const createDefaultNotificationPreferences = (): NotificationPreferencesState => ({
-  channels: {
-    inApp: true,
-    webPush: false,
-    desktop: false,
-    sound: true,
-  },
-  events: {
-    actionRequired: true,
-    stop: true,
-    error: true,
-  },
-});
+const createDefaultNotificationPreferences =
+	(): NotificationPreferencesState => ({
+		channels: {
+			inApp: true,
+			webPush: false,
+			desktop: false,
+			sound: true,
+		},
+		events: {
+			actionRequired: true,
+			stop: true,
+			error: true,
+		},
+	});
 
 const normalizeNotificationPreferences = (
-  preferences?: Partial<NotificationPreferencesState> | null,
+	preferences?: Partial<NotificationPreferencesState> | null,
 ): NotificationPreferencesState => {
-  const defaults = createDefaultNotificationPreferences();
+	const defaults = createDefaultNotificationPreferences();
 
-  return {
-    channels: {
-      inApp: preferences?.channels?.inApp ?? defaults.channels.inApp,
-      webPush: preferences?.channels?.webPush ?? defaults.channels.webPush,
-      desktop: preferences?.channels?.desktop ?? defaults.channels.desktop,
-      sound: preferences?.channels?.sound ?? defaults.channels.sound,
-    },
-    events: {
-      actionRequired: preferences?.events?.actionRequired ?? defaults.events.actionRequired,
-      stop: preferences?.events?.stop ?? defaults.events.stop,
-      error: preferences?.events?.error ?? defaults.events.error,
-    },
-  };
+	return {
+		channels: {
+			inApp: preferences?.channels?.inApp ?? defaults.channels.inApp,
+			webPush: preferences?.channels?.webPush ?? defaults.channels.webPush,
+			desktop: preferences?.channels?.desktop ?? defaults.channels.desktop,
+			sound: preferences?.channels?.sound ?? defaults.channels.sound,
+		},
+		events: {
+			actionRequired:
+				preferences?.events?.actionRequired ?? defaults.events.actionRequired,
+			stop: preferences?.events?.stop ?? defaults.events.stop,
+			error: preferences?.events?.error ?? defaults.events.error,
+		},
+	};
 };
 
-export function useSettingsController({ isOpen, initialTab }: UseSettingsControllerArgs) {
-  const { isDarkMode, toggleDarkMode } = useTheme() as ThemeContextValue;
-  const closeTimerRef = useRef<number | null>(null);
+export function useSettingsController({
+	isOpen,
+	initialTab,
+}: UseSettingsControllerArgs) {
+	const { isDarkMode, toggleDarkMode } = useTheme() as ThemeContextValue;
+	const closeTimerRef = useRef<number | null>(null);
 
-  const [activeTab, setActiveTab] = useState<SettingsMainTab>(() => normalizeMainTab(initialTab));
-  const [saveStatus, setSaveStatus] = useState<'success' | 'error' | null>(null);
-  const [projectSortOrder, setProjectSortOrder] = useState<ProjectSortOrder>('name');
-  const [codeEditorSettings, setCodeEditorSettings] = useState<CodeEditorSettingsState>(() => (
-    readCodeEditorSettings()
-  ));
+	const [activeTab, setActiveTab] = useState<SettingsMainTab>(() =>
+		normalizeMainTab(initialTab),
+	);
+	const [saveStatus, setSaveStatus] = useState<"success" | "error" | null>(
+		null,
+	);
+	const [projectSortOrder, setProjectSortOrder] =
+		useState<ProjectSortOrder>("name");
+	const [codeEditorSettings, setCodeEditorSettings] =
+		useState<CodeEditorSettingsState>(() => readCodeEditorSettings());
 
-  const [claudePermissions, setClaudePermissions] = useState<ClaudePermissionsState>(() => (
-    createEmptyClaudePermissions()
-  ));
-  const [cursorPermissions, setCursorPermissions] = useState<CursorPermissionsState>(() => (
-    createEmptyCursorPermissions()
-  ));
-  const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferencesState>(() => (
-    createDefaultNotificationPreferences()
-  ));
-  const [codexPermissionMode, setCodexPermissionMode] = useState<CodexPermissionMode>('default');
+	const [claudePermissions, setClaudePermissions] =
+		useState<ClaudePermissionsState>(() => createEmptyClaudePermissions());
+	const [cursorPermissions, setCursorPermissions] =
+		useState<CursorPermissionsState>(() => createEmptyCursorPermissions());
+	const [notificationPreferences, setNotificationPreferences] =
+		useState<NotificationPreferencesState>(() =>
+			createDefaultNotificationPreferences(),
+		);
+	const [codexPermissionMode, setCodexPermissionMode] =
+		useState<CodexPermissionMode>("default");
 
+	const loadSettings = useCallback(async () => {
+		try {
+			const savedClaudeSettings = parseJson<ClaudeSettingsStorage>(
+				localStorage.getItem("claude-settings"),
+				{},
+			);
+			setClaudePermissions({
+				allowedTools: savedClaudeSettings.allowedTools || [],
+				disallowedTools: savedClaudeSettings.disallowedTools || [],
+				skipPermissions: Boolean(savedClaudeSettings.skipPermissions),
+			});
+			setProjectSortOrder(
+				savedClaudeSettings.projectSortOrder === "date" ? "date" : "name",
+			);
 
-  const loadSettings = useCallback(async () => {
-    try {
-      const savedClaudeSettings = parseJson<ClaudeSettingsStorage>(
-        localStorage.getItem('claude-settings'),
-        {},
-      );
-      setClaudePermissions({
-        allowedTools: savedClaudeSettings.allowedTools || [],
-        disallowedTools: savedClaudeSettings.disallowedTools || [],
-        skipPermissions: Boolean(savedClaudeSettings.skipPermissions),
-      });
-      setProjectSortOrder(savedClaudeSettings.projectSortOrder === 'date' ? 'date' : 'name');
+			const savedCursorSettings = parseJson<CursorSettingsStorage>(
+				localStorage.getItem("cursor-tools-settings"),
+				{},
+			);
+			setCursorPermissions({
+				allowedCommands: savedCursorSettings.allowedCommands || [],
+				disallowedCommands: savedCursorSettings.disallowedCommands || [],
+				skipPermissions: Boolean(savedCursorSettings.skipPermissions),
+			});
 
-      const savedCursorSettings = parseJson<CursorSettingsStorage>(
-        localStorage.getItem('cursor-tools-settings'),
-        {},
-      );
-      setCursorPermissions({
-        allowedCommands: savedCursorSettings.allowedCommands || [],
-        disallowedCommands: savedCursorSettings.disallowedCommands || [],
-        skipPermissions: Boolean(savedCursorSettings.skipPermissions),
-      });
+			const savedCodexSettings = parseJson<CodexSettingsStorage>(
+				localStorage.getItem("codex-settings"),
+				{},
+			);
+			setCodexPermissionMode(
+				toCodexPermissionMode(savedCodexSettings.permissionMode),
+			);
 
-      const savedCodexSettings = parseJson<CodexSettingsStorage>(
-        localStorage.getItem('codex-settings'),
-        {},
-      );
-      setCodexPermissionMode(toCodexPermissionMode(savedCodexSettings.permissionMode));
+			try {
+				const notificationResponse = await authenticatedFetch(
+					"/api/settings/notification-preferences",
+				);
+				if (notificationResponse.ok) {
+					const notificationData =
+						await toResponseJson<NotificationPreferencesResponse>(
+							notificationResponse,
+						);
+					if (notificationData.success && notificationData.preferences) {
+						setNotificationPreferences(
+							normalizeNotificationPreferences(notificationData.preferences),
+						);
+					} else {
+						setNotificationPreferences(createDefaultNotificationPreferences());
+					}
+				} else {
+					setNotificationPreferences(createDefaultNotificationPreferences());
+				}
+			} catch {
+				setNotificationPreferences(createDefaultNotificationPreferences());
+			}
+		} catch (error) {
+			console.error("Error loading settings:", error);
+			setClaudePermissions(createEmptyClaudePermissions());
+			setCursorPermissions(createEmptyCursorPermissions());
+			setNotificationPreferences(createDefaultNotificationPreferences());
+			setCodexPermissionMode("default");
+			setProjectSortOrder("name");
+		}
+	}, []);
 
-      try {
-        const notificationResponse = await authenticatedFetch('/api/settings/notification-preferences');
-        if (notificationResponse.ok) {
-          const notificationData = await toResponseJson<NotificationPreferencesResponse>(notificationResponse);
-          if (notificationData.success && notificationData.preferences) {
-            setNotificationPreferences(normalizeNotificationPreferences(notificationData.preferences));
-          } else {
-            setNotificationPreferences(createDefaultNotificationPreferences());
-          }
-        } else {
-          setNotificationPreferences(createDefaultNotificationPreferences());
-        }
-      } catch {
-        setNotificationPreferences(createDefaultNotificationPreferences());
-      }
+	const saveSettings = useCallback(async () => {
+		setSaveStatus(null);
 
-    } catch (error) {
-      console.error('Error loading settings:', error);
-      setClaudePermissions(createEmptyClaudePermissions());
-      setCursorPermissions(createEmptyCursorPermissions());
-      setNotificationPreferences(createDefaultNotificationPreferences());
-      setCodexPermissionMode('default');
-      setProjectSortOrder('name');
-    }
-  }, []);
+		try {
+			const now = new Date().toISOString();
+			localStorage.setItem(
+				"claude-settings",
+				JSON.stringify({
+					allowedTools: claudePermissions.allowedTools,
+					disallowedTools: claudePermissions.disallowedTools,
+					skipPermissions: claudePermissions.skipPermissions,
+					projectSortOrder,
+					lastUpdated: now,
+				}),
+			);
 
+			localStorage.setItem(
+				"cursor-tools-settings",
+				JSON.stringify({
+					allowedCommands: cursorPermissions.allowedCommands,
+					disallowedCommands: cursorPermissions.disallowedCommands,
+					skipPermissions: cursorPermissions.skipPermissions,
+					lastUpdated: now,
+				}),
+			);
 
-  const saveSettings = useCallback(async () => {
-    setSaveStatus(null);
+			localStorage.setItem(
+				"codex-settings",
+				JSON.stringify({
+					permissionMode: codexPermissionMode,
+					lastUpdated: now,
+				}),
+			);
 
-    try {
-      const now = new Date().toISOString();
-      localStorage.setItem('claude-settings', JSON.stringify({
-        allowedTools: claudePermissions.allowedTools,
-        disallowedTools: claudePermissions.disallowedTools,
-        skipPermissions: claudePermissions.skipPermissions,
-        projectSortOrder,
-        lastUpdated: now,
-      }));
+			const notificationResponse = await authenticatedFetch(
+				"/api/settings/notification-preferences",
+				{
+					method: "PUT",
+					body: JSON.stringify(notificationPreferences),
+				},
+			);
+			if (!notificationResponse.ok) {
+				throw new Error("Failed to save notification preferences");
+			}
 
-      localStorage.setItem('cursor-tools-settings', JSON.stringify({
-        allowedCommands: cursorPermissions.allowedCommands,
-        disallowedCommands: cursorPermissions.disallowedCommands,
-        skipPermissions: cursorPermissions.skipPermissions,
-        lastUpdated: now,
-      }));
+			setSaveStatus("success");
+		} catch (error) {
+			console.error("Error saving settings:", error);
+			setSaveStatus("error");
+		}
+	}, [
+		claudePermissions.allowedTools,
+		claudePermissions.disallowedTools,
+		claudePermissions.skipPermissions,
+		codexPermissionMode,
+		cursorPermissions.allowedCommands,
+		cursorPermissions.disallowedCommands,
+		cursorPermissions.skipPermissions,
+		notificationPreferences,
+		projectSortOrder,
+	]);
 
-      localStorage.setItem('codex-settings', JSON.stringify({
-        permissionMode: codexPermissionMode,
-        lastUpdated: now,
-      }));
+	const updateCodeEditorSetting = useCallback(
+		<K extends keyof CodeEditorSettingsState>(
+			key: K,
+			value: CodeEditorSettingsState[K],
+		) => {
+			setCodeEditorSettings((prev) => ({ ...prev, [key]: value }));
+		},
+		[],
+	);
 
-      const notificationResponse = await authenticatedFetch('/api/settings/notification-preferences', {
-        method: 'PUT',
-        body: JSON.stringify(notificationPreferences),
-      });
-      if (!notificationResponse.ok) {
-        throw new Error('Failed to save notification preferences');
-      }
+	useEffect(() => {
+		if (!isOpen) {
+			return;
+		}
 
-      setSaveStatus('success');
-    } catch (error) {
-      console.error('Error saving settings:', error);
-      setSaveStatus('error');
-    }
-  }, [
-    claudePermissions.allowedTools,
-    claudePermissions.disallowedTools,
-    claudePermissions.skipPermissions,
-    codexPermissionMode,
-    cursorPermissions.allowedCommands,
-    cursorPermissions.disallowedCommands,
-    cursorPermissions.skipPermissions,
-    notificationPreferences,
-    projectSortOrder,
-  ]);
+		setActiveTab(normalizeMainTab(initialTab));
+		void loadSettings();
+	}, [initialTab, isOpen, loadSettings]);
 
-  const updateCodeEditorSetting = useCallback(
-    <K extends keyof CodeEditorSettingsState>(key: K, value: CodeEditorSettingsState[K]) => {
-      setCodeEditorSettings((prev) => ({ ...prev, [key]: value }));
-    },
-    [],
-  );
+	useEffect(() => {
+		setNotificationSoundEnabled(notificationPreferences.channels.sound);
+	}, [notificationPreferences.channels.sound]);
 
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
+	useEffect(() => {
+		localStorage.setItem(
+			"codeEditorWordWrap",
+			String(codeEditorSettings.wordWrap),
+		);
+		localStorage.setItem(
+			"codeEditorShowMinimap",
+			String(codeEditorSettings.showMinimap),
+		);
+		localStorage.setItem(
+			"codeEditorLineNumbers",
+			String(codeEditorSettings.lineNumbers),
+		);
+		localStorage.setItem("codeEditorFontSize", codeEditorSettings.fontSize);
+		window.dispatchEvent(new Event("codeEditorSettingsChanged"));
+	}, [codeEditorSettings]);
 
-    setActiveTab(normalizeMainTab(initialTab));
-    void loadSettings();
-  }, [initialTab, isOpen, loadSettings]);
+	// Auto-save permissions and sort order with debounce
+	const autoSaveTimerRef = useRef<number | null>(null);
+	const isInitialLoadRef = useRef(true);
 
-  useEffect(() => {
-    setNotificationSoundEnabled(notificationPreferences.channels.sound);
-  }, [notificationPreferences.channels.sound]);
+	useEffect(() => {
+		// Skip auto-save on initial load (settings are being loaded from localStorage)
+		if (isInitialLoadRef.current) {
+			isInitialLoadRef.current = false;
+			return;
+		}
 
-  useEffect(() => {
-    localStorage.setItem('codeEditorWordWrap', String(codeEditorSettings.wordWrap));
-    localStorage.setItem('codeEditorShowMinimap', String(codeEditorSettings.showMinimap));
-    localStorage.setItem('codeEditorLineNumbers', String(codeEditorSettings.lineNumbers));
-    localStorage.setItem('codeEditorFontSize', codeEditorSettings.fontSize);
-    window.dispatchEvent(new Event('codeEditorSettingsChanged'));
-  }, [codeEditorSettings]);
+		if (autoSaveTimerRef.current !== null) {
+			window.clearTimeout(autoSaveTimerRef.current);
+		}
 
-  // Auto-save permissions and sort order with debounce
-  const autoSaveTimerRef = useRef<number | null>(null);
-  const isInitialLoadRef = useRef(true);
+		autoSaveTimerRef.current = window.setTimeout(() => {
+			saveSettings();
+		}, 500);
 
-  useEffect(() => {
-    // Skip auto-save on initial load (settings are being loaded from localStorage)
-    if (isInitialLoadRef.current) {
-      isInitialLoadRef.current = false;
-      return;
-    }
+		return () => {
+			if (autoSaveTimerRef.current !== null) {
+				window.clearTimeout(autoSaveTimerRef.current);
+			}
+		};
+	}, [saveSettings]);
 
-    if (autoSaveTimerRef.current !== null) {
-      window.clearTimeout(autoSaveTimerRef.current);
-    }
+	// Clear save status after 2 seconds
+	useEffect(() => {
+		if (saveStatus === null) {
+			return;
+		}
 
-    autoSaveTimerRef.current = window.setTimeout(() => {
-      saveSettings();
-    }, 500);
+		const timer = window.setTimeout(() => setSaveStatus(null), 2000);
+		return () => window.clearTimeout(timer);
+	}, [saveStatus]);
 
-    return () => {
-      if (autoSaveTimerRef.current !== null) {
-        window.clearTimeout(autoSaveTimerRef.current);
-      }
-    };
-  }, [saveSettings]);
+	// Reset initial load flag when settings dialog opens
+	useEffect(() => {
+		if (isOpen) {
+			isInitialLoadRef.current = true;
+		}
+	}, [isOpen]);
 
-  // Clear save status after 2 seconds
-  useEffect(() => {
-    if (saveStatus === null) {
-      return;
-    }
+	useEffect(
+		() => () => {
+			if (closeTimerRef.current !== null) {
+				window.clearTimeout(closeTimerRef.current);
+				closeTimerRef.current = null;
+			}
+			if (autoSaveTimerRef.current !== null) {
+				window.clearTimeout(autoSaveTimerRef.current);
+				autoSaveTimerRef.current = null;
+			}
+		},
+		[],
+	);
 
-    const timer = window.setTimeout(() => setSaveStatus(null), 2000);
-    return () => window.clearTimeout(timer);
-  }, [saveStatus]);
-
-  // Reset initial load flag when settings dialog opens
-  useEffect(() => {
-    if (isOpen) {
-      isInitialLoadRef.current = true;
-    }
-  }, [isOpen]);
-
-  useEffect(() => () => {
-    if (closeTimerRef.current !== null) {
-      window.clearTimeout(closeTimerRef.current);
-      closeTimerRef.current = null;
-    }
-    if (autoSaveTimerRef.current !== null) {
-      window.clearTimeout(autoSaveTimerRef.current);
-      autoSaveTimerRef.current = null;
-    }
-  }, []);
-
-  return {
-    activeTab,
-    setActiveTab,
-    isDarkMode,
-    toggleDarkMode,
-    saveStatus,
-    projectSortOrder,
-    setProjectSortOrder,
-    codeEditorSettings,
-    updateCodeEditorSetting,
-    claudePermissions,
-    setClaudePermissions,
-    cursorPermissions,
-    setCursorPermissions,
-    notificationPreferences,
-    setNotificationPreferences,
-    codexPermissionMode,
-    setCodexPermissionMode,
-  };
+	return {
+		activeTab,
+		setActiveTab,
+		isDarkMode,
+		toggleDarkMode,
+		saveStatus,
+		projectSortOrder,
+		setProjectSortOrder,
+		codeEditorSettings,
+		updateCodeEditorSetting,
+		claudePermissions,
+		setClaudePermissions,
+		cursorPermissions,
+		setCursorPermissions,
+		notificationPreferences,
+		setNotificationPreferences,
+		codexPermissionMode,
+		setCodexPermissionMode,
+	};
 }

@@ -9,7 +9,6 @@ function createHarness(
 	origin = "http://127.0.0.1:20128",
 ) {
 	const calls: string[] = [];
-	const codexInputs: Array<{ baseUrl: string; apiKey: string }> = [];
 	const client = {
 		validateConnection: async () => {
 			throw new Error("unused");
@@ -165,15 +164,9 @@ function createHarness(
 			calls.push("client");
 			return client;
 		},
-		codexConfig: {
-			applyCustomProvider: async (input) => {
-				codexInputs.push(input);
-				return { provider: "Custom" as const };
-			},
-		},
 		now: () => new Date("2026-08-04T00:00:00.000Z"),
 	});
-	return { service, calls, codexInputs };
+	return { service, calls };
 }
 
 test("settings report sidecar runtime without connection storage", async () => {
@@ -205,40 +198,6 @@ test("unavailable embedded runtime is safe and typed for explicit 9router operat
 		(error: any) =>
 			error.code === "ROUTING_RUNTIME_UNAVAILABLE" && error.statusCode === 409,
 	);
-});
-
-test("applies ready sidecar credentials to Codex without returning secrets", async () => {
-	const { service, codexInputs } = createHarness("ready");
-	const result = await service.applyToCodex(7);
-	assert.deepEqual(result, { provider: "Custom" });
-	assert.deepEqual(codexInputs, [
-		{
-			baseUrl: "http://127.0.0.1:20128/api/v1",
-			apiKey: "sk-cloudcli-abc123-deadbeef",
-		},
-	]);
-	assert.equal(JSON.stringify(result).includes("sk-cloudcli"), false);
-});
-
-test("does not write Codex config while the sidecar is unavailable", async () => {
-	const { service, codexInputs } = createHarness("unavailable");
-	await assert.rejects(
-		() => service.applyToCodex(7),
-		(error: any) =>
-			error.code === "ROUTING_RUNTIME_UNAVAILABLE" && error.statusCode === 409,
-	);
-	assert.deepEqual(codexInputs, []);
-});
-
-test("does not invent a Codex endpoint when a ready runtime has no origin", async () => {
-	const { service, codexInputs } = createHarness("ready", "");
-	await assert.rejects(
-		() => service.applyToCodex(7),
-		(error: any) =>
-			error.code === "ROUTING_CONFIGURATION_INVALID" &&
-			error.statusCode === 500,
-	);
-	assert.deepEqual(codexInputs, []);
 });
 
 test("provider management workflows delegate through sanitized 9router client contract", async () => {

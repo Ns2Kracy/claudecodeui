@@ -4,7 +4,6 @@ import type { ProviderAuthStatus } from "../../provider-auth/types";
 
 export type SettingsMainTab =
 	| "agents"
-	| "routing"
 	| "appearance"
 	| "git"
 	| "api"

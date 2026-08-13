@@ -112,8 +112,7 @@
     "browser": "Browser",
     "notifications": "Notifications",
     "plugins": "Plugins",
-    "about": "About",
-    "routing": "Providers"
+    "about": "About"
   },
   "notifications": {
     "title": "Notifications",

@@ -167,32 +167,6 @@ test("mutation state disables only the active operation and stores safe errors",
 	assert.equal(failed.errorContext, "mutation");
 });
 
-test("Codex application success is cleared on retry and set only after success", () => {
-	const initial = createInitialRoutingState();
-	const running = routingStateReducer(initial, {
-		type: "mutationStarted",
-		key: "codex:apply",
-	});
-	assert.equal(running.codexApplied, false);
-
-	const succeeded = routingStateReducer(running, {
-		type: "mutationSucceeded",
-		key: "codex:apply",
-	});
-	assert.equal(succeeded.codexApplied, true);
-
-	const retrying = routingStateReducer(succeeded, {
-		type: "mutationStarted",
-		key: "codex:apply",
-	});
-	assert.equal(retrying.codexApplied, false);
-	const failed = routingStateReducer(retrying, {
-		type: "mutationFailed",
-		error: safeError,
-	});
-	assert.equal(failed.codexApplied, false);
-});
-
 test("detail failures are identified separately so one inline retry state owns the error", () => {
 	const failed = routingStateReducer(createInitialRoutingState(), {
 		type: "detailsFailed",

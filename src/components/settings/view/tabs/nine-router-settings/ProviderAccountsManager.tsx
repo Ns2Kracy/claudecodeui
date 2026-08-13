@@ -8,7 +8,7 @@ type ProviderAccountsManagerProps = {
 	defaultOpen?: boolean;
 };
 
-/** Shared 9Router account manager used by routing and Codex agent settings. */
+/** Owns the Provider Router account surface shown in Codex agent settings. */
 export default function ProviderAccountsManager({
 	defaultOpen = false,
 }: ProviderAccountsManagerProps) {

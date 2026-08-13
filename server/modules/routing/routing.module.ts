@@ -1,5 +1,4 @@
 import { appConfigDb } from "@/modules/database/index.js";
-import { applyCustomCodexProvider } from "@/modules/providers/index.js";
 import { AppError } from "@/shared/utils.js";
 
 import { NineRouterClient } from "./nine-router-client.js";
@@ -74,10 +73,6 @@ export const routingService = createRoutingService({
 			getNineRouterSidecar().getInternalCredentials(),
 	},
 	clientFactory,
-	codexConfig: {
-		applyCustomProvider: ({ baseUrl, apiKey }) =>
-			applyCustomCodexProvider({ baseUrl, apiKey }),
-	},
 	oauth: routingOAuthService,
 });
 

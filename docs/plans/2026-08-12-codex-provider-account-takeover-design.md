@@ -11,8 +11,8 @@ Fix Provider Router model discovery against the current upstream response and ma
 - Accept the current provider-model response where the envelope owns `provider` and `connectionId`, while each model is OpenAI-compatible `{ id, object, owned_by }`.
 - Keep compatibility with the older routed-model response. Model identifiers remain authoritative upstream IDs and are never synthesized.
 - Extract a data-owning `ProviderAccountsManager` from the routing tab. It owns `useNineRouterSettings`, derives account detail state, and renders the existing `ProviderAccountsSection`.
-- Render that same manager in both Provider Router settings and Agents → Codex → Account. No duplicate account state, Codex CLI auth card, or legacy provider-login modal is used for the Codex account screen.
-- The Provider Router page retains its Codex apply action and all existing runtime alerts.
+- Render the account manager in Agents → Codex → Account. No duplicate Provider Router settings page, Codex CLI auth card, or legacy provider-login modal remains.
+- Codex uses the routing layer directly; there is no manual “Apply to Codex” action.
 
 ## Error Handling
 

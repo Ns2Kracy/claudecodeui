@@ -87,40 +87,6 @@ test("builds allowlisted detail queries and encodes dynamic resource ids once", 
 	assert.equal(requests[1]?.init?.method, "DELETE");
 });
 
-test("applies the Custom provider to Codex through the protected routing endpoint", async () => {
-	const requests: Array<{ url: string; init?: RequestInit }> = [];
-	const api = createRoutingApiClient(async (url, init) => {
-		requests.push({ url: String(url), init });
-		return jsonResponse({
-			success: true,
-			data: { provider: "Custom", apiKey: "must-not-pass" },
-		});
-	});
-
-	assert.deepEqual(await api.applyToCodex(), { provider: "Custom" });
-	assert.deepEqual(requests, [
-		{
-			url: "/api/routing/codex/applications",
-			init: { method: "POST" },
-		},
-	]);
-});
-
-test("rejects an invalid Codex application response", async () => {
-	const api = createRoutingApiClient(async () =>
-		jsonResponse({
-			success: true,
-			data: { provider: "Other" },
-		}),
-	);
-	await assert.rejects(
-		api.applyToCodex(),
-		(error: unknown) =>
-			error instanceof RoutingApiError &&
-			error.code === "ROUTING_INVALID_RESPONSE",
-	);
-});
-
 test("parses OAuth and device-code views while keeping every request same-origin", async () => {
 	const requests: Array<{ url: string; init?: RequestInit }> = [];
 	const responses = [
