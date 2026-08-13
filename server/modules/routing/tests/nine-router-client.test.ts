@@ -606,6 +606,48 @@ test("maps provider detail, provider models, and provider nodes into safe DTOs",
 	});
 });
 
+test("maps current OpenAI-compatible provider model rows using the envelope provider", async () => {
+	await withFakeRouter({}, async ({ baseUrl, request }) => {
+		const client = new NineRouterClient({
+			baseUrl,
+			adminPassword: "admin-password",
+			dataPlaneKey: "data-plane-key",
+			request: async (input, dependencies) => {
+				if (input.operation === "providerModels") {
+					return {
+						statusCode: 200,
+						headers: {},
+						data: {
+							provider: "deepseek",
+							connectionId: "account-1",
+							models: [
+								{
+									id: "deepseek/deepseek-v4-pro",
+									object: "model",
+									owned_by: "deepseek",
+								},
+							],
+						},
+					};
+				}
+				return request(input, dependencies);
+			},
+		});
+
+		assert.deepEqual(await client.listProviderModels("account-1"), {
+			provider: "deepseek",
+			connectionId: "account-1",
+			models: [
+				{
+					id: "deepseek/deepseek-v4-pro",
+					provider: "deepseek",
+					name: "deepseek/deepseek-v4-pro",
+				},
+			],
+		});
+	});
+});
+
 test("rejects provider models without an authoritative upstream id", async () => {
 	await withFakeRouter({}, async ({ baseUrl, request }) => {
 		const client = new NineRouterClient({

@@ -1,22 +1,12 @@
+import type { ComponentType } from "react";
+
 import type {
-	AgentProvider,
-	AuthStatus,
 	AgentCategory,
 	CodexPermissionMode,
 	SettingsProject,
 } from "../../../types/types";
 
-export type AgentContext = {
-	authStatus: AuthStatus;
-	onLogin: () => void;
-};
-
-export type AgentContextByProvider = Record<AgentProvider, AgentContext>;
-export type ProviderAuthStatusByProvider = Record<AgentProvider, AuthStatus>;
-
 export type AgentsSettingsTabProps = {
-	providerAuthStatus: ProviderAuthStatusByProvider;
-	onProviderLogin: (provider: AgentProvider) => void;
 	codexPermissionMode: CodexPermissionMode;
 	onCodexPermissionModeChange: (value: CodexPermissionMode) => void;
 	projects: SettingsProject[];
@@ -30,7 +20,7 @@ export type AgentCategoryTabsSectionProps = {
 
 export type AgentCategoryContentSectionProps = {
 	selectedCategory: AgentCategory;
-	agentContextById: AgentContextByProvider;
+	ProviderAccountsManagerComponent?: ComponentType<{ defaultOpen?: boolean }>;
 	codexPermissionMode: CodexPermissionMode;
 	onCodexPermissionModeChange: (value: CodexPermissionMode) => void;
 	projects: SettingsProject[];

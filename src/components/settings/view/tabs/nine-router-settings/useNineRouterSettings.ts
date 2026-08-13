@@ -64,7 +64,7 @@ function detailKeysFor(details: RoutingSettingsDetails): RoutingDetailKey[] {
 	return keys;
 }
 
-/** Owns all remote and write-only form state for the single Settings > 9Router page. */
+/** Owns remote and write-only account state for Provider Router settings surfaces. */
 export function useNineRouterSettings() {
 	const [state, dispatch] = useReducer(
 		routingStateReducer,

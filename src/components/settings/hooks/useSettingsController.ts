@@ -3,13 +3,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { authenticatedFetch } from '../../../utils/api';
 import { setNotificationSoundEnabled } from '../../../utils/notificationSound';
-import { useProviderAuthStatus } from '../../provider-auth/hooks/useProviderAuthStatus';
 import {
   DEFAULT_CODE_EDITOR_SETTINGS,
   DEFAULT_CURSOR_PERMISSIONS,
 } from '../constants/constants';
 import type {
-  AgentProvider,
   ClaudePermissionsState,
   CodeEditorSettingsState,
   CodexPermissionMode,
@@ -51,7 +49,6 @@ type NotificationPreferencesResponse = {
   preferences?: NotificationPreferencesState;
 };
 
-type ActiveLoginProvider = AgentProvider | '';
 
 const KNOWN_MAIN_TABS: SettingsMainTab[] = ['agents', 'routing', 'appearance', 'git', 'api', 'voice', 'tasks', 'browser', 'notifications', 'plugins', 'about'];
 
@@ -159,13 +156,6 @@ export function useSettingsController({ isOpen, initialTab }: UseSettingsControl
   ));
   const [codexPermissionMode, setCodexPermissionMode] = useState<CodexPermissionMode>('default');
 
-  const [showLoginModal, setShowLoginModal] = useState(false);
-  const [loginProvider, setLoginProvider] = useState<ActiveLoginProvider>('');
-  const {
-    providerAuthStatus,
-    checkProviderAuthStatus,
-    refreshProviderAuthStatuses,
-  } = useProviderAuthStatus();
 
   const loadSettings = useCallback(async () => {
     try {
@@ -222,26 +212,6 @@ export function useSettingsController({ isOpen, initialTab }: UseSettingsControl
     }
   }, []);
 
-  const openLoginForProvider = useCallback((provider: AgentProvider) => {
-    setLoginProvider(provider);
-    setShowLoginModal(true);
-  }, []);
-
-  const handleLoginComplete = useCallback((exitCode: number) => {
-    if (!loginProvider) {
-      return;
-    }
-
-    void (async () => {
-      const authStatus = await checkProviderAuthStatus(loginProvider);
-
-      if (exitCode !== 0) {
-        console.warn(`Login process exited with code ${exitCode}; refreshing auth status before setting save status.`);
-      }
-
-      setSaveStatus(authStatus.authenticated ? 'success' : 'error');
-    })();
-  }, [checkProviderAuthStatus, loginProvider]);
 
   const saveSettings = useCallback(async () => {
     setSaveStatus(null);
@@ -307,8 +277,7 @@ export function useSettingsController({ isOpen, initialTab }: UseSettingsControl
 
     setActiveTab(normalizeMainTab(initialTab));
     void loadSettings();
-    void refreshProviderAuthStatuses();
-  }, [initialTab, isOpen, loadSettings, refreshProviderAuthStatuses]);
+  }, [initialTab, isOpen, loadSettings]);
 
   useEffect(() => {
     setNotificationSoundEnabled(notificationPreferences.channels.sound);
@@ -394,11 +363,5 @@ export function useSettingsController({ isOpen, initialTab }: UseSettingsControl
     setNotificationPreferences,
     codexPermissionMode,
     setCodexPermissionMode,
-    providerAuthStatus,
-    openLoginForProvider,
-    showLoginModal,
-    setShowLoginModal,
-    loginProvider,
-    handleLoginComplete,
   };
 }

@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import ProviderLoginModal from "../../provider-auth/view/ProviderLoginModal";
 import { Button } from "../../../shared/view/ui";
 import SettingsSidebar from "../view/SettingsSidebar";
 import AgentsSettingsTab from "../view/tabs/agents-settings/AgentsSettingsTab";
@@ -56,12 +55,6 @@ function Settings({
 		setNotificationPreferences,
 		codexPermissionMode,
 		setCodexPermissionMode,
-		providerAuthStatus,
-		openLoginForProvider,
-		showLoginModal,
-		setShowLoginModal,
-		loginProvider,
-		handleLoginComplete,
 	} = useSettingsController({
 		isOpen,
 		initialTab,
@@ -141,10 +134,6 @@ function Settings({
 		return null;
 	}
 
-	const isAuthenticated = Boolean(
-		loginProvider && providerAuthStatus[loginProvider].authenticated,
-	);
-
 	return (
 		<div className="modal-backdrop fixed inset-0 z-[9999] flex items-center justify-center bg-background/80 backdrop-blur-sm md:p-4">
 			<div className="flex h-full w-full flex-col overflow-hidden border border-border bg-background shadow-2xl md:h-[90vh] md:max-w-4xl md:rounded-xl">
@@ -206,8 +195,6 @@ function Settings({
 
 							{activeTab === "agents" && (
 								<AgentsSettingsTab
-									providerAuthStatus={providerAuthStatus}
-									onProviderLogin={openLoginForProvider}
 									codexPermissionMode={codexPermissionMode}
 									onCodexPermissionModeChange={setCodexPermissionMode}
 									projects={projects}
@@ -249,15 +236,6 @@ function Settings({
 					</main>
 				</div>
 			</div>
-
-			<ProviderLoginModal
-				key={loginProvider || "codex"}
-				isOpen={showLoginModal}
-				onClose={() => setShowLoginModal(false)}
-				provider={loginProvider || "codex"}
-				onComplete={handleLoginComplete}
-				isAuthenticated={isAuthenticated}
-			/>
 		</div>
 	);
 }

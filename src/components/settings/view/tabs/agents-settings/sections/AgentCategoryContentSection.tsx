@@ -2,28 +2,22 @@ import type { McpProject } from "../../../../../mcp/types";
 import { McpServers } from "../../../../../mcp";
 import type { SkillsProject } from "../../../../../skills/types";
 import { ProviderSkills } from "../../../../../skills";
+import ProviderAccountsManager from "../../nine-router-settings/ProviderAccountsManager.js";
 import type { AgentCategoryContentSectionProps } from "../types";
 
-import AccountContent from "./content/AccountContent";
 import PermissionsContent from "./content/PermissionsContent";
 
 export default function AgentCategoryContentSection({
 	selectedCategory,
-	agentContextById,
+	ProviderAccountsManagerComponent = ProviderAccountsManager,
 	codexPermissionMode,
 	onCodexPermissionModeChange,
 	projects,
 }: AgentCategoryContentSectionProps) {
-	const agentContext = agentContextById.codex;
-
 	return (
 		<div className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-3 md:p-4">
 			{selectedCategory === "account" && (
-				<AccountContent
-					agent="codex"
-					authStatus={agentContext.authStatus}
-					onLogin={agentContext.onLogin}
-				/>
+				<ProviderAccountsManagerComponent defaultOpen />
 			)}
 
 			{selectedCategory === "permissions" && (

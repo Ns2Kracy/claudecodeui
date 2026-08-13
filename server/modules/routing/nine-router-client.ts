@@ -221,27 +221,34 @@ function sanitizeAccount(value: unknown, now: Date): RoutingAccountView {
 	};
 }
 
-function sanitizeModel(value: unknown): RoutingModelView {
+function sanitizeModel(
+	value: unknown,
+	envelopeProvider: string,
+): RoutingModelView {
 	if (!isRecord(value)) {
 		throw invalidResponse();
 	}
-	const provider = requiredString(value.provider);
-	const model = requiredString(value.model);
+	const provider = optionalString(value.provider) ?? envelopeProvider;
+	const model = optionalString(value.model);
 	const id =
-		optionalString(value.fullModel) ?? optionalString(value.routedModel);
+		optionalString(value.fullModel) ??
+		optionalString(value.routedModel) ??
+		optionalString(value.id);
 	if (!id) throw invalidResponse();
-	const name = optionalString(value.alias) ?? model;
+	const name =
+		optionalString(value.name) ?? optionalString(value.alias) ?? model ?? id;
 	return { id, provider, name };
 }
 
 function sanitizeProviderModels(value: unknown): RoutingProviderModelsView {
 	const data = expectRecord(value);
+	const provider = requiredString(data.provider);
 	const models = data.models;
 	if (!Array.isArray(models)) throw invalidResponse();
 	return {
-		provider: requiredString(data.provider),
+		provider,
 		connectionId: requiredString(data.connectionId),
-		models: models.map(sanitizeModel),
+		models: models.map((model) => sanitizeModel(model, provider)),
 	};
 }
 

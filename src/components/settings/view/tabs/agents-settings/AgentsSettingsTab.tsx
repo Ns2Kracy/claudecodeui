@@ -2,14 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 
 import type { AgentCategory } from "../../../types/types";
 
-import type { AgentContext, AgentsSettingsTabProps } from "./types";
+import type { AgentsSettingsTabProps } from "./types";
 import AgentCategoryContentSection from "./sections/AgentCategoryContentSection";
 import AgentCategoryTabsSection from "./sections/AgentCategoryTabsSection";
-import { SETTINGS_AGENTS } from "./agentsSettingsState";
 
 export default function AgentsSettingsTab({
-	providerAuthStatus,
-	onProviderLogin,
 	codexPermissionMode,
 	onCodexPermissionModeChange,
 	projects,
@@ -19,18 +16,6 @@ export default function AgentsSettingsTab({
 	const visibleCategories = useMemo<AgentCategory[]>(
 		() => ["account", "permissions", "mcp", "skills"],
 		[],
-	);
-
-	const agentContextById = useMemo<
-		Record<(typeof SETTINGS_AGENTS)[number], AgentContext>
-	>(
-		() => ({
-			codex: {
-				authStatus: providerAuthStatus.codex,
-				onLogin: () => onProviderLogin("codex"),
-			},
-		}),
-		[onProviderLogin, providerAuthStatus.codex],
 	);
 
 	useEffect(() => {
@@ -50,7 +35,6 @@ export default function AgentsSettingsTab({
 
 				<AgentCategoryContentSection
 					selectedCategory={selectedCategory}
-					agentContextById={agentContextById}
 					codexPermissionMode={codexPermissionMode}
 					onCodexPermissionModeChange={onCodexPermissionModeChange}
 					projects={projects}
