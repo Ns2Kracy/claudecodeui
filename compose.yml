@@ -8,9 +8,11 @@ services:
       SERVER_PORT: "3001"
       WORKSPACES_ROOT: /workspaces
       NINE_ROUTER_BASE_URL: http://9router:20128
+      CODEX_OAUTH_CALLBACK_HOST: 0.0.0.0
       NINE_ROUTER_ADMIN_PASSWORD: ${NINE_ROUTER_ADMIN_PASSWORD:?Set NINE_ROUTER_ADMIN_PASSWORD for CloudCLI and 9router}
     ports:
       - "3001:3001"
+      - "127.0.0.1:1455:1455"
     volumes:
       - cloudcli-home:/root
       - "${HOST_WORKSPACES_PATH:-./workspaces}:/workspaces"

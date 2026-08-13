@@ -14,7 +14,7 @@ import AccountEditor from "./AccountEditor.js";
 
 (globalThis as typeof globalThis & { React: typeof React }).React = React;
 
-test("offers an API-key provider before any account or model exists", async () => {
+async function renderAccountEditor(): Promise<string> {
 	const i18n = createInstance();
 	await i18n.init({
 		lng: "en",
@@ -25,27 +25,64 @@ test("offers an API-key provider before any account or model exists", async () =
 		interpolation: { escapeValue: false },
 	});
 
-	const markup = renderToStaticMarkup(
+	return renderToStaticMarkup(
 		createElement(
 			I18nextProvider,
 			{ i18n },
 			createElement(AccountEditor, {
-				accounts: [],
-				models: [],
+				accounts: [
+					{
+						id: "codex-1",
+						provider: "codex",
+						name: "work@example.com",
+						authType: "oauth",
+						priority: null,
+						active: true,
+						status: "healthy",
+						lastError: null,
+						expiresAt: null,
+					},
+					{
+						id: "openai-1",
+						provider: "openai",
+						name: "Production",
+						authType: "apikey",
+						priority: 1,
+						active: true,
+						status: "limited",
+						lastError: null,
+						expiresAt: null,
+					},
+				],
+				models: [
+					{ id: "gpt-a", provider: "codex", name: "GPT A" },
+					{ id: "gpt-b", provider: "codex", name: "GPT B" },
+					{ id: "gpt-c", provider: "openai", name: "GPT C" },
+				],
 				canWrite: true,
 				canTest: true,
 				activeMutation: null,
-				draft: { provider: "", name: "", apiKey: "", active: true },
-				onDraftFieldChange: () => {},
-				onCreate: async () => true,
 				onUpdate: async () => true,
 				onTest: async () => true,
 				onDelete: async () => true,
-				defaultAdding: true,
 			}),
 		),
 	);
+}
 
-	assert.match(markup, /<option value="openai">openai<\/option>/);
-	assert.equal(markup.includes("No provider catalog is available"), false);
+test("connected accounts show provider identity, health, auth type, model count, and management actions", async () => {
+	const markup = await renderAccountEditor();
+
+	assert.match(markup, /aria-label="Codex"/);
+	assert.match(markup, /work@example\.com/);
+	assert.match(markup, /Healthy/);
+	assert.match(markup, /OAuth/);
+	assert.match(markup, /2 models/);
+	assert.match(markup, /Production/);
+	assert.match(markup, /Limited/);
+	assert.match(markup, /API key/);
+	assert.match(markup, /1 model/);
+	for (const action of ["Test", "Edit", "Disable", "Delete"])
+		assert.match(markup, new RegExp(action));
+	assert.equal(markup.includes("Add account"), false);
 });

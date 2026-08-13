@@ -1,6 +1,7 @@
 import { appConfigDb } from "@/modules/database/index.js";
 import { AppError } from "@/shared/utils.js";
 
+import { createCodexOAuthCallbackBridge } from "./codex-oauth-callback-bridge.js";
 import { NineRouterClient } from "./nine-router-client.js";
 import { requestNineRouterJson } from "./nine-router-http.js";
 import {
@@ -61,8 +62,12 @@ function routingServiceClientForRuntime() {
 	});
 }
 
+const codexOAuthCallbackBridge = createCodexOAuthCallbackBridge({
+	host: process.env.CODEX_OAUTH_CALLBACK_HOST ?? "127.0.0.1",
+});
 const routingOAuthService = createRoutingOAuthService({
 	clientForRuntime: () => routingServiceClientForRuntime(),
+	codexCallback: codexOAuthCallbackBridge,
 });
 
 /** Used by the routing HTTP router to execute authenticated application workflows. */

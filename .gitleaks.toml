@@ -1,0 +1,14 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Ignore local agent state and generated build output"
+paths = ['''^\.pi/''', '''^dist/''', '''^dist-server/''']
+
+[[allowlists]]
+description = "Sandbox approval policy documentation is not a credential"
+regexes = ['''approvalPolicy=(?:untrusted|never)''']
+
+[[allowlists]]
+description = "Explicit API-key redaction fixture"
+paths = ['''^server/modules/settings/tests/settings\.service\.test\.ts$''']

@@ -15,12 +15,13 @@ export default function ProviderAccountsManager({
 	const controller = useNineRouterSettings();
 	const details = upstreamDetailsState(controller.detailStatus);
 	const runtimeReady = controller.settings.runtime.status === "ready";
+	const ensureUpstreamDetails = controller.ensureUpstreamDetails;
 
 	useEffect(() => {
 		if (defaultOpen && runtimeReady) {
-			void controller.ensureUpstreamDetails();
+			void ensureUpstreamDetails();
 		}
-	}, [controller.ensureUpstreamDetails, defaultOpen, runtimeReady]);
+	}, [defaultOpen, ensureUpstreamDetails, runtimeReady]);
 
 	return (
 		<ProviderAccountsSection
@@ -33,17 +34,12 @@ export default function ProviderAccountsManager({
 			loading={details.loading}
 			detailsError={details.error}
 			activeMutation={controller.activeMutation}
-			accountDraft={controller.accountDraft}
-			onAccountFieldChange={controller.setAccountField}
 			onExpand={() => {
 				void controller.ensureUpstreamDetails();
 			}}
 			onRetry={() => {
 				void controller.retryUpstreamDetails();
 			}}
-			onCreateAccount={async (input) =>
-				Boolean(await controller.createAccount(input))
-			}
 			onUpdateAccount={async (id, input) =>
 				Boolean(await controller.updateAccount(id, input))
 			}

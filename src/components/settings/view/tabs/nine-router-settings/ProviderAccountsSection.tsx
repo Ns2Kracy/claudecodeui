@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
 	AlertTriangle,
 	ChevronDown,
@@ -9,7 +9,6 @@ import {
 import { useTranslation } from "react-i18next";
 
 import type {
-	CreateRoutingApiKeyAccountInput,
 	RoutingAccountView,
 	RoutingCapabilities,
 	RoutingModelView,
@@ -27,7 +26,6 @@ import SettingsSection from "../../SettingsSection";
 
 import AccountEditor from "./AccountEditor.js";
 import ProviderConnections from "./ProviderConnections.js";
-import type { RoutingAccountDraft } from "./routingState.js";
 
 type ProviderAccountsSectionProps = {
 	configured: boolean;
@@ -39,14 +37,8 @@ type ProviderAccountsSectionProps = {
 	loading: boolean;
 	detailsError: boolean;
 	activeMutation: string | null;
-	accountDraft: RoutingAccountDraft;
-	onAccountFieldChange: (
-		field: keyof RoutingAccountDraft,
-		value: string | number | boolean | undefined,
-	) => void;
 	onExpand: () => void;
 	onRetry: () => void;
-	onCreateAccount: (input: CreateRoutingApiKeyAccountInput) => Promise<boolean>;
 	onUpdateAccount: (
 		id: string,
 		input: UpdateRoutingAccountInput,
@@ -66,11 +58,8 @@ export default function ProviderAccountsSection({
 	loading,
 	detailsError,
 	activeMutation,
-	accountDraft,
-	onAccountFieldChange,
 	onExpand,
 	onRetry,
-	onCreateAccount,
 	onUpdateAccount,
 	onTestAccount,
 	onDeleteAccount,
@@ -90,7 +79,6 @@ export default function ProviderAccountsSection({
 				onOpenChange={(nextOpen) => {
 					setOpen(nextOpen);
 					if (nextOpen) onExpand();
-					else onAccountFieldChange("apiKey", "");
 				}}
 			>
 				<SettingsCard>
@@ -173,22 +161,12 @@ export default function ProviderAccountsSection({
 									!loading &&
 									!detailsError && (
 										<div className="space-y-5">
-											<div className="space-y-2">
-												<h3 className="text-sm font-medium text-foreground">
-													{t("nineRouter.management.connectProvider")}
-												</h3>
-												<p className="text-xs text-muted-foreground">
-													{t(
-														"nineRouter.management.providerConnectionMethodHelp",
-													)}
-												</p>
-												<ProviderConnections
-													disabled={!canMutate}
-													onConnected={async () => {
-														onRetry();
-													}}
-												/>
-											</div>
+											<ProviderConnections
+												disabled={!canMutate}
+												onConnected={async () => {
+													onRetry();
+												}}
+											/>
 											<div className="border-t border-border" />
 											<AccountEditor
 												accounts={accounts}
@@ -196,9 +174,6 @@ export default function ProviderAccountsSection({
 												canWrite={canMutate && capabilities.writeApiKeyAccounts}
 												canTest={canMutate && capabilities.testAccounts}
 												activeMutation={activeMutation}
-												draft={accountDraft}
-												onDraftFieldChange={onAccountFieldChange}
-												onCreate={onCreateAccount}
 												onUpdate={onUpdateAccount}
 												onTest={onTestAccount}
 												onDelete={onDeleteAccount}

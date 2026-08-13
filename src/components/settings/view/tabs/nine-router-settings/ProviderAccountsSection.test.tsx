@@ -50,11 +50,8 @@ async function renderAccounts(
 				loading: options.loading ?? false,
 				detailsError: options.detailsError ?? false,
 				activeMutation: null,
-				accountDraft: { provider: "", name: "", apiKey: "", active: true },
-				onAccountFieldChange: () => {},
 				onExpand: () => {},
 				onRetry: () => {},
-				onCreateAccount: async () => true,
 				onUpdateAccount: async () => true,
 				onTestAccount: async () => true,
 				onDeleteAccount: async () => true,
@@ -68,12 +65,12 @@ test("open Codex account surface exposes Provider Router connection methods", as
 	const markup = await renderAccounts();
 
 	assert.match(markup, /Provider accounts/);
-	assert.match(markup, /Connect a provider/);
-	assert.match(
-		markup,
-		/Choose a method supported by the Provider Router runtime/,
-	);
-	assert.equal(/9Router/i.test(markup), false);
+	assert.match(markup, /Connect Codex/);
+	assert.match(markup, /Continue with ChatGPT/);
+	assert.match(markup, /Popular API keys/);
+	assert.match(markup, /OpenAI Compatible/);
+	assert.match(markup, /Connected accounts/);
+	assert.equal(markup.includes("Add account"), false);
 });
 
 test("provider detail failures stay inside the account retry surface", async () => {
