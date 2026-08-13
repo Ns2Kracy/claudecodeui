@@ -1,0 +1,52 @@
+services:
+  cloudcli:
+    image: ns2kracy/cloudcli:1.37.0
+    restart: unless-stopped
+    environment:
+      HOST: 0.0.0.0
+      SERVER_PORT: "3001"
+      WORKSPACES_ROOT: /workspaces
+      NINE_ROUTER_BASE_URL: http://9router:20128
+      CODEX_OAUTH_CALLBACK_HOST: 0.0.0.0
+      NINE_ROUTER_ADMIN_PASSWORD: ${NINE_ROUTER_ADMIN_PASSWORD:?Set NINE_ROUTER_ADMIN_PASSWORD for CloudCLI and 9router}
+    ports:
+      - "3001:3001"
+      - "127.0.0.1:1455:1455"
+    volumes:
+      - cloudcli-home:/root
+      - "${HOST_WORKSPACES_PATH:-./workspaces}:/workspaces"
+    depends_on:
+      9router:
+        condition: service_healthy
+    networks:
+      - cloudcli-private
+
+  9router:
+    image: ns2kracy/9router:0.5.45
+    restart: unless-stopped
+    environment:
+      DATA_DIR: /data
+      INITIAL_PASSWORD: ${NINE_ROUTER_ADMIN_PASSWORD:?Set NINE_ROUTER_ADMIN_PASSWORD for CloudCLI and 9router}
+    expose:
+      - "20128"
+    volumes:
+      - 9router-data:/data
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:20128/api/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+    networks:
+      - cloudcli-private
+
+volumes:
+  cloudcli-home:
+  9router-data:
+
+networks:
+  cloudcli-private:
