@@ -4,15 +4,12 @@ services:
     user: "0:0"
     restart: unless-stopped
     environment:
-      HOST: 0.0.0.0
-      SERVER_PORT: "3001"
       WORKSPACES_ROOT: /workspaces
-      NINE_ROUTER_BASE_URL: http://9router:20128
       CODEX_OAUTH_CALLBACK_HOST: 0.0.0.0
-      NINE_ROUTER_ADMIN_PASSWORD: ${NINE_ROUTER_ADMIN_PASSWORD:-9router}
+      NINE_ROUTER_ADMIN_PASSWORD: 9router
     ports:
       - "3001:3001"
-      - "127.0.0.1:1455:1455"
+      - "1455"
     volumes:
       - /DATA/AppData/$AppID/workspace:/workspaces
       - /DATA/AppData/$AppID/cloudcli:/root/.cloudcli
@@ -29,21 +26,11 @@ services:
     restart: unless-stopped
     environment:
       DATA_DIR: /data
-      INITIAL_PASSWORD: ${NINE_ROUTER_ADMIN_PASSWORD:-9router}
+      INITIAL_PASSWORD: 9router
     expose:
       - "20128"
     volumes:
       - /DATA/AppData/$AppID/9router:/data
-    healthcheck:
-      test:
-        - CMD
-        - node
-        - -e
-        - "fetch('http://127.0.0.1:20128/api/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
-      interval: 30s
-      timeout: 5s
-      start_period: 20s
-      retries: 3
     networks:
       - cloudcli-private
 
