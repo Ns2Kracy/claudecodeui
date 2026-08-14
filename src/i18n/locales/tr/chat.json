@@ -15,9 +15,9 @@
     "user": "S",
     "error": "Hata",
     "tool": "Araç",
-    "claude": "Claude",
-    "cursor": "Cursor",
-    "codex": "Codex"
+    "codex": "Codex",
+    "claude": "",
+    "cursor": ""
   },
   "tools": {
     "settings": "Araç Ayarları",
@@ -54,9 +54,9 @@
   "interactive": {
     "title": "Etkileşimli Prompt",
     "waiting": "CLI'da yanıtın bekleniyor",
-    "instruction": "Lütfen Claude'un çalıştığı terminalde bir seçenek seç.",
-    "selectedOption": "✓ Claude {{number}} numaralı seçeneği seçti",
-    "instructionDetail": "CLI'da bu seçeneği ok tuşları veya numara girerek interaktif olarak seçebilirsin."
+    "instructionDetail": "CLI'da bu seçeneği ok tuşları veya numara girerek interaktif olarak seçebilirsin.",
+    "instruction": "",
+    "selectedOption": ""
   },
   "thinking": {
     "title": "Düşünüyor...",
@@ -82,7 +82,7 @@
     "title": "Uygulama Planı"
   },
   "usageLimit": {
-    "resetAt": "Claude kullanım limitin doldu. Limitin **{{time}} {{timezone}}** — {{date}} tarihinde sıfırlanacak"
+    "resetAt": ""
   },
   "codex": {
     "permissionMode": "İzin Modu",
@@ -130,10 +130,10 @@
       "google": "Google tarafından"
     },
     "readyPrompt": {
-      "claude": "Claude'u {{model}} ile kullanmaya hazır. Mesajını aşağıya yazmaya başla.",
-      "cursor": "Cursor'ı {{model}} ile kullanmaya hazır. Mesajını aşağıya yazmaya başla.",
       "codex": "Codex'i {{model}} ile kullanmaya hazır. Mesajını aşağıya yazmaya başla.",
-      "default": "Başlamak için yukarıdan bir sağlayıcı seç"
+      "default": "Başlamak için yukarıdan bir sağlayıcı seç",
+      "claude": "",
+      "cursor": ""
     },
     "pressToSearch": "Oturumlarda, dosyalarda ve commit'lerde arama yapmak için <kbd>{{shortcut}}</kbd> tuşlarına bas"
   },
@@ -177,11 +177,11 @@
     },
     "loading": "Terminal yükleniyor...",
     "connecting": "Shell'e bağlanılıyor...",
-    "startSession": "Yeni bir Claude oturumu başlat",
     "resumeSession": "Oturuma devam et: {{displayName}}...",
     "runCommand": "{{projectName}} içinde {{command}} çalıştır",
-    "startCli": "{{projectName}} içinde Claude CLI başlatılıyor",
-    "defaultCommand": "komut"
+    "defaultCommand": "komut",
+    "startSession": "",
+    "startCli": ""
   },
   "claudeStatus": {
     "actions": {

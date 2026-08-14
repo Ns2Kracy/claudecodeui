@@ -53,7 +53,7 @@ export function exportToMarkdown(
     if (msg.type === 'user') {
       markdown += '## You\n\n';
     } else if (msg.type === 'assistant') {
-      markdown += '## Claude\n\n';
+      markdown += '##\n\n';
     } else if (msg.type === 'error') {
       markdown += '## ⚠️ Error\n\n';
     } else if (msg.type === 'tool') {
@@ -100,7 +100,7 @@ export function exportToHTML(
 
   const htmlContent = messages
     .map((msg) => {
-      const type = msg.type === 'user' ? '👤 You' : msg.type === 'assistant' ? '🤖 Claude' : `${msg.type}`;
+      const type = msg.type === 'user' ? '👤 You' : msg.type === 'assistant' ? '' : `${msg.type}`;
       const time = includeMeta && msg.timestamp ? `<p style="font-size: 12px; color: #999; margin-top: 8px;">${formatTimestamp(msg.timestamp)}</p>` : '';
 
       const contentStr = typeof msg.content === 'string' ? msg.content : String(msg.content ?? '');
@@ -183,20 +183,14 @@ export function downloadPDF(
   sessionTitle?: string,
 ): void {
   const htmlContent = exportToHTML(messages, sessionTitle);
-  const win = window.open('', '', 'width=800,height=600');
-  if (!win) {
-    window.alert('PDF export could not start because the browser blocked the popup. Allow popups and try again.');
-    return;
-  }
-
-  win.document.write(htmlContent);
-  win.document.close();
-  // Delay print dialog to ensure content is loaded
-  setTimeout(() => {
-    win.print();
-    // Optionally close after printing
-    // win.close();
-  }, 250);
+  const frame = document.createElement('iframe');
+  frame.hidden = true;
+  frame.srcdoc = htmlContent;
+  document.body.appendChild(frame);
+  frame.addEventListener('load', () => {
+    frame.contentWindow?.print();
+    window.setTimeout(() => frame.remove(), 0);
+  }, { once: true });
 }
 
 /**
@@ -210,7 +204,7 @@ function downloadBlob(blob: Blob, filename: string): void {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 /**

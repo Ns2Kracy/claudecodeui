@@ -1,10 +1,10 @@
 import type { McpFormState, McpProvider, McpScope, McpTransport } from './types';
 
 export const MCP_PROVIDER_NAMES: Record<McpProvider, string> = {
-  claude: 'Claude',
-  cursor: 'Cursor',
+  claude: '',
+  cursor: '',
   codex: 'Codex',
-  opencode: 'OpenCode',
+  opencode: '',
 };
 
 export const MCP_SUPPORTED_SCOPES: Record<McpProvider, McpScope[]> = {

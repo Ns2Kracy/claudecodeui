@@ -34,7 +34,7 @@ export async function startCodexRoutingOAuth(
 ): Promise<CodexRoutingOAuthSession> {
 	const started = await dependencies.startOAuth("codex");
 	if (!isAllowedOAuthUrl(started.authUrl)) {
-		throw new Error("9Router returned an unsafe OAuth URL.");
+		throw new Error();
 	}
 
 	const popup = dependencies.openPopup(started.authUrl);
@@ -81,7 +81,7 @@ function errorMessage(error: unknown): string {
 	if (error instanceof RoutingApiError || error instanceof Error) {
 		return error.message;
 	}
-	return "Codex could not be connected through 9Router.";
+	return "";
 }
 
 export default function ProviderLoginModal({
@@ -193,21 +193,9 @@ export default function ProviderLoginModal({
 
 				<div className="space-y-5 p-6">
 					{isAuthenticated ? (
-						<p role="status" className="text-sm text-foreground">
-							Codex is connected through 9Router.
-						</p>
+						<p role="status" className="sr-only" />
 					) : (
 						<>
-							<div className="space-y-2">
-								<p className="text-sm font-medium text-foreground">
-									Connect Codex through 9Router
-								</p>
-								<p className="text-sm text-muted-foreground">
-									Authorization and credentials are managed by the routing
-									layer. CloudCLI does not store your OpenAI OAuth token.
-								</p>
-							</div>
-
 							{error && (
 								<div
 									role="alert"

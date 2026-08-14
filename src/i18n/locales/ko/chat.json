@@ -15,10 +15,10 @@
     "user": "U",
     "error": "오류",
     "tool": "도구",
-    "claude": "Claude",
-    "cursor": "Cursor",
     "codex": "Codex",
-    "opencode": "OpenCode"
+    "claude": "",
+    "cursor": "",
+    "opencode": ""
   },
   "tools": {
     "settings": "도구 설정",
@@ -55,9 +55,9 @@
   "interactive": {
     "title": "대화형 프롬프트",
     "waiting": "CLI에서 응답을 기다리는 중",
-    "instruction": "Claude가 실행 중인 터미널에서 옵션을 선택해주세요.",
-    "selectedOption": "✓ Claude가 옵션 {{number}}을(를) 선택했습니다",
-    "instructionDetail": "CLI에서 화살표 키 또는 숫자를 입력하여 이 옵션을 대화형으로 선택합니다."
+    "instructionDetail": "CLI에서 화살표 키 또는 숫자를 입력하여 이 옵션을 대화형으로 선택합니다.",
+    "instruction": "",
+    "selectedOption": ""
   },
   "thinking": {
     "title": "생각 중...",
@@ -83,7 +83,7 @@
     "title": "구현 계획"
   },
   "usageLimit": {
-    "resetAt": "Claude 사용량 한도에 도달했습니다. 한도는 **{{time}} {{timezone}}** - {{date}}에 초기화됩니다"
+    "resetAt": ""
   },
   "codex": {
     "permissionMode": "권한 모드",
@@ -149,11 +149,11 @@
       "google": "Google 제공"
     },
     "readyPrompt": {
-      "claude": "{{model}} 모델로 Claude를 사용할 준비가 되었습니다. 아래에 메시지를 입력하세요.",
-      "cursor": "{{model}} 모델로 Cursor를 사용할 준비가 되었습니다. 아래에 메시지를 입력하세요.",
       "codex": "{{model}} 모델로 Codex를 사용할 준비가 되었습니다. 아래에 메시지를 입력하세요.",
-      "opencode": "{{model}} 모델로 OpenCode를 사용할 준비가 되었습니다. 아래에 메시지를 입력하세요.",
-      "default": "시작하려면 위에서 제공자를 선택하세요"
+      "default": "시작하려면 위에서 제공자를 선택하세요",
+      "claude": "",
+      "cursor": "",
+      "opencode": ""
     },
     "pressToSearch": "<kbd>{{shortcut}}</kbd>를 눌러 세션, 파일 및 커밋을 검색하세요"
   },
@@ -197,11 +197,11 @@
     },
     "loading": "터미널 로딩 중...",
     "connecting": "Shell에 연결 중...",
-    "startSession": "새 Claude 세션 시작",
     "resumeSession": "세션 재개: {{displayName}}...",
     "runCommand": "{{projectName}}에서 {{command}} 실행",
-    "startCli": "{{projectName}}에서 Claude CLI 시작",
-    "defaultCommand": "명령어"
+    "defaultCommand": "명령어",
+    "startSession": "",
+    "startCli": ""
   },
   "claudeStatus": {
     "actions": {

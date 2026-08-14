@@ -117,7 +117,7 @@ export function createProviderRuntimeService(
 				});
 			}
 			if (providerName === "codex" && source !== "9router") {
-				throw new AppError("Codex must run through 9Router", {
+				throw new AppError("", {
 					code: "CODEX_ROUTING_REQUIRED",
 					statusCode: 409,
 				});
@@ -150,7 +150,7 @@ export function createProviderRuntimeService(
 				!routing.apiKey.trim() ||
 				!routing.routeName.trim())
 		) {
-			throw new AppError("The Codex 9Router configuration is incomplete", {
+			throw new AppError("", {
 				code: "CODEX_ROUTING_INVALID",
 				statusCode: 409,
 			});

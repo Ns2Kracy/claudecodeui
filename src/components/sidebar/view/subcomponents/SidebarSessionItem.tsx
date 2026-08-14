@@ -64,10 +64,10 @@ const formatCompactSessionAge = (dateString: string, currentTime: Date): string 
 };
 
 const PROVIDER_LABELS: Record<LLMProvider, string> = {
-  claude: 'Claude',
+  claude: '',
   codex: 'Codex',
-  cursor: 'Cursor',
-  opencode: 'OpenCode',
+  cursor: '',
+  opencode: '',
 };
 
 type CopyState = 'loading' | 'idle' | 'copying' | 'copied' | 'error';
@@ -371,8 +371,9 @@ export default function SidebarSessionItem({
       </div>
 
       <div className="hidden md:block">
-        <a
-          href={`/session/${session.id}`}
+        <div
+          role="link"
+          tabIndex={0}
           className={cn(
             buttonVariants({ variant: 'ghost' }),
             'h-auto w-full justify-start rounded-md border bg-card p-2 pr-11 text-left font-normal transition-all duration-150',
@@ -383,12 +384,12 @@ export default function SidebarSessionItem({
                 ? 'border-green-500/30 bg-green-50/5 hover:bg-green-50/10 dark:bg-green-900/5 dark:hover:bg-green-900/10'
                 : 'hover:bg-accent/50',
           )}
-          // Left-click keeps in-app navigation; Ctrl/Cmd/middle-click and the
-          // native right-click menu use the href to open a new tab/window.
-          onClick={(event) => {
-            if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-            event.preventDefault();
-            onSessionSelect(session, project.projectId);
+          onClick={() => onSessionSelect(session, project.projectId)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              onSessionSelect(session, project.projectId);
+            }
           }}
         >
           <div className="flex w-full min-w-0 items-center gap-2">
@@ -432,7 +433,7 @@ export default function SidebarSessionItem({
               </div>
             </div>
           </div>
-        </a>
+        </div>
 
         <div
           ref={editingContainerRef}

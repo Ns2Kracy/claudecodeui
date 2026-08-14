@@ -199,7 +199,7 @@ function readOpenCodeTokenUsage(databasePath: string, providerSessionId: string)
         outputTokens: 0,
         breakdown: { input: 0, output: 0 },
         unsupported: true,
-        message: 'Token usage tracking is not available in this OpenCode database schema',
+        message: '',
       };
     }
 
@@ -215,7 +215,7 @@ function readOpenCodeTokenUsage(databasePath: string, providerSessionId: string)
     `).get(providerSessionId) as OpenCodeTokenRow | undefined;
 
     if (!row) {
-      throw new AppError('OpenCode session was not found.', {
+      throw new AppError('', {
         code: 'OPENCODE_SESSION_NOT_FOUND',
         statusCode: 404,
       });
@@ -274,14 +274,14 @@ export function createProviderTokenUsageService(
           outputTokens: 0,
           breakdown: { input: 0, output: 0 },
           unsupported: true,
-          message: 'Token usage tracking not available for Cursor sessions',
+          message: '',
         };
       }
 
       if (session.provider === 'opencode') {
         const databasePath = dependencies.getOpenCodeDatabasePath();
         if (!dependencies.fileExists(databasePath)) {
-          throw new AppError('OpenCode database was not found.', {
+          throw new AppError('', {
             code: 'OPENCODE_DATABASE_NOT_FOUND',
             statusCode: 404,
           });

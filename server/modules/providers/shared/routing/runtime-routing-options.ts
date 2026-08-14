@@ -74,7 +74,7 @@ export function buildOpenCodeRouteOptions(
         provider: {
           'cloudcli-9router': {
             npm: '@ai-sdk/openai-compatible',
-            name: '9Router',
+            name: routing.routeName,
             options: {
               baseURL: routing.openAiBaseUrl,
               apiKey: routing.apiKey,

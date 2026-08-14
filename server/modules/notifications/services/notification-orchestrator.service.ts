@@ -58,8 +58,8 @@ const KIND_TO_PREF_KEY: Record<string, keyof NotificationPreferences['events']> 
 };
 
 const PROVIDER_LABELS: Record<string, string> = {
-  claude: 'Claude',
-  cursor: 'Cursor',
+  claude: '',
+  cursor: '',
   codex: 'Codex',
   system: 'System',
 };

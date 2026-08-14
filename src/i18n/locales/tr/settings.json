@@ -277,8 +277,8 @@
     "apiDocsLink": "API Dokümantasyonu",
     "documentation": {
       "title": "Harici API Dokümantasyonu",
-      "description": "Uygulamalarından Claude/Cursor oturumları tetiklemek için harici API'nin nasıl kullanılacağını öğren.",
-      "viewLink": "API Dokümantasyonunu Görüntüle →"
+      "viewLink": "API Dokümantasyonunu Görüntüle →",
+      "description": ""
     },
     "loading": "Yükleniyor...",
     "version": {
@@ -316,10 +316,10 @@
     },
     "account": {
       "claude": {
-        "description": "Anthropic Claude AI asistanı"
+        "description": ""
       },
       "cursor": {
-        "description": "Cursor AI destekli kod editörü"
+        "description": ""
       },
       "codex": {
         "description": "OpenAI Codex AI asistanı"
@@ -341,7 +341,7 @@
     "skipPermissions": {
       "label": "İzin istemlerini atla (dikkatli kullan)",
       "claudeDescription": "--dangerously-skip-permissions bayrağının eşdeğeri",
-      "cursorDescription": "Cursor CLI'daki -f bayrağının eşdeğeri"
+      "cursorDescription": ""
     },
     "allowedTools": {
       "title": "İzin Verilen Araçlar",
@@ -415,9 +415,9 @@
   "mcpServers": {
     "title": "MCP Sunucuları",
     "description": {
-      "claude": "Model Context Protocol sunucuları Claude'a ek araçlar ve veri kaynakları sağlar",
-      "cursor": "Model Context Protocol sunucuları Cursor'a ek araçlar ve veri kaynakları sağlar",
-      "codex": "Model Context Protocol sunucuları Codex'e ek araçlar ve veri kaynakları sağlar"
+      "codex": "Model Context Protocol sunucuları Codex'e ek araçlar ve veri kaynakları sağlar",
+      "claude": "",
+      "cursor": ""
     },
     "addButton": "MCP Sunucusu Ekle",
     "empty": "Yapılandırılmış MCP sunucusu yok",

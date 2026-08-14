@@ -15,10 +15,10 @@
     "user": "U",
     "error": "Error",
     "tool": "Herramienta",
-    "claude": "Claude",
-    "cursor": "Cursor",
     "codex": "Codex",
-    "opencode": "OpenCode"
+    "claude": "",
+    "cursor": "",
+    "opencode": ""
   },
   "tools": {
     "settings": "Ajustes de herramientas",
@@ -55,9 +55,9 @@
   "interactive": {
     "title": "Prompt interactivo",
     "waiting": "Esperando tu respuesta en la CLI",
-    "instruction": "Selecciona una opción en la terminal donde está corriendo Claude.",
-    "selectedOption": "✓ Claude seleccionó la opción {{number}}",
-    "instructionDetail": "En la CLI seleccionarías esta opción de forma interactiva con las flechas o escribiendo el número."
+    "instructionDetail": "En la CLI seleccionarías esta opción de forma interactiva con las flechas o escribiendo el número.",
+    "instruction": "",
+    "selectedOption": ""
   },
   "thinking": {
     "title": "Pensando...",
@@ -83,7 +83,7 @@
     "title": "Plan de implementación"
   },
   "usageLimit": {
-    "resetAt": "Se alcanzó el límite de uso de Claude. Tu límite se restablecerá a las **{{time}} {{timezone}}** - {{date}}"
+    "resetAt": ""
   },
   "codex": {
     "permissionMode": "Modo de permisos",
@@ -157,11 +157,11 @@
       "google": "de Google"
     },
     "readyPrompt": {
-      "claude": "Listo para usar Claude con {{model}}. Escribe tu mensaje abajo.",
-      "cursor": "Listo para usar Cursor con {{model}}. Escribe tu mensaje abajo.",
       "codex": "Listo para usar Codex con {{model}}. Escribe tu mensaje abajo.",
-      "opencode": "Listo para usar OpenCode con {{model}}. Escribe tu mensaje abajo.",
-      "default": "Selecciona un proveedor arriba para empezar"
+      "default": "Selecciona un proveedor arriba para empezar",
+      "claude": "",
+      "cursor": "",
+      "opencode": ""
     },
     "pressToSearch": "Pulsa <kbd>{{shortcut}}</kbd> para buscar sesiones, archivos y commits"
   },
@@ -205,11 +205,11 @@
     },
     "loading": "Cargando terminal...",
     "connecting": "Conectando a la shell...",
-    "startSession": "Iniciar una sesión nueva de Claude",
     "resumeSession": "Reanudar sesión: {{displayName}}...",
     "runCommand": "Ejecutar {{command}} en {{projectName}}",
-    "startCli": "Iniciando Claude CLI en {{projectName}}",
-    "defaultCommand": "comando"
+    "defaultCommand": "comando",
+    "startSession": "",
+    "startCli": ""
   },
   "claudeStatus": {
     "actions": {

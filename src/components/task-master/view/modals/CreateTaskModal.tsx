@@ -35,7 +35,6 @@ export default function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProp
                 <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
-                <h4 className="mb-2 font-semibold text-blue-900 dark:text-blue-100">Pro tip: ask Claude Code directly</h4>
                 <p className="mb-3 text-sm text-blue-800 dark:text-blue-200">
                   Ask for a task in chat with context and requirements. TaskMaster can generate implementation-ready tasks.
                 </p>
@@ -50,14 +49,19 @@ export default function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProp
           </div>
 
           <div className="border-t border-gray-200 pt-4 text-center dark:border-gray-700">
-            <a
-              href="https://github.com/eyaltoledano/claude-task-master/blob/main/docs/examples.md"
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              type="button"
+              onClick={() =>
+                window.open(
+                  "https://github.com/eyaltoledano/claude-task-master/blob/main/docs/examples.md",
+                  "_blank",
+                  "noopener,noreferrer",
+                )
+              }
               className="inline-block text-sm font-medium text-blue-600 underline hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
             >
               View TaskMaster documentation
-            </a>
+            </button>
           </div>
 
           <button

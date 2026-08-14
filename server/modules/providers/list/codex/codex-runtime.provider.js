@@ -235,14 +235,14 @@ function mapPermissionModeToCodexOptions(permissionMode) {
  */
 export function createCodexClientForRouting(routing, CodexConstructor = Codex) {
 	if (!routing || routing.source !== "9router") {
-		throw new Error("Codex runtime requires 9Router");
+		throw new Error();
 	}
 	if (
 		!routing.openAiBaseUrl?.trim() ||
 		!routing.apiKey?.trim() ||
 		!routing.routeName?.trim()
 	) {
-		throw new Error("Codex 9Router configuration is incomplete");
+		throw new Error();
 	}
 
 	const routeOptions = buildCodexRouteOptions(routing);

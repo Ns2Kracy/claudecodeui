@@ -21,7 +21,7 @@ test("Codex runtime rejects native dispatch before constructing the SDK", () => 
 	assert.throws(
 		() =>
 			createCodexClientForRouting({ source: "native" }, FakeCodexConstructor),
-		/requires 9Router/i,
+		Error,
 	);
 	assert.deepEqual(FakeCodex.constructorCalls, []);
 });
@@ -40,7 +40,7 @@ test("Codex runtime rejects incomplete routed credentials", () => {
 				},
 				FakeCodexConstructor,
 			),
-		/incomplete/i,
+		Error,
 	);
 	assert.deepEqual(FakeCodex.constructorCalls, []);
 });

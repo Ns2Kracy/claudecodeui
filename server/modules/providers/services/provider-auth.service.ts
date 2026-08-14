@@ -54,7 +54,6 @@ export function createProviderAuthService(
 					authenticated: false,
 					email: null,
 					method: null,
-					error: "No usable Codex account is configured in 9Router",
 				};
 			} catch {
 				return {
@@ -63,7 +62,6 @@ export function createProviderAuthService(
 					authenticated: false,
 					email: null,
 					method: null,
-					error: "9Router authentication is unavailable",
 				};
 			}
 		},

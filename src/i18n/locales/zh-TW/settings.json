@@ -277,8 +277,8 @@
     "apiDocsLink": "API 文件",
     "documentation": {
       "title": "外部 API 文件",
-      "description": "了解如何使用外部 API 從您的應用程式觸發 Claude/Cursor 工作階段。",
-      "viewLink": "查看 API 文件 →"
+      "viewLink": "查看 API 文件 →",
+      "description": ""
     },
     "loading": "載入中...",
     "version": {
@@ -316,10 +316,10 @@
     },
     "account": {
       "claude": {
-        "description": "Anthropic Claude AI 助手"
+        "description": ""
       },
       "cursor": {
-        "description": "Cursor AI 驅動的程式碼編輯器"
+        "description": ""
       },
       "codex": {
         "description": "OpenAI Codex AI 助手"
@@ -341,7 +341,7 @@
     "skipPermissions": {
       "label": "略過權限提示（請謹慎使用）",
       "claudeDescription": "等同於 --dangerously-skip-permissions 旗標",
-      "cursorDescription": "等同於 Cursor CLI 中的 -f 旗標"
+      "cursorDescription": ""
     },
     "allowedTools": {
       "title": "允許的工具",
@@ -415,9 +415,9 @@
   "mcpServers": {
     "title": "MCP 伺服器",
     "description": {
-      "claude": "Model Context Protocol 伺服器為 Claude 提供額外的工具和資料來源",
-      "cursor": "Model Context Protocol 伺服器為 Cursor 提供額外的工具和資料來源",
-      "codex": "Model Context Protocol 伺服器為 Codex 提供額外的工具和資料來源"
+      "codex": "Model Context Protocol 伺服器為 Codex 提供額外的工具和資料來源",
+      "claude": "",
+      "cursor": ""
     },
     "addButton": "新增 MCP 伺服器",
     "empty": "未設定 MCP 伺服器",
@@ -484,7 +484,6 @@
   },
   "nineRouter": {
     "title": "提供者路由器",
-    "description": "透過內建提供者路由器執行階段路由新的 Claude、Codex 和 OpenCode 工作階段，無需額外端點或憑證設定。",
     "loading": "正在載入提供者路由器設定...",
     "alerts": {
       "secureStorage": {
@@ -569,13 +568,13 @@
       "authentication": {
         "oauth": {
           "title": "Codex OAuth",
-          "description": "使用 ChatGPT 登入。OAuth 憑證保存在 9Router 中，CloudCLI 不會儲存。",
           "connected": "已連線",
           "continue": "使用 ChatGPT 登入",
           "addAnother": "新增另一個 ChatGPT 帳戶",
           "accountsTitle": "已連線的 ChatGPT 帳戶",
           "accountsDescription": "Codex 可透過提供者路由器使用這些 ChatGPT 帳戶。",
-          "empty": "尚未連線 ChatGPT 帳戶。"
+          "empty": "尚未連線 ChatGPT 帳戶。",
+          "description": ""
         },
         "apiKey": {
           "title": "API Key 驗證",
@@ -669,6 +668,7 @@
         "degraded": "降級",
         "unavailable": "不可用"
       }
-    }
+    },
+    "description": ""
   }
 }

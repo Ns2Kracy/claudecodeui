@@ -52,7 +52,6 @@ test("inactive and failed routed accounts do not authenticate Codex", async () =
 		authenticated: false,
 		email: null,
 		method: null,
-		error: "No usable Codex account is configured in 9Router",
 	});
 });
 
@@ -70,6 +69,5 @@ test("routing failure fails Codex authentication closed", async () => {
 		authenticated: false,
 		email: null,
 		method: null,
-		error: "9Router authentication is unavailable",
 	});
 });

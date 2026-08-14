@@ -41,7 +41,7 @@ const getScopeLabel = (scope: McpScope, mode: McpFormMode): string => {
   }
 
   if (scope === 'local') {
-    return 'Claude Local';
+    return '';
   }
 
   return mode === 'global' ? 'Project (All Providers)' : 'Project';
@@ -55,7 +55,7 @@ const getScopeDescription = (scope: McpScope, mode: McpFormMode): string => {
   }
 
   if (scope === 'local') {
-    return 'Stored in Claude user settings for the selected project';
+    return '';
   }
 
   return mode === 'global'

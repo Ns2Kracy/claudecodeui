@@ -302,8 +302,8 @@
     "apiDocsLink": "API Documentation",
     "documentation": {
       "title": "External API Documentation",
-      "description": "Learn how to use the external API to trigger Claude/Cursor sessions from your applications.",
-      "viewLink": "View API Documentation →"
+      "viewLink": "View API Documentation →",
+      "description": ""
     },
     "loading": "Loading...",
     "version": {
@@ -341,16 +341,16 @@
     },
     "account": {
       "claude": {
-        "description": "Anthropic Claude AI assistant"
+        "description": ""
       },
       "cursor": {
-        "description": "Cursor AI-powered code editor"
+        "description": ""
       },
       "codex": {
         "description": "OpenAI Codex AI assistant"
       },
       "opencode": {
-        "description": "OpenCode CLI assistant"
+        "description": ""
       }
     },
     "connectionStatus": "Connection Status",
@@ -369,7 +369,7 @@
     "skipPermissions": {
       "label": "Skip permission prompts (use with caution)",
       "claudeDescription": "Equivalent to --dangerously-skip-permissions flag",
-      "cursorDescription": "Equivalent to -f flag in Cursor CLI"
+      "cursorDescription": ""
     },
     "allowedTools": {
       "title": "Allowed Tools",
@@ -443,10 +443,10 @@
   "mcpServers": {
     "title": "MCP Servers",
     "description": {
-      "claude": "Model Context Protocol servers provide additional tools and data sources to Claude",
-      "cursor": "Model Context Protocol servers provide additional tools and data sources to Cursor",
       "codex": "Model Context Protocol servers provide additional tools and data sources to Codex",
-      "opencode": "Model Context Protocol servers provide additional tools and data sources to OpenCode"
+      "claude": "",
+      "cursor": "",
+      "opencode": ""
     },
     "addButton": "Add MCP Server",
     "empty": "No MCP servers configured",
@@ -527,22 +527,22 @@
       "install": "Install"
     },
     "claudeWatchPlugin": {
-      "name": "Claude Watch",
       "badge": "unofficial",
-      "description": "Watch long-running Claude Code sessions for hangs and expose process controls.",
-      "install": "Install"
+      "install": "Install",
+      "name": "",
+      "description": ""
     },
     "prismCloudCLI": {
       "name": "PRISM CloudCLI",
       "badge": "unofficial",
-      "description": "Session intelligence for Claude Code, inside CloudCLI. See why your sessions are burning tokens without leaving the browser.",
-      "install": "Install"
+      "install": "Install",
+      "description": ""
     },
     "sessionManagerPlugin": {
       "name": "Sessions",
       "badge": "unofficial",
-      "description": "View, manage, and kill active Claude Code sessions.",
-      "install": "Install"
+      "install": "Install",
+      "description": ""
     },
     "tokenCostCalculatorPlugin": {
       "name": "Token Cost Calculator",
@@ -563,10 +563,10 @@
       "install": "Install"
     },
     "claudeUsagePlugin": {
-      "name": "Claude Usage",
       "badge": "unofficial",
-      "description": "Track live Claude Code plan limits and explore 30-day token and cost history.",
-      "install": "Install"
+      "install": "Install",
+      "name": "",
+      "description": ""
     },
     "morePlugins": "More",
     "enable": "Enable",
@@ -576,8 +576,7 @@
     "runningStatus": "running"
   },
   "nineRouter": {
-    "title": "Provider Router",
-    "description": "Route new Claude, Codex, and OpenCode sessions through the built-in Provider Router runtime without extra endpoint or credential setup.",
+    "title": "",
     "loading": "Loading provider settings...",
     "alerts": {
       "secureStorage": {
@@ -585,22 +584,22 @@
         "description": "Set a valid ROUTING_SECRET_KEY on the server before saving write-only provider credentials."
       },
       "offline": {
-        "title": "Provider Router is offline",
+        "title": "",
         "description": "CloudCLI could not reach the configured endpoint. Native agent login remains available."
       },
       "unauthorized": {
-        "title": "Provider Router credentials were rejected",
+        "title": "",
         "description": "Check the admin password and data-plane API key. Existing native agent credentials were not changed."
       },
       "incompatible": {
-        "title": "This Provider Router version has limited compatibility",
+        "title": "",
         "description": "Only capabilities reported by this version are enabled. CloudCLI does not guess unsupported management APIs."
       },
       "operation": {
-        "title": "Provider Router operation failed"
+        "title": ""
       },
       "runtimeUnavailable": {
-        "title": "Provider Router runtime is unavailable",
+        "title": "",
         "description": "CloudCLI could not start the embedded router runtime. Native agent login remains available. Restart the runtime to try again."
       }
     },
@@ -653,8 +652,8 @@
         "degraded_one": "{{count}} needs attention",
         "degraded_other": "{{count}} need attention"
       },
-      "connectFirst": "The built-in Provider Router runtime must be ready before provider accounts can load.",
-      "unavailable": "This Provider Router version does not expose a supported account management API.",
+      "connectFirst": "",
+      "unavailable": "",
       "loading": "Loading provider accounts and models...",
       "refreshing": "Refreshing provider accounts...",
       "loadFailed": "Could not load provider accounts and models.",
@@ -672,26 +671,26 @@
       "authentication": {
         "oauth": {
           "title": "Codex OAuth",
-          "description": "Sign in with ChatGPT. OAuth credentials stay in 9Router and are never stored by CloudCLI.",
           "connected": "Connected",
           "continue": "Continue with ChatGPT",
           "addAnother": "Add another ChatGPT account",
           "accountsTitle": "Connected ChatGPT accounts",
-          "accountsDescription": "ChatGPT accounts available to Codex through the Provider Router.",
-          "empty": "No ChatGPT accounts connected yet."
+          "accountsDescription": "",
+          "empty": "No ChatGPT accounts connected yet.",
+          "description": ""
         },
         "apiKey": {
           "title": "API Key authentication",
           "description": "Choose a provider and confirm its API endpoint.",
           "providersLabel": "API Key providers",
           "accountsTitle": "Connected API key accounts",
-          "accountsDescription": "API key accounts available to Codex through the Provider Router.",
+          "accountsDescription": "",
           "empty": "No API key accounts connected yet."
         }
       },
       "accounts": {
         "title": "Upstream accounts",
-        "description": "Accounts remain authoritative in the Provider Router. CloudCLI displays only safe status fields.",
+        "description": "",
         "add": "Add API key",
         "addTitle": "Add upstream account",
         "apiKeyOnly": "API-key accounts only are supported for creation in this release.",
@@ -701,7 +700,7 @@
         "apiKey": "API key",
         "priority": "Priority",
         "noProviders": "No provider catalog is available for a new account.",
-        "empty": "No upstream accounts were returned by the Provider Router.",
+        "empty": "",
         "disabled": "Disabled",
         "defaultPriority": "Default",
         "expires": "Expires",
@@ -709,7 +708,7 @@
         "replacementKey": "Replacement API key",
         "keepKey": "Leave blank to keep configured",
         "confirmDelete": "Delete {{name}}?",
-        "unavailable": "Account details are unavailable for this Provider Router version.",
+        "unavailable": "",
         "facts": {
           "connection": "Connection status",
           "health": "Health status",
@@ -735,7 +734,7 @@
         "testResult": {
           "success": "Test successful · {{duration}} ms",
           "failure": "Test failed · {{duration}} ms",
-          "transportFailure": "The Provider Router could not complete the test.",
+          "transportFailure": "",
           "viewDetails": "View details",
           "hideDetails": "Hide details",
           "completedAt": "Completed at",
@@ -759,10 +758,10 @@
         }
       },
       "connectProvider": "Connect a provider",
-      "providerConnectionMethodHelp": "Choose a method supported by the Provider Router runtime."
+      "providerConnectionMethodHelp": ""
     },
     "runtime": {
-      "title": "Built-in Provider Router runtime",
+      "title": "",
       "version": "Version",
       "unknown": "Unknown",
       "restart": "Restart runtime",
@@ -772,6 +771,7 @@
         "degraded": "Degraded",
         "unavailable": "Unavailable"
       }
-    }
+    },
+    "description": ""
   }
 }

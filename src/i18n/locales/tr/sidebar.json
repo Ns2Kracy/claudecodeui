@@ -13,11 +13,11 @@
     "untitledSession": "Adsız Oturum",
     "newSession": "Yeni Oturum",
     "codexSession": "Codex Oturumu",
-    "fetchingProjects": "Claude projelerin ve oturumların getiriliyor",
     "projects": "proje",
     "noMatchingProjects": "Eşleşen proje yok",
     "tryDifferentSearch": "Arama terimini değiştirmeyi dene",
-    "runClaudeCli": "Başlamak için bir proje dizininde Claude CLI çalıştır"
+    "fetchingProjects": "",
+    "runClaudeCli": ""
   },
   "app": {
     "title": "CloudCLI",

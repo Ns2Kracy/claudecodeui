@@ -11,7 +11,7 @@ import ProviderLoginModal, {
 
 (globalThis as typeof globalThis & { React: typeof React }).React = React;
 
-test("Codex login modal starts authorization through 9Router", async () => {
+test("Codex login modal starts authorization", async () => {
 	const calls: string[] = [];
 	const popup = { close() {} } as Window;
 	const result = await startCodexRoutingOAuth({
@@ -49,7 +49,7 @@ test("Codex routed login rejects unsafe authorization URLs", async () => {
 				}),
 				openPopup: () => null,
 			}),
-		/unsafe OAuth URL/i,
+		Error,
 	);
 });
 
@@ -96,7 +96,7 @@ test("Codex login modal keeps its shell but no longer renders a CLI login comman
 	);
 
 	assert.match(markup, /Codex Login/);
-	assert.match(markup, /9Router/);
+	assert.doesNotMatch(markup, /9Router/);
 	assert.match(markup, /Continue with OAuth/);
 	assert.equal(markup.includes("codex login"), false);
 });

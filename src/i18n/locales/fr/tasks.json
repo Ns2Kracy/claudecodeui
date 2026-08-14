@@ -49,9 +49,9 @@
     "title": "Démarrer avec TaskMaster",
     "subtitle": "Votre guide pour une gestion productive des tâches",
     "examples": {
-      "parsePRD": "💬 Exemple :\n« Je viens d'initialiser un nouveau projet avec Claude Task Master. J'ai un PRD dans .taskmaster/docs/prd.txt. Pouvez-vous m'aider à l'analyser et configurer les tâches initiales ? »",
       "expandTask": "💬 Exemple :\n« La tâche 5 semble complexe. Pouvez-vous la décomposer en sous-tâches ? »",
-      "addTask": "💬 Exemple :\n« Veuillez ajouter une nouvelle tâche pour implémenter le téléchargement d'images de profil utilisateur avec Cloudinary, recherchez la meilleure approche. »"
+      "addTask": "💬 Exemple :\n« Veuillez ajouter une nouvelle tâche pour implémenter le téléchargement d'images de profil utilisateur avec Cloudinary, recherchez la meilleure approche. »",
+      "parsePRD": ""
     },
     "moreExamples": "Voir plus d'exemples et de patterns d'utilisation →",
     "proTips": {

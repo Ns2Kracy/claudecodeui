@@ -89,13 +89,13 @@
     "loading": "CloudCLI Yükleniyor",
     "settingUpWorkspace": "Çalışma alanın hazırlanıyor...",
     "chooseProject": "Projeni Seç",
-    "selectProjectDescription": "Claude ile kodlamaya başlamak için kenar çubuğundan bir proje seç. Her proje kendi sohbet oturumlarını ve dosya geçmişini içerir.",
     "tip": "İpucu",
     "createProjectMobile": "Projelere erişmek için yukarıdaki menü düğmesine dokun",
     "createProjectDesktop": "Kenar çubuğundaki klasör simgesine tıklayarak yeni bir proje oluştur",
     "newSession": "Yeni Oturum",
     "untitledSession": "Adsız Oturum",
-    "projectFiles": "Proje Dosyaları"
+    "projectFiles": "Proje Dosyaları",
+    "selectProjectDescription": ""
   },
   "fileTree": {
     "loading": "Dosyalar yükleniyor...",
@@ -187,10 +187,10 @@
       "usingProvidedToken": "Girilen token kullanılıyor",
       "noAuthentication": "Kimlik doğrulama yok",
       "sshKey": "SSH Anahtarı",
-      "existingInfo": "Çalışma alanı proje listene eklenecek ve Claude/Cursor oturumları için kullanılabilir olacak.",
       "newWithClone": "Depo bu klasöre klonlanacak.",
-      "newEmpty": "Çalışma alanı proje listene eklenecek ve Claude/Cursor oturumları için kullanılabilir olacak.",
-      "cloningRepository": "Depo klonlanıyor..."
+      "cloningRepository": "Depo klonlanıyor...",
+      "existingInfo": "",
+      "newEmpty": ""
     },
     "buttons": {
       "cancel": "İptal",

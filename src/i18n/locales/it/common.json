@@ -89,13 +89,13 @@
     "loading": "Caricamento CloudCLI",
     "settingUpWorkspace": "Preparazione dell'area di lavoro...",
     "chooseProject": "Scegli il tuo progetto",
-    "selectProjectDescription": "Seleziona un progetto dalla barra laterale per iniziare a programmare con Claude. Ogni progetto contiene le tue sessioni di chat e la cronologia dei file.",
     "tip": "Suggerimento",
     "createProjectMobile": "Tocca il pulsante menu in alto per accedere ai progetti",
     "createProjectDesktop": "Crea un nuovo progetto cliccando l'icona cartella nella barra laterale",
     "newSession": "Nuova sessione",
     "untitledSession": "Sessione senza titolo",
-    "projectFiles": "File del progetto"
+    "projectFiles": "File del progetto",
+    "selectProjectDescription": ""
   },
   "fileTree": {
     "loading": "Caricamento file...",
@@ -187,10 +187,10 @@
       "usingProvidedToken": "Usando token fornito",
       "noAuthentication": "Nessuna autenticazione",
       "sshKey": "Chiave SSH",
-      "existingInfo": "L'area di lavoro verrà aggiunta alla lista dei progetti e sarà disponibile per le sessioni Claude/Cursor.",
       "newWithClone": "Il repository verrà clonato da questa cartella.",
-      "newEmpty": "L'area di lavoro verrà aggiunta alla lista dei progetti e sarà disponibile per le sessioni Claude/Cursor.",
-      "cloningRepository": "Clonazione repository..."
+      "cloningRepository": "Clonazione repository...",
+      "existingInfo": "",
+      "newEmpty": ""
     },
     "buttons": {
       "cancel": "Annulla",

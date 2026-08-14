@@ -276,8 +276,8 @@
     "apiDocsLink": "Documentation API",
     "documentation": {
       "title": "Documentation de l'API externe",
-      "description": "Apprenez à utiliser l'API externe pour déclencher des sessions Claude/Cursor depuis vos applications.",
-      "viewLink": "Voir la documentation API →"
+      "viewLink": "Voir la documentation API →",
+      "description": ""
     },
     "loading": "Chargement...",
     "version": {
@@ -315,16 +315,16 @@
     },
     "account": {
       "claude": {
-        "description": "Assistant IA Claude d'Anthropic"
+        "description": ""
       },
       "cursor": {
-        "description": "Éditeur de code IA Cursor"
+        "description": ""
       },
       "codex": {
         "description": "Assistant IA Codex d'OpenAI"
       },
       "opencode": {
-        "description": "Assistant CLI OpenCode"
+        "description": ""
       }
     },
     "connectionStatus": "Statut de la connexion",
@@ -343,7 +343,7 @@
     "skipPermissions": {
       "label": "Ignorer les invites de permission (à utiliser avec précaution)",
       "claudeDescription": "Équivalent au flag --dangerously-skip-permissions",
-      "cursorDescription": "Équivalent au flag -f dans le CLI Cursor"
+      "cursorDescription": ""
     },
     "allowedTools": {
       "title": "Outils autorisés",
@@ -417,10 +417,10 @@
   "mcpServers": {
     "title": "Serveurs MCP",
     "description": {
-      "claude": "Les serveurs Model Context Protocol fournissent des outils et sources de données supplémentaires à Claude",
-      "cursor": "Les serveurs Model Context Protocol fournissent des outils et sources de données supplémentaires à Cursor",
       "codex": "Les serveurs Model Context Protocol fournissent des outils et sources de données supplémentaires à Codex",
-      "opencode": "Les serveurs Model Context Protocol fournissent des outils et sources de données supplémentaires à OpenCode"
+      "claude": "",
+      "cursor": "",
+      "opencode": ""
     },
     "addButton": "Ajouter un serveur MCP",
     "empty": "Aucun serveur MCP configuré",
@@ -497,22 +497,22 @@
       "install": "Installer"
     },
     "claudeWatchPlugin": {
-      "name": "Claude Watch",
       "badge": "non officiel",
-      "description": "Surveillez les sessions Claude Code longues pour détecter les blocages et exposez les contrôles de processus.",
-      "install": "Installer"
+      "install": "Installer",
+      "name": "",
+      "description": ""
     },
     "prismCloudCLI": {
       "name": "PRISM CloudCLI",
       "badge": "non officiel",
-      "description": "Intelligence de session pour Claude Code, dans CloudCLI. Voyez pourquoi vos sessions consomment des tokens sans quitter le navigateur.",
-      "install": "Installer"
+      "install": "Installer",
+      "description": ""
     },
     "sessionManagerPlugin": {
       "name": "Sessions",
       "badge": "non officiel",
-      "description": "Visualisez, gérez et terminez les sessions Claude Code actives.",
-      "install": "Installer"
+      "install": "Installer",
+      "description": ""
     },
     "tokenCostCalculatorPlugin": {
       "name": "Calculateur de coût en tokens",

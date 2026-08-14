@@ -276,8 +276,8 @@
     "apiDocsLink": "Документация API",
     "documentation": {
       "title": "Документация внешнего API",
-      "description": "Узнайте, как использовать внешний API для запуска сеансов Claude/Cursor из ваших приложений.",
-      "viewLink": "Просмотр документации API →"
+      "viewLink": "Просмотр документации API →",
+      "description": ""
     },
     "loading": "Загрузка...",
     "version": {
@@ -315,10 +315,10 @@
     },
     "account": {
       "claude": {
-        "description": "AI-ассистент Anthropic Claude"
+        "description": ""
       },
       "cursor": {
-        "description": "Редактор кода с AI Cursor"
+        "description": ""
       },
       "codex": {
         "description": "AI-ассистент OpenAI Codex"
@@ -340,7 +340,7 @@
     "skipPermissions": {
       "label": "Пропускать запросы разрешений (используйте с осторожностью)",
       "claudeDescription": "Эквивалентно флагу --dangerously-skip-permissions",
-      "cursorDescription": "Эквивалентно флагу -f в Cursor CLI"
+      "cursorDescription": ""
     },
     "allowedTools": {
       "title": "Разрешенные инструменты",
@@ -414,9 +414,9 @@
   "mcpServers": {
     "title": "MCP серверы",
     "description": {
-      "claude": "Серверы Model Context Protocol предоставляют дополнительные инструменты и источники данных для Claude",
-      "cursor": "Серверы Model Context Protocol предоставляют дополнительные инструменты и источники данных для Cursor",
-      "codex": "Серверы Model Context Protocol предоставляют дополнительные инструменты и источники данных для Codex"
+      "codex": "Серверы Model Context Protocol предоставляют дополнительные инструменты и источники данных для Codex",
+      "claude": "",
+      "cursor": ""
     },
     "addButton": "Добавить MCP сервер",
     "empty": "MCP серверы не настроены",

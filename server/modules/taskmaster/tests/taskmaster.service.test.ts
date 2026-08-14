@@ -91,7 +91,7 @@ test('detectMcpServer reports when no readable Claude configuration exists', asy
 
   assert.deepEqual(await service.detectMcpServer(), {
     hasMCPServer: false,
-    reason: 'No Claude configuration file found',
+    reason: '',
     hasConfig: false,
   });
 });

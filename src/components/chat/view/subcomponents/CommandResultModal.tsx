@@ -70,10 +70,10 @@ type ModelOption = {
 };
 
 const PROVIDER_LABELS: Record<string, string> = {
-	claude: "Claude",
-	cursor: "Cursor",
+	claude: "",
+	cursor: "",
 	codex: "Codex",
-	opencode: "OpenCode",
+	opencode: "",
 };
 
 const FALLBACK_COMMANDS: CommandEntry[] = [

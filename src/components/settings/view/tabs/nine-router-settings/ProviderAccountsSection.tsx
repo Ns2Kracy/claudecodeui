@@ -55,7 +55,6 @@ export default function ProviderAccountsSection({
 }: ProviderAccountsSectionProps) {
 	const { t } = useTranslation("settings");
 	const canMutate = connectionStatus === "connected";
-	const oauthAccounts = accounts.filter((account) => !isApiKeyAccount(account));
 	const apiKeyAccounts = accounts.filter(isApiKeyAccount);
 	const accountEditorProps = {
 		models,
@@ -116,33 +115,6 @@ export default function ProviderAccountsSection({
 							{t("nineRouter.management.refreshing")}
 						</div>
 					)}
-					<SettingsCard>
-						<div className="space-y-5 p-4">
-							<ProviderConnections
-								mode="oauth"
-								hasCodexAccount={oauthAccounts.some(
-									(account) => account.provider === "codex",
-								)}
-								disabled={!canMutate}
-								onConnected={onRetry}
-							/>
-							<div className="border-t border-border" />
-							<AccountEditor
-								{...accountEditorProps}
-								accounts={oauthAccounts}
-								title={t(
-									"nineRouter.management.authentication.oauth.accountsTitle",
-								)}
-								description={t(
-									"nineRouter.management.authentication.oauth.accountsDescription",
-								)}
-								emptyMessage={t(
-									"nineRouter.management.authentication.oauth.empty",
-								)}
-							/>
-						</div>
-					</SettingsCard>
-
 					<SettingsCard>
 						<div className="space-y-5 p-4">
 							<ProviderConnections

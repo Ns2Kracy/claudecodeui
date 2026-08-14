@@ -89,13 +89,13 @@
     "loading": "Загрузка CloudCLI",
     "settingUpWorkspace": "Настройка рабочего пространства...",
     "chooseProject": "Выберите проект",
-    "selectProjectDescription": "Выберите проект на боковой панели, чтобы начать работу с Claude. Каждый проект содержит ваши сеансы чата и историю файлов.",
     "tip": "Совет",
     "createProjectMobile": "Нажмите кнопку меню выше для доступа к проектам",
     "createProjectDesktop": "Создайте новый проект, нажав на значок папки на боковой панели",
     "newSession": "Новый сеанс",
     "untitledSession": "Безымянный сеанс",
-    "projectFiles": "Файлы проекта"
+    "projectFiles": "Файлы проекта",
+    "selectProjectDescription": ""
   },
   "fileTree": {
     "loading": "Загрузка файлов...",
@@ -187,10 +187,10 @@
       "usingProvidedToken": "Использование предоставленного токена",
       "noAuthentication": "Без аутентификации",
       "sshKey": "SSH ключ",
-      "existingInfo": "Рабочее пространство будет добавлено в список проектов и будет доступно для сеансов Claude/Cursor.",
       "newWithClone": "Репозиторий будет клонирован в эту папку.",
-      "newEmpty": "Рабочее пространство будет добавлено в список проектов и будет доступно для сеансов Claude/Cursor.",
-      "cloningRepository": "Клонирование репозитория..."
+      "cloningRepository": "Клонирование репозитория...",
+      "existingInfo": "",
+      "newEmpty": ""
     },
     "buttons": {
       "cancel": "Отмена",

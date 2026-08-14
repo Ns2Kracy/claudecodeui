@@ -302,8 +302,8 @@
     "apiDocsLink": "API 文档",
     "documentation": {
       "title": "外部 API 文档",
-      "description": "了解如何使用外部 API 从您的应用程序触发 Claude/Cursor 会话。",
-      "viewLink": "查看 API 文档 →"
+      "viewLink": "查看 API 文档 →",
+      "description": ""
     },
     "loading": "加载中...",
     "version": {
@@ -341,16 +341,16 @@
     },
     "account": {
       "claude": {
-        "description": "Anthropic Claude AI 助手"
+        "description": ""
       },
       "cursor": {
-        "description": "Cursor AI 驱动的代码编辑器"
+        "description": ""
       },
       "codex": {
         "description": "OpenAI Codex AI 助手"
       },
       "opencode": {
-        "description": "OpenCode CLI 助手"
+        "description": ""
       }
     },
     "connectionStatus": "连接状态",
@@ -369,7 +369,7 @@
     "skipPermissions": {
       "label": "跳过权限提示（请谨慎使用）",
       "claudeDescription": "等同于 --dangerously-skip-permissions 标志",
-      "cursorDescription": "等同于 Cursor CLI 中的 -f 标志"
+      "cursorDescription": ""
     },
     "allowedTools": {
       "title": "允许的工具",
@@ -443,10 +443,10 @@
   "mcpServers": {
     "title": "MCP 服务器",
     "description": {
-      "claude": "Model Context Protocol 服务器为 Claude 提供额外的工具和数据源",
-      "cursor": "Model Context Protocol 服务器为 Cursor 提供额外的工具和数据源",
       "codex": "Model Context Protocol 服务器为 Codex 提供额外的工具和数据源",
-      "opencode": "Model Context Protocol 服务器为 OpenCode 提供额外的工具和数据源"
+      "claude": "",
+      "cursor": "",
+      "opencode": ""
     },
     "addButton": "添加 MCP 服务器",
     "empty": "未配置 MCP 服务器",
@@ -527,22 +527,22 @@
       "install": "安装"
     },
     "claudeWatchPlugin": {
-      "name": "Claude Watch",
       "badge": "非官方",
-      "description": "监控长时间运行的 Claude Code 会话，检测挂起并暴露进程控制。",
-      "install": "安装"
+      "install": "安装",
+      "name": "",
+      "description": ""
     },
     "prismCloudCLI": {
       "name": "PRISM CloudCLI",
       "badge": "非官方",
-      "description": "CloudCLI 内的 Claude Code 会话智能分析。无需离开浏览器即可了解会话为何消耗大量 Token。",
-      "install": "安装"
+      "install": "安装",
+      "description": ""
     },
     "sessionManagerPlugin": {
       "name": "会话管理",
       "badge": "非官方",
-      "description": "查看、管理和终止活跃的 Claude Code 会话。",
-      "install": "安装"
+      "install": "安装",
+      "description": ""
     },
     "tokenCostCalculatorPlugin": {
       "name": "Token 费用计算器",
@@ -571,7 +571,6 @@
   },
   "nineRouter": {
     "title": "提供商路由器",
-    "description": "通过内置提供商路由器运行时路由新的 Claude、Codex 和 OpenCode 会话，无需额外端点或凭据设置。",
     "loading": "正在加载提供商路由器设置...",
     "alerts": {
       "secureStorage": {
@@ -664,13 +663,13 @@
       "authentication": {
         "oauth": {
           "title": "Codex OAuth",
-          "description": "使用 ChatGPT 登录。OAuth 凭据保存在 9Router 中，CloudCLI 不会存储。",
           "connected": "已连接",
           "continue": "使用 ChatGPT 登录",
           "addAnother": "添加另一个 ChatGPT 账户",
           "accountsTitle": "已连接的 ChatGPT 账户",
           "accountsDescription": "Codex 可通过提供商路由器使用这些 ChatGPT 账户。",
-          "empty": "尚未连接 ChatGPT 账户。"
+          "empty": "尚未连接 ChatGPT 账户。",
+          "description": ""
         },
         "apiKey": {
           "title": "API Key 认证",
@@ -764,6 +763,7 @@
         "degraded": "降级",
         "unavailable": "不可用"
       }
-    }
+    },
+    "description": ""
   }
 }

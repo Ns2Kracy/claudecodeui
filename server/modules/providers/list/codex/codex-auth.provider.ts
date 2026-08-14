@@ -27,7 +27,6 @@ export class CodexProviderAuth implements IProviderAuth {
 			authenticated: false,
 			email: null,
 			method: null,
-			error: "Authentication is managed by 9Router",
 		};
 	}
 }

@@ -376,10 +376,6 @@ async function startServer() {
 		const distIndexPath = path.join(APP_ROOT, "dist", "index.html");
 		const isProduction = fs.existsSync(distIndexPath);
 
-		console.log(
-			`${terminalTextStyles.info("[INFO]")} Using Codex through 9Router`,
-		);
-		console.log("");
 
 		if (isProduction) {
 			console.log(

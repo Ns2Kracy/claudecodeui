@@ -40,7 +40,7 @@ export function createTaskmasterService(dependencies: TaskmasterServiceDependenc
             if (!configuration) {
                 return {
                     hasMCPServer: false,
-                    reason: 'No Claude configuration file found',
+                    reason: '',
                     hasConfig: false,
                 };
             }

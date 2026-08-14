@@ -13,11 +13,11 @@
     "untitledSession": "Sessione senza titolo",
     "newSession": "Nuova sessione",
     "codexSession": "Sessione Codex",
-    "fetchingProjects": "Recupero dei tuoi progetti e sessioni Claude",
     "projects": "progetti",
     "noMatchingProjects": "Nessun progetto corrispondente",
     "tryDifferentSearch": "Prova a modificare il termine di ricerca",
-    "runClaudeCli": "Esegui Claude CLI in una directory di progetto per iniziare"
+    "fetchingProjects": "",
+    "runClaudeCli": ""
   },
   "app": {
     "title": "CloudCLI",

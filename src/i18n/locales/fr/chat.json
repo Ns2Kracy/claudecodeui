@@ -15,10 +15,10 @@
     "user": "U",
     "error": "Erreur",
     "tool": "Outil",
-    "claude": "Claude",
-    "cursor": "Cursor",
     "codex": "Codex",
-    "opencode": "OpenCode"
+    "claude": "",
+    "cursor": "",
+    "opencode": ""
   },
   "tools": {
     "settings": "Paramètres de l'outil",
@@ -55,9 +55,9 @@
   "interactive": {
     "title": "Invite interactive",
     "waiting": "En attente de votre réponse dans le CLI",
-    "instruction": "Veuillez sélectionner une option dans votre terminal où Claude s'exécute.",
-    "selectedOption": "✓ Claude a sélectionné l'option {{number}}",
-    "instructionDetail": "Dans le CLI, vous sélectionneriez cette option de manière interactive avec les touches fléchées ou en tapant le numéro."
+    "instructionDetail": "Dans le CLI, vous sélectionneriez cette option de manière interactive avec les touches fléchées ou en tapant le numéro.",
+    "instruction": "",
+    "selectedOption": ""
   },
   "thinking": {
     "title": "Réflexion...",
@@ -83,7 +83,7 @@
     "title": "Plan d'implémentation"
   },
   "usageLimit": {
-    "resetAt": "Limite d'utilisation Claude atteinte. Votre limite sera réinitialisée à **{{time}} {{timezone}}** - {{date}}"
+    "resetAt": ""
   },
   "codex": {
     "permissionMode": "Mode de permission",
@@ -131,11 +131,11 @@
       "google": "par Google"
     },
     "readyPrompt": {
-      "claude": "Prêt à utiliser Claude avec {{model}}. Commencez à taper votre message ci-dessous.",
-      "cursor": "Prêt à utiliser Cursor avec {{model}}. Commencez à taper votre message ci-dessous.",
       "codex": "Prêt à utiliser Codex avec {{model}}. Commencez à taper votre message ci-dessous.",
-      "opencode": "Prêt à utiliser OpenCode avec {{model}}. Commencez à taper votre message ci-dessous.",
-      "default": "Sélectionnez un fournisseur ci-dessus pour commencer"
+      "default": "Sélectionnez un fournisseur ci-dessus pour commencer",
+      "claude": "",
+      "cursor": "",
+      "opencode": ""
     },
     "pressToSearch": "Appuyez sur <kbd>{{shortcut}}</kbd> pour rechercher sessions, fichiers et commits"
   },
@@ -179,11 +179,11 @@
     },
     "loading": "Chargement du terminal...",
     "connecting": "Connexion au shell...",
-    "startSession": "Démarrer une nouvelle session Claude",
     "resumeSession": "Reprendre la session : {{displayName}}...",
     "runCommand": "Exécuter {{command}} dans {{projectName}}",
-    "startCli": "Démarrage du CLI Claude dans {{projectName}}",
-    "defaultCommand": "commande"
+    "defaultCommand": "commande",
+    "startSession": "",
+    "startCli": ""
   },
   "claudeStatus": {
     "actions": {

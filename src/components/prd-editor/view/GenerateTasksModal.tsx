@@ -1,4 +1,5 @@
 import { Sparkles, X } from 'lucide-react';
+
 import { PRD_DOCS_URL } from '../constants';
 
 type GenerateTasksModalProps = {
@@ -38,13 +39,6 @@ export default function GenerateTasksModal({
 
         <div className="space-y-4 p-6">
           <div className="rounded-lg border border-purple-200 bg-purple-50 p-4 dark:border-purple-800 dark:bg-purple-900/20">
-            <h4 className="mb-2 font-semibold text-purple-900 dark:text-purple-100">
-              Ask Claude Code directly
-            </h4>
-            <p className="mb-3 text-sm text-purple-800 dark:text-purple-200">
-              Save this PRD, then ask Claude Code in chat to parse the file and create your initial tasks.
-            </p>
-
             <div className="rounded border border-purple-200 bg-white p-3 dark:border-purple-700 dark:bg-gray-800">
               <p className="mb-1 text-xs font-medium text-gray-600 dark:text-gray-400">Example prompt</p>
               <p className="font-mono text-xs text-gray-900 dark:text-white">
@@ -54,14 +48,13 @@ export default function GenerateTasksModal({
           </div>
 
           <div className="border-t border-gray-200 pt-4 text-center dark:border-gray-700">
-            <a
-              href={PRD_DOCS_URL}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              type="button"
+              onClick={() => window.open(PRD_DOCS_URL, "_blank", "noopener,noreferrer")}
               className="inline-block text-sm font-medium text-purple-600 underline hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300"
             >
               View TaskMaster documentation
-            </a>
+            </button>
           </div>
 
           <button

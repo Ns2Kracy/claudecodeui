@@ -107,7 +107,7 @@ export default function AccountEditor({
 	defaultOpenMenuId = null,
 	defaultTestResults = {},
 	title = "Connected accounts",
-	description = "Accounts available to Codex through the Provider Router.",
+	description = "",
 	emptyMessage = "No accounts connected yet.",
 }: AccountEditorProps) {
 	const { t } = useTranslation("settings");

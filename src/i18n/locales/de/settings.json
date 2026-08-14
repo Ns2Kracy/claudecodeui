@@ -276,8 +276,8 @@
     "apiDocsLink": "API-Dokumentation",
     "documentation": {
       "title": "Externe API-Dokumentation",
-      "description": "Erfahre, wie du die externe API nutzen kannst, um Claude/Cursor-Sitzungen aus deinen Anwendungen heraus zu starten.",
-      "viewLink": "API-Dokumentation anzeigen →"
+      "viewLink": "API-Dokumentation anzeigen →",
+      "description": ""
     },
     "loading": "Lädt...",
     "version": {
@@ -315,10 +315,10 @@
     },
     "account": {
       "claude": {
-        "description": "Anthropic Claude KI-Assistent"
+        "description": ""
       },
       "cursor": {
-        "description": "Cursor KI-gestützter Code-Editor"
+        "description": ""
       },
       "codex": {
         "description": "OpenAI Codex KI-Assistent"
@@ -340,7 +340,7 @@
     "skipPermissions": {
       "label": "Berechtigungsaufforderungen überspringen (mit Vorsicht verwenden)",
       "claudeDescription": "Entspricht dem Flag --dangerously-skip-permissions",
-      "cursorDescription": "Entspricht dem Flag -f in der Cursor CLI"
+      "cursorDescription": ""
     },
     "allowedTools": {
       "title": "Erlaubte Werkzeuge",
@@ -414,9 +414,9 @@
   "mcpServers": {
     "title": "MCP-Server",
     "description": {
-      "claude": "Model Context Protocol-Server stellen Claude zusätzliche Werkzeuge und Datenquellen zur Verfügung",
-      "cursor": "Model Context Protocol-Server stellen Cursor zusätzliche Werkzeuge und Datenquellen zur Verfügung",
-      "codex": "Model Context Protocol-Server stellen Codex zusätzliche Werkzeuge und Datenquellen zur Verfügung"
+      "codex": "Model Context Protocol-Server stellen Codex zusätzliche Werkzeuge und Datenquellen zur Verfügung",
+      "claude": "",
+      "cursor": ""
     },
     "addButton": "MCP-Server hinzufügen",
     "empty": "Keine MCP-Server konfiguriert",

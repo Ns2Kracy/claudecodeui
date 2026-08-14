@@ -29,7 +29,7 @@ export const NINE_ROUTER_PROVIDER_PROFILES: NineRouterProviderProfile[] = [
 	{
 		id: "codex",
 		name: "Codex",
-		description: "Use your ChatGPT account through 9Router.",
+		description: "",
 		group: "oauth",
 		icon: "codex",
 		methods: ["oauth"],

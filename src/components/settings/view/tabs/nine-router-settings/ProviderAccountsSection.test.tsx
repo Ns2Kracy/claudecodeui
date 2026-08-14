@@ -99,50 +99,42 @@ const apiKeyAccount: RoutingAccountView = {
 	expiresAt: null,
 };
 
-test("provider authentication renders OAuth and API keys in separate cards", async () => {
+test("provider authentication hides OAuth and renders only API-key accounts", async () => {
 	const markup = await renderAccounts({
 		accounts: [codexAccount, apiKeyAccount],
 	});
 
-	const oauthStart = markup.indexOf("Codex OAuth");
-	const apiKeyStart = markup.indexOf("API Key authentication");
-	assert.ok(oauthStart >= 0 && apiKeyStart > oauthStart);
-	const oauthCard = markup.slice(oauthStart, apiKeyStart);
-	const apiKeyCard = markup.slice(apiKeyStart);
-	assert.match(oauthCard, /work@example\.com/);
-	assert.equal(oauthCard.includes("Production key"), false);
-	assert.match(oauthCard, /Connection status/);
-	assert.match(oauthCard, /Enabled/);
-	assert.match(oauthCard, /Not tested/);
-	assert.match(oauthCard, /OAuth/);
-	assert.match(oauthCard, /Add another ChatGPT account/);
-	assert.match(apiKeyCard, /Production key/);
-	assert.equal(apiKeyCard.includes("work@example.com"), false);
-	assert.match(apiKeyCard, /Not tested/);
+	assert.equal(markup.includes("Codex OAuth"), false);
+	assert.equal(markup.includes("Continue with ChatGPT"), false);
+	assert.equal(markup.includes("work@example.com"), false);
+	assert.match(markup, /API Key authentication/);
+	assert.match(markup, /Production key/);
+	assert.match(markup, /Not tested/);
 });
 
-test("authentication sections localize connected and untested states", async () => {
+test("API-key authentication localizes connected and untested states", async () => {
 	const markup = await renderAccounts({
 		accounts: [codexAccount, apiKeyAccount],
 		language: "zh-CN",
 	});
 
+	assert.equal(markup.includes("添加另一个 ChatGPT 账户"), false);
+	assert.equal(markup.includes("work@example.com"), false);
 	assert.match(markup, /连接状态/);
 	assert.match(markup, /已启用/);
 	assert.match(markup, /健康状态/);
 	assert.match(markup, /认证方式/);
 	assert.match(markup, /测试/);
-	assert.match(markup, /添加另一个 ChatGPT 账户/);
 	assert.match(markup, /API Key 认证/);
 	assert.match(markup, /未测试/);
 });
 
-test("empty account surface exposes both Provider Router connection methods", async () => {
+test("empty account surface exposes only API-key authentication", async () => {
 	const markup = await renderAccounts();
 
 	assert.match(markup, /Provider accounts/);
-	assert.match(markup, /Codex OAuth/);
-	assert.match(markup, /Continue with ChatGPT/);
+	assert.equal(markup.includes("Codex OAuth"), false);
+	assert.equal(markup.includes("Continue with ChatGPT"), false);
 	assert.match(markup, /API Key authentication/);
 	assert.equal(markup.includes("Popular API keys"), false);
 	assert.match(markup, /OpenAI Compatible/);
@@ -150,11 +142,11 @@ test("empty account surface exposes both Provider Router connection methods", as
 
 test("background refresh keeps cached account content visible", async () => {
 	const markup = await renderAccounts({
-		accounts: [codexAccount],
+		accounts: [apiKeyAccount],
 		hasLoadedDetails: true,
 		refreshing: true,
 	});
-	assert.match(markup, /work@example\.com/);
+	assert.match(markup, /Production key/);
 	assert.match(markup, /Refreshing provider accounts/);
 	assert.match(markup, /aria-busy="true"/);
 	assert.equal(
@@ -165,11 +157,11 @@ test("background refresh keeps cached account content visible", async () => {
 
 test("background refresh failure keeps cached accounts with an inline retry", async () => {
 	const markup = await renderAccounts({
-		accounts: [codexAccount],
+		accounts: [apiKeyAccount],
 		hasLoadedDetails: true,
 		detailsError: true,
 	});
-	assert.match(markup, /work@example\.com/);
+	assert.match(markup, /Production key/);
 	assert.match(markup, /Could not load provider accounts and models/);
 	assert.match(markup, /Retry/);
 });

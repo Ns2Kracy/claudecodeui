@@ -13,11 +13,11 @@
     "untitledSession": "無題のセッション",
     "newSession": "新しいセッション",
     "codexSession": "Codexセッション",
-    "fetchingProjects": "Claudeのプロジェクトとセッションを取得しています",
     "projects": "プロジェクト",
     "noMatchingProjects": "一致するプロジェクトがありません",
     "tryDifferentSearch": "検索語を変えてお試しください",
-    "runClaudeCli": "プロジェクトディレクトリでClaude CLIを実行して始めましょう"
+    "fetchingProjects": "",
+    "runClaudeCli": ""
   },
   "app": {
     "title": "CloudCLI",

@@ -15,9 +15,9 @@
     "user": "U",
     "error": "エラー",
     "tool": "ツール",
-    "claude": "Claude",
-    "cursor": "Cursor",
-    "codex": "Codex"
+    "codex": "Codex",
+    "claude": "",
+    "cursor": ""
   },
   "tools": {
     "settings": "ツール設定",
@@ -54,9 +54,9 @@
   "interactive": {
     "title": "インタラクティブプロンプト",
     "waiting": "CLIでの応答を待っています",
-    "instruction": "Claudeが実行されているターミナルでオプションを選択してください。",
-    "selectedOption": "✓ Claudeがオプション{{number}}を選択しました",
-    "instructionDetail": "CLIでは、矢印キーまたは番号を入力してオプションを選択します。"
+    "instructionDetail": "CLIでは、矢印キーまたは番号を入力してオプションを選択します。",
+    "instruction": "",
+    "selectedOption": ""
   },
   "thinking": {
     "title": "思考中...",
@@ -82,7 +82,7 @@
     "title": "実装プラン"
   },
   "usageLimit": {
-    "resetAt": "Claudeの使用制限に達しました。制限は**{{time}} {{timezone}}** - {{date}}にリセットされます"
+    "resetAt": ""
   },
   "codex": {
     "permissionMode": "権限モード",
@@ -127,10 +127,10 @@
       "cursorEditor": "AIコードエディタ"
     },
     "readyPrompt": {
-      "claude": "{{model}}でClaudeを使用する準備ができました。下にメッセージを入力してください。",
-      "cursor": "{{model}}でCursorを使用する準備ができました。下にメッセージを入力してください。",
       "codex": "{{model}}でCodexを使用する準備ができました。下にメッセージを入力してください。",
-      "default": "上からプロバイダーを選択して開始してください"
+      "default": "上からプロバイダーを選択して開始してください",
+      "claude": "",
+      "cursor": ""
     },
     "pressToSearch": "<kbd>{{shortcut}}</kbd> を押してセッション、ファイル、コミットを検索"
   },
@@ -170,11 +170,11 @@
     },
     "loading": "ターミナルを読み込んでいます...",
     "connecting": "シェルに接続しています...",
-    "startSession": "新しいClaudeセッションを開始",
     "resumeSession": "セッションを再開: {{displayName}}...",
     "runCommand": "{{projectName}}で{{command}}を実行",
-    "startCli": "{{projectName}}でClaude CLIを起動しています",
-    "defaultCommand": "コマンド"
+    "defaultCommand": "コマンド",
+    "startSession": "",
+    "startCli": ""
   },
   "claudeStatus": {
     "actions": {

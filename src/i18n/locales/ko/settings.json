@@ -302,8 +302,8 @@
     "apiDocsLink": "API 문서",
     "documentation": {
       "title": "외부 API 문서",
-      "description": "외부 API를 사용하여 애플리케이션에서 Claude/Cursor 세션을 트리거하는 방법을 알아보세요.",
-      "viewLink": "API 문서 보기 →"
+      "viewLink": "API 문서 보기 →",
+      "description": ""
     },
     "loading": "로딩 중...",
     "version": {
@@ -341,16 +341,16 @@
     },
     "account": {
       "claude": {
-        "description": "Anthropic Claude AI 어시스턴트"
+        "description": ""
       },
       "cursor": {
-        "description": "Cursor AI 기반 코드 에디터"
+        "description": ""
       },
       "codex": {
         "description": "OpenAI Codex AI 어시스턴트"
       },
       "opencode": {
-        "description": "OpenCode CLI 어시스턴트"
+        "description": ""
       }
     },
     "connectionStatus": "연결 상태",
@@ -369,7 +369,7 @@
     "skipPermissions": {
       "label": "권한 확인 건너뛰기 (주의해서 사용)",
       "claudeDescription": "--dangerously-skip-permissions 플래그와 동일",
-      "cursorDescription": "Cursor CLI의 -f 플래그와 동일"
+      "cursorDescription": ""
     },
     "allowedTools": {
       "title": "허용된 도구",
@@ -443,10 +443,10 @@
   "mcpServers": {
     "title": "MCP 서버",
     "description": {
-      "claude": "Model Context Protocol 서버는 Claude에 추가 도구와 데이터 소스를 제공합니다",
-      "cursor": "Model Context Protocol 서버는 Cursor에 추가 도구와 데이터 소스를 제공합니다",
       "codex": "Model Context Protocol 서버는 Codex에 추가 도구와 데이터 소스를 제공합니다",
-      "opencode": "Model Context Protocol 서버는 OpenCode에 추가 도구와 데이터 소스를 제공합니다"
+      "claude": "",
+      "cursor": "",
+      "opencode": ""
     },
     "addButton": "MCP 서버 추가",
     "empty": "설정된 MCP 서버 없음",
@@ -527,22 +527,22 @@
       "install": "설치"
     },
     "claudeWatchPlugin": {
-      "name": "Claude Watch",
       "badge": "비공식",
-      "description": "장시간 실행되는 Claude Code 세션의 멈춤 현상을 감시하고 프로세스 제어 기능을 제공합니다.",
-      "install": "설치"
+      "install": "설치",
+      "name": "",
+      "description": ""
     },
     "prismCloudCLI": {
       "name": "PRISM CloudCLI",
       "badge": "비공식",
-      "description": "CloudCLI 안에서 제공되는 Claude Code용 세션 인텔리전스입니다. 브라우저를 벗어나지 않고도 세션에서 토큰이 왜 소모되는지 확인하세요.",
-      "install": "설치"
+      "install": "설치",
+      "description": ""
     },
     "sessionManagerPlugin": {
       "name": "세션",
       "badge": "비공식",
-      "description": "활성 Claude Code 세션을 보고, 관리하고, 종료합니다.",
-      "install": "설치"
+      "install": "설치",
+      "description": ""
     },
     "tokenCostCalculatorPlugin": {
       "name": "토큰 비용 계산기",

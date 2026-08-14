@@ -217,7 +217,7 @@ export default function ProviderConnections({
 		run(async () => {
 			const started = await routingApi.startOAuth(provider);
 			if (!isAllowedOAuthUrl(started.authUrl))
-				throw new Error("9Router returned an unsafe OAuth URL.");
+				throw new Error();
 			const popup = window.open(
 				started.authUrl,
 				"cloudcli-9router-oauth",

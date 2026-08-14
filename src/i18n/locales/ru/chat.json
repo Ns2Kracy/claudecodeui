@@ -15,9 +15,9 @@
     "user": "П",
     "error": "Ошибка",
     "tool": "Инструмент",
-    "claude": "Claude",
-    "cursor": "Cursor",
-    "codex": "Codex"
+    "codex": "Codex",
+    "claude": "",
+    "cursor": ""
   },
   "tools": {
     "settings": "Настройки инструмента",
@@ -54,9 +54,9 @@
   "interactive": {
     "title": "Интерактивный запрос",
     "waiting": "Ожидание вашего ответа в CLI",
-    "instruction": "Пожалуйста, выберите опцию в терминале, где запущен Claude.",
-    "selectedOption": "✓ Claude выбрал опцию {{number}}",
-    "instructionDetail": "В CLI вы бы выбрали эту опцию интерактивно, используя клавиши со стрелками или введя номер."
+    "instructionDetail": "В CLI вы бы выбрали эту опцию интерактивно, используя клавиши со стрелками или введя номер.",
+    "instruction": "",
+    "selectedOption": ""
   },
   "thinking": {
     "title": "Думаю...",
@@ -82,7 +82,7 @@
     "title": "План реализации"
   },
   "usageLimit": {
-    "resetAt": "Достигнут лимит использования Claude. Ваш лимит будет сброшен в **{{time}} {{timezone}}** - {{date}}"
+    "resetAt": ""
   },
   "codex": {
     "permissionMode": "Режим разрешений",
@@ -130,10 +130,10 @@
       "google": "от Google"
     },
     "readyPrompt": {
-      "claude": "Готов использовать Claude с {{model}}. Начните вводить сообщение ниже.",
-      "cursor": "Готов использовать Cursor с {{model}}. Начните вводить сообщение ниже.",
       "codex": "Готов использовать Codex с {{model}}. Начните вводить сообщение ниже.",
-      "default": "Выберите провайдера выше для начала"
+      "default": "Выберите провайдера выше для начала",
+      "claude": "",
+      "cursor": ""
     },
     "pressToSearch": "Нажмите <kbd>{{shortcut}}</kbd>, чтобы искать сессии, файлы и коммиты"
   },
@@ -177,11 +177,11 @@
     },
     "loading": "Загрузка терминала...",
     "connecting": "Подключение к оболочке...",
-    "startSession": "Начать новый сеанс Claude",
     "resumeSession": "Возобновить сеанс: {{displayName}}...",
     "runCommand": "Выполнить {{command}} в {{projectName}}",
-    "startCli": "Запуск Claude CLI в {{projectName}}",
-    "defaultCommand": "команда"
+    "defaultCommand": "команда",
+    "startSession": "",
+    "startCli": ""
   },
   "claudeStatus": {
     "actions": {

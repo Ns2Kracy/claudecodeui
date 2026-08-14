@@ -276,8 +276,8 @@
     "apiDocsLink": "APIドキュメント",
     "documentation": {
       "title": "外部APIドキュメント",
-      "description": "外部APIを使用してアプリケーションからClaude/Cursorセッションを起動する方法を学びます。",
-      "viewLink": "APIドキュメントを見る →"
+      "viewLink": "APIドキュメントを見る →",
+      "description": ""
     },
     "loading": "読み込み中...",
     "version": {
@@ -315,10 +315,10 @@
     },
     "account": {
       "claude": {
-        "description": "Anthropic Claude AIアシスタント"
+        "description": ""
       },
       "cursor": {
-        "description": "Cursor AI搭載コードエディタ"
+        "description": ""
       },
       "codex": {
         "description": "OpenAI Codex AIアシスタント"
@@ -340,7 +340,7 @@
     "skipPermissions": {
       "label": "権限プロンプトをスキップ（注意して使用）",
       "claudeDescription": "--dangerously-skip-permissions フラグに相当",
-      "cursorDescription": "Cursor CLIの -f フラグに相当"
+      "cursorDescription": ""
     },
     "allowedTools": {
       "title": "許可されたツール",
@@ -414,9 +414,9 @@
   "mcpServers": {
     "title": "MCPサーバー",
     "description": {
-      "claude": "Model Context Protocolサーバーは、Claudeに追加のツールやデータソースを提供します",
-      "cursor": "Model Context Protocolサーバーは、Cursorに追加のツールやデータソースを提供します",
-      "codex": "Model Context Protocolサーバーは、Codexに追加のツールやデータソースを提供します"
+      "codex": "Model Context Protocolサーバーは、Codexに追加のツールやデータソースを提供します",
+      "claude": "",
+      "cursor": ""
     },
     "addButton": "MCPサーバーを追加",
     "empty": "MCPサーバーは設定されていません",

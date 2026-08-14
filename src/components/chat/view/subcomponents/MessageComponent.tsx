@@ -197,7 +197,7 @@ const MessageComponent = memo(
 													? t("messageTypes.codex")
 													: provider === "opencode"
 														? t("messageTypes.opencode", {
-																defaultValue: "OpenCode",
+																defaultValue: "",
 															})
 														: t("messageTypes.claude")}
 								</div>

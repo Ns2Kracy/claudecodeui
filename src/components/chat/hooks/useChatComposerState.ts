@@ -864,7 +864,7 @@ export function useChatComposerState({
 					(commandName === "/help"
 						? ({
 								name: "/help",
-								description: "Show help documentation for Claude Code",
+								description: "",
 								namespace: "builtin",
 								metadata: { type: "builtin" },
 							} as SlashCommand)

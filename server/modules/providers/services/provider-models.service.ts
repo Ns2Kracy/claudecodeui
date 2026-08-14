@@ -321,7 +321,7 @@ export const createProviderModelsService = (
 		);
 		if (collision) {
 			throw new AppError(
-				"A native and Provider Router model share the same ID",
+				"Two models share the same ID",
 				{
 					code: "PROVIDER_MODEL_ID_COLLISION",
 					statusCode: 409,

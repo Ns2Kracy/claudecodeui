@@ -49,9 +49,9 @@
     "title": "TaskMaster 시작하기",
     "subtitle": "생산적인 작업 관리를 위한 가이드",
     "examples": {
-      "parsePRD": "💬 예시:\n\"Claude Task Master로 새 프로젝트를 초기화했어요. .taskmaster/docs/prd.txt에 PRD가 있는데, 이를 분석해서 초기 작업을 설정하는 걸 도와줄 수 있나요?\"",
       "expandTask": "💬 예시:\n\"작업 5가 복잡해 보이는데, 하위 작업으로 나눠줄 수 있나요?\"",
-      "addTask": "💬 예시:\n\"Cloudinary를 사용한 사용자 프로필 이미지 업로드 기능을 구현하는 새 작업을 추가해주세요. 가장 좋은 방법을 조사해주세요.\""
+      "addTask": "💬 예시:\n\"Cloudinary를 사용한 사용자 프로필 이미지 업로드 기능을 구현하는 새 작업을 추가해주세요. 가장 좋은 방법을 조사해주세요.\"",
+      "parsePRD": ""
     },
     "moreExamples": "더 많은 예시와 사용 패턴 보기 →",
     "proTips": {
