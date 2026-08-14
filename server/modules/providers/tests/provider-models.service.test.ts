@@ -637,7 +637,7 @@ test("resolveSessionModel falls back to the catalog default with nothing else to
 	assert.equal(resolved.source, "default");
 });
 
-test("resolveResumeModel prefers the recorded session model over the requested one", async () => {
+test("resolveResumeModel always prefers the model selected for the current turn", async () => {
 	const service = createProviderModelsService({
 		sessions: createSessionStore({ "session-456": "composer-2" }),
 		resolveProvider: (provider) => ({
@@ -649,12 +649,14 @@ test("resolveResumeModel prefers the recorded session model over the requested o
 		}),
 	});
 
-	const model = await service.resolveResumeModel(
-		"cursor",
-		"session-456",
+	assert.equal(
+		await service.resolveResumeModel("codex", "session-456", "composer-2-fast"),
 		"composer-2-fast",
 	);
-	assert.equal(model, "composer-2");
+	assert.equal(
+		await service.resolveResumeModel("codex", "session-456"),
+		"composer-2",
+	);
 });
 
 test("resolveResumeModel never lets provider session state override the requested model", async () => {

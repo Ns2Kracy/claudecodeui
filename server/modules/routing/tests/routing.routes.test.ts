@@ -227,7 +227,7 @@ test("provider detail, model, and provider-node routes are thin authenticated se
 				calls.push(
 					`nodes:validate:${input.type}:${input.apiKey}:${input.modelId ?? "none"}`,
 				);
-				return { valid: true, message: null };
+				return { valid: false, message: "URL not allowed" };
 			},
 			updateProviderNode: async (_userId, id, input) => {
 				calls.push(
@@ -278,21 +278,24 @@ test("provider detail, model, and provider-node routes are thin authenticated se
 				).status,
 				200,
 			);
-			assert.equal(
-				(
-					await fetch(`${baseUrl}/api/routing/provider-nodes/validations`, {
-						method: "POST",
-						headers,
-						body: JSON.stringify({
-							baseUrl: "https://node.test",
-							apiKey: "k",
-							type: "custom-embedding",
-							modelId: "embed-1",
-						}),
-					})
-				).status,
-				200,
+			const validationResponse = await fetch(
+				`${baseUrl}/api/routing/provider-nodes/validations`,
+				{
+					method: "POST",
+					headers,
+					body: JSON.stringify({
+						baseUrl: "https://node.test",
+						apiKey: "k",
+						type: "custom-embedding",
+						modelId: "embed-1",
+					}),
+				},
 			);
+			assert.equal(validationResponse.status, 200);
+			assert.deepEqual(await validationResponse.json(), {
+				success: true,
+				data: { valid: false, message: "URL not allowed" },
+			});
 			assert.equal(
 				(
 					await fetch(`${baseUrl}/api/routing/provider-nodes/node%2F1`, {

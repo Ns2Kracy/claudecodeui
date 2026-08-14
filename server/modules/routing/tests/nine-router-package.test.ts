@@ -36,12 +36,12 @@ test('compose runs 9router as an internal persisted sidecar for CloudCLI', () =>
   assert.match(nineRouter, /9router:/);
   assert.match(nineRouter, /context:\s+\.\/docker\/9router/);
   assert.match(compose, /NINE_ROUTER_BASE_URL:\s+http:\/\/9router:20128/);
-  assert.match(compose, /NINE_ROUTER_ADMIN_PASSWORD:\s+\$\{NINE_ROUTER_ADMIN_PASSWORD:\?Set NINE_ROUTER_ADMIN_PASSWORD for CloudCLI and 9router\}/);
+  assert.match(compose, /NINE_ROUTER_ADMIN_PASSWORD:\s+["']9router["']/);
   assert.match(nineRouter, /-\s+9router-data:\/data/);
   assert.match(nineRouter, /expose:\s*\n\s*-\s+"?20128"?/);
   assert.doesNotMatch(nineRouter, /ports:/);
   assert.match(nineRouter, /DATA_DIR:\s+\/data/);
-  assert.match(nineRouter, /INITIAL_PASSWORD:\s+\$\{NINE_ROUTER_ADMIN_PASSWORD:\?Set NINE_ROUTER_ADMIN_PASSWORD for CloudCLI and 9router\}/);
+  assert.match(nineRouter, /INITIAL_PASSWORD:\s+["']9router["']/);
   assert.doesNotMatch(nineRouter, /healthcheck:/);
   assert.match(compose, /condition:\s+service_started/);
   assert.match(compose, /cloudcli-private:/);

@@ -37,8 +37,8 @@ function safeRuntimeError(error: unknown): AppError {
 
 /**
  * Used by provider session creation and run dispatch for sticky per-session
- * routing. The provider catalog decides whether this resolver is called, so
- * model IDs remain unchanged and Router stays an internal detail.
+ * routing. The selected model ID is passed through unchanged; Router remains
+ * an internal transport detail and never substitutes another model.
  */
 export function createRoutingRuntimeService(
 	dependencies: RoutingRuntimeServiceDependencies,

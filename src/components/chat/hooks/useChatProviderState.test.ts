@@ -5,6 +5,7 @@ import {
 	ACTIVE_PROVIDERS,
 	initialCodexModel,
 	normalizeActiveProvider,
+	pickStoredOrCurrent,
 	resolveCatalogModel,
 	readProviderModelsApiData,
 	withUnavailableSelectedModel,
@@ -61,23 +62,33 @@ test("does not invent an unavailable option before the first catalog loads", () 
 	assert.deepEqual(withUnavailableSelectedModel([], "gpt-5.4", false), []);
 });
 
-test("starts without a model when storage contains a legacy bare id", () => {
-	assert.equal(initialCodexModel("gpt-5.4"), "");
+test("restores the exact model selected by the user", () => {
+	assert.equal(initialCodexModel(" gpt-5.4 "), "gpt-5.4");
 	assert.equal(initialCodexModel("codex/gpt-5.4"), "codex/gpt-5.4");
 });
 
-test("qualifies a legacy bare session model when the catalog match is unique", () => {
+test("catalog refresh never replaces the user's selected model", () => {
+	const catalog = {
+		OPTIONS: [{ value: "new-default", label: "New default" }],
+		DEFAULT: "new-default",
+	};
+
+	assert.equal(
+		pickStoredOrCurrent("user-selected", "previous-state", catalog),
+		"user-selected",
+	);
+	assert.equal(
+		pickStoredOrCurrent(null, "previous-state", catalog),
+		"previous-state",
+	);
+});
+
+test("catalog reconciliation preserves the exact user-selected model", () => {
 	const options = [
 		{ value: "codex/gpt-5.4", label: "GPT 5.4", source: "9router" as const },
 	];
-	assert.equal(resolveCatalogModel(options, "gpt-5.4"), "codex/gpt-5.4");
-	assert.equal(
-		resolveCatalogModel(
-			[...options, { value: "cx/gpt-5.4", label: "GPT 5.4", source: "9router" }],
-			"gpt-5.4",
-		),
-		"gpt-5.4",
-	);
+	assert.equal(resolveCatalogModel(options, "gpt-5.4"), "gpt-5.4");
+	assert.equal(resolveCatalogModel(options, "codex/gpt-5.4"), "codex/gpt-5.4");
 });
 
 test("preserves a disappeared routed session model by its exact upstream ID", () => {

@@ -97,7 +97,15 @@ export function createProviderRuntimeService(
 		}
 
 		let routing: RuntimeRoutingConfiguration = { source: "native" };
-		if (requestedModel) {
+		if (providerName === "codex") {
+			if (options.modelSource === "native") {
+				throw new AppError("", {
+					code: "CODEX_ROUTING_REQUIRED",
+					statusCode: 409,
+				});
+			}
+			routing = await dependencies.resolveRoutingForModel(requestedModel);
+		} else if (requestedModel) {
 			const suppliedSource =
 				options.modelSource === "native" || options.modelSource === "9router"
 					? options.modelSource
@@ -116,30 +124,8 @@ export function createProviderRuntimeService(
 					statusCode: 409,
 				});
 			}
-			if (providerName === "codex" && source !== "9router") {
-				throw new AppError("", {
-					code: "CODEX_ROUTING_REQUIRED",
-					statusCode: 409,
-				});
-			}
 			if (source === "9router") {
-				let routedModel = requestedModel;
-				if (!routedModel.includes("/")) {
-					const result = await dependencies.getProviderModels(providerName);
-					const matches = result.models.OPTIONS.filter(
-						(option) =>
-							option.source === "9router" &&
-							option.value.endsWith(`/${routedModel}`),
-					);
-					if (matches.length !== 1) {
-						throw new AppError("The selected model is no longer available", {
-							code: "PROVIDER_MODEL_UNAVAILABLE",
-							statusCode: 409,
-						});
-					}
-					routedModel = matches[0].value;
-				}
-				routing = await dependencies.resolveRoutingForModel(routedModel);
+				routing = await dependencies.resolveRoutingForModel(requestedModel);
 			}
 		}
 

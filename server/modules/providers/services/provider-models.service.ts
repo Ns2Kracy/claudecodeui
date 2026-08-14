@@ -320,13 +320,10 @@ export const createProviderModelsService = (
 			routedIds.has(option.value),
 		);
 		if (collision) {
-			throw new AppError(
-				"Two models share the same ID",
-				{
-					code: "PROVIDER_MODEL_ID_COLLISION",
-					statusCode: 409,
-				},
-			);
+			throw new AppError("Two models share the same ID", {
+				code: "PROVIDER_MODEL_ID_COLLISION",
+				statusCode: 409,
+			});
 		}
 
 		const sidecarOptions = routingModels.flatMap((model) => {
@@ -619,10 +616,9 @@ export const createProviderModelsService = (
 	/**
 	 * Picks the model one run should use, for provider runtime adapters.
 	 *
-	 * Deliberately narrower than `resolveSessionModel`: the provider's own
-	 * session state is not consulted here. Codex reports a global config value
-	 * from `getCurrentActiveModel`, which would silently override the model the
-	 * user picked in the composer on every single run.
+	 * Deliberately narrower than `resolveSessionModel`: the model selected for
+	 * the current turn is authoritative. Recorded session state is used only when
+	 * the caller supplies no model, and provider-global state is never consulted.
 	 */
 	const resolveResumeModel = async (
 		provider: LLMProvider,
@@ -632,13 +628,16 @@ export const createProviderModelsService = (
 		void provider;
 		const normalizedRequestedModel =
 			typeof requestedModel === "string" ? requestedModel.trim() : "";
-		const normalizedSessionId = sessionId?.trim();
-		if (!normalizedSessionId) {
-			return normalizedRequestedModel || undefined;
+		if (normalizedRequestedModel) {
+			return normalizedRequestedModel;
 		}
 
-		const recordedModel = readRecordedSessionModel(normalizedSessionId);
-		return recordedModel?.model || normalizedRequestedModel || undefined;
+		const normalizedSessionId = sessionId?.trim();
+		if (!normalizedSessionId) {
+			return undefined;
+		}
+
+		return readRecordedSessionModel(normalizedSessionId)?.model;
 	};
 
 	const clearCache = (): void => {

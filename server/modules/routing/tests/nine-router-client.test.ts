@@ -615,6 +615,130 @@ test("maps provider detail, provider models, and provider nodes into safe DTOs",
 	});
 });
 
+test("returns safe Router provider validation failures even with non-success HTTP status", async () => {
+	const scenarios = [
+		{
+			statusCode: 400,
+			data: { error: "URL not allowed" },
+			expected: "URL not allowed",
+		},
+		{
+			statusCode: 500,
+			data: { error: "DNS lookup failed - invalid domain or network issue" },
+			expected: "DNS lookup failed - invalid domain or network issue",
+		},
+		{
+			statusCode: 500,
+			data: {
+				error: "upstream leaked sk-secret at https://private.example",
+			},
+			expected: "The upstream provider validation failed",
+		},
+	] as const;
+
+	for (const scenario of scenarios) {
+		const client = new NineRouterClient({
+			baseUrl: "https://router.example",
+			adminPassword: "admin-password",
+			dataPlaneKey: "data-plane-key",
+			request: async (input) => {
+				if (input.operation === "authStatus") {
+					return {
+						statusCode: 200,
+						headers: {},
+						data: { requireLogin: false, authMode: "password" },
+					};
+				}
+				assert.equal(input.operation, "providerNodeValidate");
+				return {
+					statusCode: scenario.statusCode,
+					headers: {},
+					data: scenario.data,
+				};
+			},
+		});
+
+		assert.deepEqual(
+			await client.validateProviderNode({
+				baseUrl: "https://provider.example/v1",
+				apiKey: "never-display-this-key",
+				type: "openai-compatible",
+			}),
+			{ valid: false, message: scenario.expected },
+		);
+	}
+});
+
+test("does not treat authentication failures as provider validation results", async () => {
+	const client = new NineRouterClient({
+		baseUrl: "https://router.example",
+		adminPassword: "admin-password",
+		dataPlaneKey: "data-plane-key",
+		request: async (input) => {
+			if (input.operation === "authStatus") {
+				return {
+					statusCode: 200,
+					headers: {},
+					data: { requireLogin: false, authMode: "password" },
+				};
+			}
+			return {
+				statusCode: 403,
+				headers: {},
+				data: { valid: false, error: "API key unauthorized" },
+			};
+		},
+	});
+
+	await assert.rejects(
+		client.validateProviderNode({
+			baseUrl: "https://provider.example/v1",
+			apiKey: "never-display-this-key",
+			type: "openai-compatible",
+		}),
+		(error: unknown) =>
+			error instanceof AppError &&
+			error.code === "ROUTING_AUTH_FAILED" &&
+			error.message === "Router authentication failed",
+	);
+});
+
+test("does not treat non-validation error envelopes as validation results", async () => {
+	const client = new NineRouterClient({
+		baseUrl: "https://router.example",
+		adminPassword: "admin-password",
+		dataPlaneKey: "data-plane-key",
+		request: async (input) => {
+			if (input.operation === "authStatus") {
+				return {
+					statusCode: 200,
+					headers: {},
+					data: { requireLogin: false, authMode: "password" },
+				};
+			}
+			return {
+				statusCode: 500,
+				headers: {},
+				data: { error: "URL not allowed" },
+			};
+		},
+	});
+
+	await assert.rejects(
+		client.createProviderNode({
+			name: "Provider",
+			prefix: "provider",
+			type: "openai-compatible",
+			apiType: "chat",
+			baseUrl: "https://provider.example/v1",
+		}),
+		(error: unknown) =>
+			error instanceof AppError &&
+			error.code === "ROUTING_OPERATION_FAILED" &&
+			error.message === "The Router operation failed",
+	);
+});
+
 test("maps current OpenAI-compatible provider model rows using the envelope provider", async () => {
 	await withFakeRouter({}, async ({ baseUrl, request }) => {
 		const client = new NineRouterClient({

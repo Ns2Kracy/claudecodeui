@@ -177,6 +177,42 @@ function assertSuccessStatus(result: NineRouterHttpResult): void {
 	throw operationFailed();
 }
 
+const SAFE_PROVIDER_VALIDATION_MESSAGES = new Set([
+	"URL not allowed",
+	"Invalid URL format",
+	"API key unauthorized",
+	"Model ID required for embedding validation",
+	"/models endpoint not found - try chat validation with model ID",
+	"Server error - try again later",
+	"Invalid model or bad request",
+	"Chat endpoint not found",
+	"Connection refused - provider node offline or unreachable",
+	"DNS lookup failed - invalid domain or network issue",
+	"Connection timeout - provider node too slow",
+	"Request timeout (>10s) - provider node not responding",
+	"SSL certificate expired",
+	"SSL certificate verification failed",
+	"Network connection failed - check URL and network connectivity",
+]);
+
+function safeProviderValidationMessage(value: unknown): string {
+	if (typeof value !== "string") {
+		return "The upstream provider validation failed";
+	}
+	if (SAFE_PROVIDER_VALIDATION_MESSAGES.has(value)) return value;
+	const statusMessage = value.match(
+		/^(Unexpected response|Chat request failed|Embeddings request failed) \((\d{3})\)/,
+	);
+	if (statusMessage) return `${statusMessage[1]} (${statusMessage[2]})`;
+	const networkCode = value.match(/^Network error: ([A-Z0-9_]{1,40})$/);
+	if (networkCode) return `Network error: ${networkCode[1]}`;
+	return "The upstream provider validation failed";
+}
+
+function isProviderValidationError(data: unknown): boolean {
+	return isRecord(data) && typeof data.error === "string";
+}
+
 function sanitizeAccount(value: unknown, now: Date): RoutingAccountView {
 	if (!isRecord(value) || typeof value.isActive !== "boolean") {
 		throw invalidResponse();
@@ -571,12 +607,13 @@ export class NineRouterClient implements IRoutingNineRouterClient {
 			false,
 		);
 		const data = expectRecord(result.data);
-		if (typeof data.valid !== "boolean") throw invalidResponse();
+		if (data.valid !== undefined && typeof data.valid !== "boolean") {
+			throw invalidResponse();
+		}
+		const valid = data.valid === true;
 		return {
-			valid: data.valid,
-			message: data.valid
-				? null
-				: "The upstream provider node validation failed",
+			valid,
+			message: valid ? null : safeProviderValidationMessage(data.error),
 		};
 	}
 
@@ -785,7 +822,14 @@ export class NineRouterClient implements IRoutingNineRouterClient {
 			await this.ensureAuthenticated(true);
 			result = await send();
 		}
-		assertSuccessStatus(result);
+		if (
+			result.statusCode === 401 ||
+			result.statusCode === 403 ||
+			input.operation !== "providerNodeValidate" ||
+			!isProviderValidationError(result.data)
+		) {
+			assertSuccessStatus(result);
+		}
 		return result;
 	}
 }

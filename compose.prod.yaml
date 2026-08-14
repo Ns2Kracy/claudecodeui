@@ -11,9 +11,9 @@ services:
       - "3001:3001"
       - "1455"
     volumes:
-      - /DATA/AppData/cloudcli/workspace:/workspaces
-      - /DATA/AppData/cloudcli/cloudcli:/root/.cloudcli
-      - /DATA/AppData/cloudcli/codex:/root/.codex
+      - /DATA/AppData/$AppID/workspace:/workspaces
+      - /DATA/AppData/$AppID/cloudcli:/root/.cloudcli
+      - /DATA/AppData/$AppID/codex:/root/.codex
     depends_on:
       9router:
         condition: service_started
@@ -30,7 +30,7 @@ services:
     expose:
       - "20128"
     volumes:
-      - /DATA/AppData/cloudcli/9router:/data
+      - /DATA/AppData/$AppID/9router:/data
     networks:
       - cloudcli-private
 

@@ -273,7 +273,7 @@ test("provider model provenance routes an unprefixed selected model through the 
 	});
 });
 
-test("qualifies a legacy unprefixed routed model from the current catalog", async () => {
+test("routes the exact user-selected model without qualifying it", async () => {
 	const calls: string[] = [];
 	const service = createService(
 		[createProvider("codex", createRuntime())],
@@ -288,7 +288,6 @@ test("qualifies a legacy unprefixed routed model from the current catalog", asyn
 				model,
 			};
 		},
-		[{ value: "deepseek/deepseek-v4-flash", source: "9router" }],
 	);
 
 	await service.run(
@@ -298,32 +297,38 @@ test("qualifies a legacy unprefixed routed model from the current catalog", asyn
 		{ userId: 7, send() {} },
 	);
 
-	assert.deepEqual(calls, ["deepseek/deepseek-v4-flash"]);
+	assert.deepEqual(calls, ["deepseek-v4-flash"]);
 });
 
-test("rejects an ambiguous legacy unprefixed routed model", async () => {
+test("does not infer a different model when names overlap", async () => {
+	let routedModel = "";
 	const service = createService(
 		[createProvider("codex", createRuntime())],
-		undefined,
+		async (model) => {
+			routedModel = model;
+			return {
+				source: "9router",
+				baseUrl: "http://9router/api",
+				openAiBaseUrl: "http://9router/v1",
+				apiKey: "key",
+				routeName: model,
+				model,
+			};
+		},
 		[
 			{ value: "cx/shared-model", source: "9router" },
 			{ value: "openai/shared-model", source: "9router" },
 		],
 	);
 
-	await assert.rejects(
-		() =>
-			service.run(
-				"codex",
-				"hello",
-				{ model: "shared-model", modelSource: "9router" },
-				{ userId: 7, send() {} },
-			),
-		(error: unknown) =>
-			error instanceof Error &&
-			"code" in error &&
-			error.code === "PROVIDER_MODEL_UNAVAILABLE",
+	await service.run(
+		"codex",
+		"hello",
+		{ model: "shared-model", modelSource: "9router" },
+		{ userId: 7, send() {} },
 	);
+
+	assert.equal(routedModel, "shared-model");
 });
 
 test("uses server-supplied routed provenance without rediscovering the catalog", async () => {
@@ -361,29 +366,38 @@ test("uses server-supplied routed provenance without rediscovering the catalog",
 	});
 });
 
-test("fails closed when a selected model is absent from the current catalog", async () => {
-	let ran = false;
+test("keeps routing the selected Codex model when the catalog changes", async () => {
+	let routedModel = "";
+	let runtimeModel = "";
 	const runtime = createRuntime({
-		async run() {
-			ran = true;
+		async run(_command, options) {
+			runtimeModel = String(options.model);
 		},
 	});
-	const service = createService([createProvider("codex", runtime)]);
-
-	await assert.rejects(
-		() =>
-			service.run(
-				"codex",
-				"hello",
-				{ model: "cx/gpt-5" },
-				{ userId: 7, send() {} },
-			),
-		(error: unknown) =>
-			error instanceof Error &&
-			"code" in error &&
-			error.code === "PROVIDER_MODEL_UNAVAILABLE",
+	const service = createService(
+		[createProvider("codex", runtime)],
+		async (model) => {
+			routedModel = model;
+			return {
+				source: "9router",
+				baseUrl: "http://9router/api",
+				openAiBaseUrl: "http://9router/v1",
+				apiKey: "key",
+				routeName: model,
+				model,
+			};
+		},
 	);
-	assert.equal(ran, false);
+
+	await service.run(
+		"codex",
+		"hello",
+		{ model: "cx/gpt-5" },
+		{ userId: 7, send() {} },
+	);
+
+	assert.equal(routedModel, "cx/gpt-5");
+	assert.equal(runtimeModel, "cx/gpt-5");
 });
 
 test("routes permission decisions through provider-owned runtime capabilities", () => {

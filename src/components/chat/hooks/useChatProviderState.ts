@@ -39,20 +39,22 @@ export function withUnavailableSelectedModel(
 }
 
 export function initialCodexModel(storedModel: string | null): string {
-	const normalized = storedModel?.trim() ?? "";
-	return normalized.includes("/") ? normalized : "";
+	return storedModel?.trim() ?? "";
+}
+
+export function pickStoredOrCurrent(
+	stored: string | null,
+	current: string,
+	def: ProviderModelsDefinition,
+): string {
+	return stored?.trim() || current.trim() || def.DEFAULT;
 }
 
 export function resolveCatalogModel(
-	options: ProviderModelOption[],
+	_options: ProviderModelOption[],
 	model: string,
 ): string {
-	if (!model || options.some((option) => option.value === model)) return model;
-	if (model.includes("/")) return model;
-	const matches = options.filter((option) =>
-		option.value.endsWith(`/${model}`),
-	);
-	return matches.length === 1 ? matches[0].value : model;
+	return model;
 }
 
 export const ACTIVE_PROVIDERS = [
@@ -352,21 +354,6 @@ export function useChatProviderState({
 		[providerCapabilities],
 	);
 
-	const pickStoredOrCurrent = (
-		storageKey: string,
-		current: string,
-		def: ProviderModelsDefinition,
-	): string => {
-		const stored = localStorage.getItem(storageKey);
-		if (stored && def.OPTIONS.some((o) => o.value === stored)) {
-			return stored;
-		}
-		if (current && def.OPTIONS.some((o) => o.value === current)) {
-			return current;
-		}
-		return def.DEFAULT;
-	};
-
 	const getModelOption = useCallback(
 		(
 			targetProvider: LLMProvider,
@@ -447,7 +434,11 @@ export function useChatProviderState({
 	useEffect(() => {
 		const codex = providerModelCatalog.codex;
 		if (codex) {
-			const next = pickStoredOrCurrent("codex-model", codexModel, codex);
+			const next = pickStoredOrCurrent(
+				localStorage.getItem("codex-model"),
+				codexModel,
+				codex,
+			);
 			if (next !== codexModel) {
 				setCodexModel(next);
 			}
