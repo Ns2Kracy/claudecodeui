@@ -22,6 +22,8 @@ type ProviderAccountsSectionProps = {
 	accounts: RoutingAccountView[];
 	models: RoutingModelView[];
 	loading: boolean;
+	hasLoadedDetails: boolean;
+	refreshing: boolean;
 	detailsError: boolean;
 	activeMutation: string | null;
 	onRetry: () => void;
@@ -44,6 +46,8 @@ export default function ProviderAccountsSection({
 	accounts,
 	models,
 	loading,
+	hasLoadedDetails,
+	refreshing,
 	detailsError,
 	activeMutation,
 	onRetry,
@@ -85,17 +89,20 @@ export default function ProviderAccountsSection({
 					</div>
 				</SettingsCard>
 			)}
-			{configured && capabilities.readAccounts && loading && (
-				<SettingsCard>
-					<div
-						role="status"
-						className="flex items-center gap-2 p-4 text-sm text-muted-foreground"
-					>
-						<Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
-						{t("nineRouter.management.loading")}
-					</div>
-				</SettingsCard>
-			)}
+			{configured &&
+				capabilities.readAccounts &&
+				loading &&
+				!hasLoadedDetails && (
+					<SettingsCard>
+						<div
+							role="status"
+							className="flex items-center gap-2 p-4 text-sm text-muted-foreground"
+						>
+							<Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
+							{t("nineRouter.management.loading")}
+						</div>
+					</SettingsCard>
+				)}
 			{configured && capabilities.readAccounts && detailsError && (
 				<SettingsCard>
 					<div
@@ -110,7 +117,7 @@ export default function ProviderAccountsSection({
 							size="sm"
 							variant="outline"
 							onClick={onRetry}
-							disabled={loading}
+							disabled={loading || refreshing}
 						>
 							<RefreshCw className="h-4 w-4" />
 							{t("nineRouter.management.actions.retry")}
@@ -118,8 +125,17 @@ export default function ProviderAccountsSection({
 					</div>
 				</SettingsCard>
 			)}
-			{configured && capabilities.readAccounts && !loading && !detailsError && (
-				<div className="space-y-4">
+			{configured && capabilities.readAccounts && hasLoadedDetails && (
+				<div className="space-y-4" aria-busy={refreshing}>
+					{refreshing && (
+						<div
+							role="status"
+							className="flex items-center gap-2 text-xs text-muted-foreground"
+						>
+							<Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" />
+							{t("nineRouter.management.refreshing")}
+						</div>
+					)}
 					<SettingsCard>
 						<div className="space-y-5 p-4">
 							<ProviderConnections

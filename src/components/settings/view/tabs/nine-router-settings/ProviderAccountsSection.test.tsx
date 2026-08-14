@@ -26,6 +26,8 @@ async function renderAccounts(
 		configured?: boolean;
 		loading?: boolean;
 		detailsError?: boolean;
+		hasLoadedDetails?: boolean;
+		refreshing?: boolean;
 		accounts?: RoutingAccountView[];
 		language?: "en" | "zh-CN";
 	} = {},
@@ -58,6 +60,8 @@ async function renderAccounts(
 				accounts: options.accounts ?? [],
 				models: [],
 				loading: options.loading ?? false,
+				hasLoadedDetails: options.hasLoadedDetails ?? true,
+				refreshing: options.refreshing ?? false,
 				detailsError: options.detailsError ?? false,
 				activeMutation: null,
 				onRetry: () => {},
@@ -144,6 +148,32 @@ test("empty account surface exposes both Provider Router connection methods", as
 	assert.match(markup, /API Key authentication/);
 	assert.equal(markup.includes("Popular API keys"), false);
 	assert.match(markup, /OpenAI Compatible/);
+});
+
+test("background refresh keeps cached account content visible", async () => {
+	const markup = await renderAccounts({
+		accounts: [codexAccount],
+		hasLoadedDetails: true,
+		refreshing: true,
+	});
+	assert.match(markup, /work@example\.com/);
+	assert.match(markup, /Refreshing provider accounts/);
+	assert.match(markup, /aria-busy="true"/);
+	assert.equal(
+		markup.includes("Loading provider accounts and models..."),
+		false,
+	);
+});
+
+test("background refresh failure keeps cached accounts with an inline retry", async () => {
+	const markup = await renderAccounts({
+		accounts: [codexAccount],
+		hasLoadedDetails: true,
+		detailsError: true,
+	});
+	assert.match(markup, /work@example\.com/);
+	assert.match(markup, /Could not load provider accounts and models/);
+	assert.match(markup, /Retry/);
 });
 
 test("provider detail failures stay inside the account retry surface", async () => {

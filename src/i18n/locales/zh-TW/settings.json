@@ -553,6 +553,7 @@
       "connectFirst": "內建提供者路由器執行階段就緒後，才能載入提供者帳戶。",
       "unavailable": "此提供者路由器版本未提供受支援的帳戶管理 API。",
       "loading": "正在載入提供者帳戶和模型...",
+      "refreshing": "正在重新整理提供者帳戶...",
       "loadFailed": "無法載入提供者帳戶和模型。",
       "actions": {
         "retry": "重試",

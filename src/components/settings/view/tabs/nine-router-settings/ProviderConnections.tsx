@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircle2, ExternalLink, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -10,12 +10,22 @@ import {
 	type ApiKeyProviderDraft,
 } from "./apiKeyProvider.js";
 import { NINE_ROUTER_PROVIDER_PROFILES } from "./ProviderCatalog.js";
+import ManualOAuthCallbackForm from "./ManualOAuthCallbackForm.js";
 import ProviderConnectionDialog, {
 	isAllowedOAuthUrl,
 } from "./ProviderConnectionDialog.js";
 import ProviderIcon from "./ProviderIcon.js";
-import { parseProviderOAuthCallback } from "./providerOAuthCallback.js";
+import {
+	parseManualProviderOAuthCallback,
+	parseProviderOAuthCallback,
+} from "./providerOAuthCallback.js";
 import { routingApi, RoutingApiError } from "./routingApi.js";
+
+type ProviderOAuthTransaction = {
+	provider: string;
+	transactionId: string;
+	redirectUri: string;
+};
 
 type ProviderConnectionsProps = {
 	disabled: boolean;
@@ -30,6 +40,14 @@ type SafeError = {
 	status: number;
 	retryable: boolean;
 };
+
+function claimOAuthTransaction(transactionRef: {
+	current: ProviderOAuthTransaction | null;
+}): ProviderOAuthTransaction | null {
+	const transaction = transactionRef.current;
+	transactionRef.current = null;
+	return transaction;
+}
 
 function safeError(error: unknown): SafeError {
 	if (error instanceof RoutingApiError) return error;
@@ -60,47 +78,11 @@ export default function ProviderConnections({
 		"idle" | "pending" | "success"
 	>("idle");
 	const popupRef = useRef<Window | null>(null);
-	const oauthRef = useRef<{
-		provider: string;
-		transactionId: string;
-		redirectUri: string;
-	} | null>(null);
+	const oauthRef = useRef<ProviderOAuthTransaction | null>(null);
 	const profiles = NINE_ROUTER_PROVIDER_PROFILES;
 	const codex = profiles.find((item) => item.id === "codex")!;
 	const apiKeyProfiles = profiles.filter((item) => item.group === "api_key");
 	const profile = profiles.find((item) => item.id === selectedId) ?? null;
-
-	useEffect(() => {
-		const receiveCallback = (event: MessageEvent) => {
-			const transaction = oauthRef.current;
-			if (!transaction) return;
-			const callback = parseProviderOAuthCallback(
-				event,
-				popupRef.current,
-				transaction.redirectUri,
-			);
-			if (!callback) return;
-			setBusy(true);
-			void routingApi
-				.exchangeOAuth(transaction.provider, {
-					transactionId: transaction.transactionId,
-					...callback,
-				})
-				.then(async () => {
-					setError(null);
-					await onConnected();
-				})
-				.catch((nextError) => setError(safeError(nextError)))
-				.finally(() => {
-					oauthRef.current = null;
-					popupRef.current?.close();
-					popupRef.current = null;
-					setBusy(false);
-				});
-		};
-		window.addEventListener("message", receiveCallback);
-		return () => window.removeEventListener("message", receiveCallback);
-	}, [onConnected]);
 
 	useEffect(() => {
 		if (!challenge || deviceStatus !== "pending") return undefined;
@@ -148,6 +130,89 @@ export default function ProviderConnections({
 		}
 	};
 
+	const completeOAuth = useCallback(
+		async (callback: { state: string; code: string }): Promise<boolean> => {
+			const transaction = claimOAuthTransaction(oauthRef);
+			if (!transaction) {
+				setError({
+					code: "ROUTING_OAUTH_NOT_STARTED",
+					message: "Start browser sign-in before submitting a callback URL.",
+					status: 0,
+					retryable: true,
+				});
+				return false;
+			}
+			setBusy(true);
+			setError(null);
+			try {
+				await routingApi.exchangeOAuth(transaction.provider, {
+					transactionId: transaction.transactionId,
+					...callback,
+				});
+			} catch (nextError) {
+				oauthRef.current = transaction;
+				setError(safeError(nextError));
+				setBusy(false);
+				return false;
+			}
+
+			popupRef.current?.close();
+			popupRef.current = null;
+			try {
+				await onConnected();
+				return true;
+			} catch (nextError) {
+				setError(safeError(nextError));
+				return false;
+			} finally {
+				setBusy(false);
+			}
+		},
+		[onConnected],
+	);
+
+	useEffect(() => {
+		const receiveCallback = (event: MessageEvent) => {
+			const transaction = oauthRef.current;
+			if (!transaction) return;
+			const callback = parseProviderOAuthCallback(
+				event,
+				popupRef.current,
+				transaction.redirectUri,
+			);
+			if (callback) void completeOAuth(callback);
+		};
+		window.addEventListener("message", receiveCallback);
+		return () => window.removeEventListener("message", receiveCallback);
+	}, [completeOAuth]);
+
+	const submitManualOAuth = async (callbackUrl: string): Promise<boolean> => {
+		const transaction = oauthRef.current;
+		if (!transaction) {
+			setError({
+				code: "ROUTING_OAUTH_NOT_STARTED",
+				message: "Start browser sign-in before submitting a callback URL.",
+				status: 0,
+				retryable: true,
+			});
+			return false;
+		}
+		const parsed = parseManualProviderOAuthCallback(
+			callbackUrl,
+			transaction.redirectUri,
+		);
+		if (!parsed.ok) {
+			setError({
+				code: "ROUTING_OAUTH_CALLBACK_INVALID",
+				message: parsed.error,
+				status: 0,
+				retryable: true,
+			});
+			return false;
+		}
+		return completeOAuth(parsed.callback);
+	};
+
 	const startOAuth = (provider: string) =>
 		run(async () => {
 			const started = await routingApi.startOAuth(provider);
@@ -180,54 +245,61 @@ export default function ProviderConnections({
 			{mode !== "apiKey" && (
 				<section
 					aria-labelledby="codex-oauth-title"
-					className={`flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between ${mode === "all" ? "border-b border-border pb-6" : ""}`}
+					className={`space-y-4 ${mode === "all" ? "border-b border-border pb-6" : ""}`}
 				>
-					<div className="flex min-w-0 gap-3">
-						<span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-foreground text-background">
-							<ProviderIcon
-								icon={codex.icon}
-								label="Codex"
-								className="h-6 w-6"
-							/>
-						</span>
-						<div>
-							<h4
-								id="codex-oauth-title"
-								className="text-sm font-semibold text-foreground"
+					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+						<div className="flex min-w-0 gap-3">
+							<span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-foreground text-background">
+								<ProviderIcon
+									icon={codex.icon}
+									label="Codex"
+									className="h-6 w-6"
+								/>
+							</span>
+							<div>
+								<h4
+									id="codex-oauth-title"
+									className="text-sm font-semibold text-foreground"
+								>
+									{t("nineRouter.management.authentication.oauth.title")}
+								</h4>
+								<p className="mt-1 max-w-xl text-sm leading-relaxed text-muted-foreground">
+									{t("nineRouter.management.authentication.oauth.description")}
+								</p>
+							</div>
+						</div>
+						<div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
+							{hasCodexAccount && (
+								<span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700 dark:text-emerald-300">
+									<CheckCircle2 className="h-4 w-4" />
+									{t("nineRouter.management.authentication.oauth.connected")}
+								</span>
+							)}
+							<Button
+								type="button"
+								variant={hasCodexAccount ? "outline" : "default"}
+								className="shrink-0"
+								disabled={disabled || busy}
+								onClick={() => void startOAuth(codex.id)}
 							>
-								{t("nineRouter.management.authentication.oauth.title")}
-							</h4>
-							<p className="mt-1 max-w-xl text-sm leading-relaxed text-muted-foreground">
-								{t("nineRouter.management.authentication.oauth.description")}
-							</p>
+								{busy ? (
+									<Loader2 className="animate-spin motion-reduce:animate-none" />
+								) : (
+									<ExternalLink />
+								)}
+								{t(
+									hasCodexAccount
+										? "nineRouter.management.authentication.oauth.addAnother"
+										: "nineRouter.management.authentication.oauth.continue",
+								)}
+							</Button>
 						</div>
 					</div>
-					<div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
-						{hasCodexAccount && (
-							<span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700 dark:text-emerald-300">
-								<CheckCircle2 className="h-4 w-4" />
-								{t("nineRouter.management.authentication.oauth.connected")}
-							</span>
-						)}
-						<Button
-							type="button"
-							variant={hasCodexAccount ? "outline" : "default"}
-							className="shrink-0"
-							disabled={disabled || busy}
-							onClick={() => void startOAuth(codex.id)}
-						>
-							{busy && selectedId === null ? (
-								<Loader2 className="animate-spin motion-reduce:animate-none" />
-							) : (
-								<ExternalLink />
-							)}
-							{t(
-								hasCodexAccount
-									? "nineRouter.management.authentication.oauth.addAnother"
-									: "nineRouter.management.authentication.oauth.continue",
-							)}
-						</Button>
-					</div>
+					<ManualOAuthCallbackForm
+						busy={busy}
+						error={error?.message ?? null}
+						onSubmit={submitManualOAuth}
+					/>
 				</section>
 			)}
 

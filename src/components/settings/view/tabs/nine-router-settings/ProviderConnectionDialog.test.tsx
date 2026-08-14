@@ -19,11 +19,15 @@ import {
 import OAuthDeviceFlow from "./OAuthDeviceFlow.js";
 import ProviderConnections from "./ProviderConnections.js";
 import ProviderIcon from "./ProviderIcon.js";
-import { parseProviderOAuthCallback } from "./providerOAuthCallback.js";
+import {
+	parseManualProviderOAuthCallback,
+	parseProviderOAuthCallback,
+} from "./providerOAuthCallback.js";
 import {
 	NINE_ROUTER_PROVIDER_PROFILES,
 	methodsForProvider,
 } from "./ProviderCatalog.js";
+import ManualOAuthCallbackForm from "./ManualOAuthCallbackForm.js";
 import ProviderConnectionDialog, {
 	isAllowedOAuthUrl,
 } from "./ProviderConnectionDialog.js";
@@ -190,6 +194,58 @@ test("Codex OAuth callback accepts only the started localhost redirect and popup
 		),
 		null,
 	);
+});
+
+test("manual Codex callback accepts loopback callback URLs and rejects unsafe or incomplete values", () => {
+	assert.deepEqual(
+		parseManualProviderOAuthCallback(
+			"http://localhost:1455/auth/callback?state=s&code=c",
+			"http://localhost:1455/auth/callback",
+		),
+		{ ok: true, callback: { state: "s", code: "c" } },
+	);
+	assert.deepEqual(
+		parseManualProviderOAuthCallback(
+			"http://127.0.0.1:1455/auth/callback?state=s&code=c",
+			"http://localhost:1455/auth/callback",
+		),
+		{ ok: true, callback: { state: "s", code: "c" } },
+	);
+	for (const value of [
+		"https://attacker.example/auth/callback?state=s&code=c",
+		"http://localhost:3001/auth/callback?state=s&code=c",
+		"http://localhost:1455/wrong?state=s&code=c",
+		"http://localhost:1455/auth/callback?state=s",
+		"not a url",
+	]) {
+		const result = parseManualProviderOAuthCallback(
+			value,
+			"http://localhost:1455/auth/callback",
+		);
+		assert.equal(result.ok, false);
+		if (!result.ok) assert.equal(result.error.includes("state=s"), false);
+	}
+	assert.deepEqual(
+		parseManualProviderOAuthCallback(
+			"http://localhost:1455/auth/callback?error=access_denied&state=secret",
+			"http://localhost:1455/auth/callback",
+		),
+		{ ok: false, error: "Authorization was not completed. Try again." },
+	);
+});
+
+test("manual OAuth fallback renders an accessible callback URL form", async () => {
+	const markup = await render(
+		createElement(ManualOAuthCallbackForm, {
+			busy: false,
+			error: null,
+			onSubmit: async () => false,
+		}),
+	);
+	assert.match(markup, /Having trouble completing sign-in/);
+	assert.match(markup, /Paste the callback URL/);
+	assert.match(markup, /type="url"/);
+	assert.match(markup, /Complete connection/);
 });
 
 test("OAuth launch allowlist accepts HTTPS and loopback HTTP only", () => {

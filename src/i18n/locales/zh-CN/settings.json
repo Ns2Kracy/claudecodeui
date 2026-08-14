@@ -648,6 +648,7 @@
       "connectFirst": "内置提供商路由器运行时就绪后，才能加载提供商账户。",
       "unavailable": "此提供商路由器版本未提供受支持的账户管理 API。",
       "loading": "正在加载提供商账户和模型...",
+      "refreshing": "正在刷新提供商账户...",
       "loadFailed": "无法加载提供商账户和模型。",
       "actions": {
         "retry": "重试",

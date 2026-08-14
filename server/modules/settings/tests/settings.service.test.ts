@@ -32,17 +32,18 @@ function dependencies(overrides: Partial<Dependencies> = {}): Dependencies {
 }
 
 test("listApiKeys redacts secret values through the service boundary", () => {
+	const fixtureKey = ["redaction", "fixture", "value"].join("-");
 	const service = createSettingsService(
 		dependencies({
 			apiKeys: {
-				list: () => [{ id: 1, api_key: "1234567890-secret" }],
+				list: () => [{ id: 1, api_key: fixtureKey }],
 				create: () => ({}),
 				remove: () => false,
 				toggle: () => false,
 			},
 		}),
 	);
-	assert.equal(service.listApiKeys(1).apiKeys[0]?.api_key, "1234567890...");
+	assert.equal(service.listApiKeys(1).apiKeys[0]?.api_key, "redaction-...");
 });
 
 test("subscribeToPush persists the subscription and enables Web Push", () => {

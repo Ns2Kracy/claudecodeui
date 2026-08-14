@@ -9,6 +9,9 @@ export default function ProviderAccountsManager() {
 	const controller = useNineRouterSettings();
 	const details = upstreamDetailsState(controller.detailStatus);
 	const runtimeReady = controller.settings.runtime.status === "ready";
+	const hasLoadedDetails =
+		controller.settings.accounts !== undefined &&
+		controller.settings.models !== undefined;
 	const ensureUpstreamDetails = controller.ensureUpstreamDetails;
 
 	useEffect(() => {
@@ -23,6 +26,8 @@ export default function ProviderAccountsManager() {
 			accounts={controller.settings.accounts ?? []}
 			models={controller.settings.models ?? []}
 			loading={details.loading}
+			hasLoadedDetails={hasLoadedDetails}
+			refreshing={details.loading && hasLoadedDetails}
 			detailsError={details.error}
 			activeMutation={controller.activeMutation}
 			onRetry={() => {
