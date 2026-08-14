@@ -1,6 +1,7 @@
 services:
   cloudcli:
     image: ns2kracy/cloudcli:1.37.0
+    user: "0:0"
     restart: unless-stopped
     environment:
       HOST: 0.0.0.0
@@ -8,13 +9,14 @@ services:
       WORKSPACES_ROOT: /workspaces
       NINE_ROUTER_BASE_URL: http://9router:20128
       CODEX_OAUTH_CALLBACK_HOST: 0.0.0.0
-      NINE_ROUTER_ADMIN_PASSWORD: ${NINE_ROUTER_ADMIN_PASSWORD:?Set NINE_ROUTER_ADMIN_PASSWORD for CloudCLI and 9router}
+      NINE_ROUTER_ADMIN_PASSWORD: ${NINE_ROUTER_ADMIN_PASSWORD:-9router}
     ports:
       - "3001:3001"
       - "127.0.0.1:1455:1455"
     volumes:
-      - cloudcli-home:/root
-      - "${HOST_WORKSPACES_PATH:-./workspaces}:/workspaces"
+      - /DATA/AppData/$AppID/workspace:/workspaces
+      - /DATA/AppData/$AppID/cloudcli:/root/.cloudcli
+      - /DATA/AppData/$AppID/codex:/root/.codex
     depends_on:
       9router:
         condition: service_healthy
@@ -23,14 +25,15 @@ services:
 
   9router:
     image: ns2kracy/9router:0.5.45
+    user: "0:0"
     restart: unless-stopped
     environment:
       DATA_DIR: /data
-      INITIAL_PASSWORD: ${NINE_ROUTER_ADMIN_PASSWORD:?Set NINE_ROUTER_ADMIN_PASSWORD for CloudCLI and 9router}
+      INITIAL_PASSWORD: ${NINE_ROUTER_ADMIN_PASSWORD:-9router}
     expose:
       - "20128"
     volumes:
-      - 9router-data:/data
+      - /DATA/AppData/$AppID/9router:/data
     healthcheck:
       test:
         - CMD
@@ -43,10 +46,6 @@ services:
       retries: 3
     networks:
       - cloudcli-private
-
-volumes:
-  cloudcli-home:
-  9router-data:
 
 networks:
   cloudcli-private:
