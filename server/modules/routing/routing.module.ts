@@ -27,7 +27,7 @@ function requestConfiguredSidecar(
 	try {
 		sidecarHostname = new URL(input.baseUrl).hostname;
 	} catch {
-		throw new AppError("The 9router sidecar configuration is invalid", {
+		throw new AppError("The Router configuration is invalid", {
 			code: "ROUTING_CONFIGURATION_INVALID",
 			statusCode: 500,
 		});
@@ -74,6 +74,7 @@ const routingOAuthService = createRoutingOAuthService({
 export const routingService = createRoutingService({
 	runtime: {
 		getStatus: () => getNineRouterSidecar().getStatus(),
+		refresh: () => refreshNineRouterSidecar(),
 		getInternalCredentials: () =>
 			getNineRouterSidecar().getInternalCredentials(),
 	},

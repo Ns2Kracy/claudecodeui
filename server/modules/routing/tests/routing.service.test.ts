@@ -134,9 +134,10 @@ function createHarness(
 		deleteAccount: async () => undefined,
 		testAccount: async () => ({ healthy: true, error: null, refreshed: false }),
 	};
+	let currentState = state;
 	const runtime = {
 		getStatus: () => ({
-			state,
+			state: currentState,
 			origin,
 			version: "0.5.45",
 			lastError:
@@ -148,6 +149,11 @@ function createHarness(
 							retryable: true,
 						},
 		}),
+		refresh: async () => {
+			calls.push("refresh");
+			currentState = "ready";
+			return runtime.getStatus();
+		},
 		getInternalCredentials: () => ({
 			jwtSecret: "jwt",
 			initialPassword: "admin",
@@ -184,11 +190,12 @@ test("settings report sidecar runtime without connection storage", async () => {
 	assert.equal(calls.filter((call) => call === "client").length, 1);
 });
 
-test("settings request provider accounts even when the cached sidecar status is unavailable", async () => {
+test("settings refresh stale sidecar status before requesting provider accounts", async () => {
 	const { service, calls } = createHarness("unavailable");
 
 	const settings = await service.getSettings(7, { accounts: true });
 
+	assert.deepEqual(calls.slice(0, 2), ["refresh", "client"]);
 	assert.equal(calls.filter((call) => call === "client").length, 1);
 	assert.equal(settings.runtime.status, "ready");
 	assert.equal(settings.accounts?.length, 1);
@@ -209,11 +216,12 @@ test("failed direct account requests report a retryable degraded runtime", async
 	};
 	const service = createRoutingService({
 		runtime,
-		clientFactory: () => ({
-			listAccounts: async () => {
-				throw new Error("connection failed");
-			},
-		}) as never,
+		clientFactory: () =>
+			({
+				listAccounts: async () => {
+					throw new Error("connection failed");
+				},
+			}) as never,
 	});
 
 	const settings = await service.getSettings(7, { accounts: true });

@@ -11,17 +11,17 @@ services:
       - "3001:3001"
       - "1455"
     volumes:
-      - /DATA/AppData/$AppID/workspace:/workspaces
-      - /DATA/AppData/$AppID/cloudcli:/root/.cloudcli
-      - /DATA/AppData/$AppID/codex:/root/.codex
+      - /DATA/AppData/cloudcli/workspace:/workspaces
+      - /DATA/AppData/cloudcli/cloudcli:/root/.cloudcli
+      - /DATA/AppData/cloudcli/codex:/root/.codex
     depends_on:
       9router:
-        condition: service_healthy
+        condition: service_started
     networks:
       - cloudcli-private
 
   9router:
-    image: ns2kracy/9router:0.5.45
+    image: ns2kracy/9router:0.5.50
     user: "0:0"
     restart: unless-stopped
     environment:
@@ -30,7 +30,7 @@ services:
     expose:
       - "20128"
     volumes:
-      - /DATA/AppData/$AppID/9router:/data
+      - /DATA/AppData/cloudcli/9router:/data
     networks:
       - cloudcli-private
 

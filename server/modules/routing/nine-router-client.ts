@@ -61,21 +61,21 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function invalidResponse(): AppError {
-	return new AppError("9router returned an invalid response", {
+	return new AppError("Router returned an invalid response", {
 		code: "ROUTING_UPSTREAM_RESPONSE_INVALID",
 		statusCode: 502,
 	});
 }
 
 function authFailed(): AppError {
-	return new AppError("9router management authentication failed", {
+	return new AppError("Router authentication failed", {
 		code: "ROUTING_AUTH_FAILED",
 		statusCode: 401,
 	});
 }
 
 function apiKeyRejected(): AppError {
-	return new AppError("9router rejected the configured data-plane key", {
+	return new AppError("Router rejected its configured API key", {
 		code: "ROUTING_API_KEY_REJECTED",
 		statusCode: 401,
 	});
@@ -83,7 +83,7 @@ function apiKeyRejected(): AppError {
 
 function capabilityUnavailable(): AppError {
 	return new AppError(
-		"This operation is unavailable for the detected 9router version",
+		"This operation is unavailable for the detected Router version",
 		{
 			code: "ROUTING_CAPABILITY_UNAVAILABLE",
 			statusCode: 409,
@@ -92,14 +92,14 @@ function capabilityUnavailable(): AppError {
 }
 
 function resourceNotFound(): AppError {
-	return new AppError("The requested 9router resource was not found", {
+	return new AppError("The requested Router resource was not found", {
 		code: "ROUTING_RESOURCE_NOT_FOUND",
 		statusCode: 404,
 	});
 }
 
 function operationFailed(): AppError {
-	return new AppError("The 9router operation failed", {
+	return new AppError("The Router operation failed", {
 		code: "ROUTING_OPERATION_FAILED",
 		statusCode: 502,
 	});

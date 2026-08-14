@@ -27,6 +27,7 @@ import type {
 
 type RuntimeCredentialsProvider = {
 	getStatus(): NineRouterSidecarStatus;
+	refresh?(): Promise<NineRouterSidecarStatus>;
 	getInternalCredentials(): NineRouterInternalCredentials;
 };
 
@@ -40,21 +41,21 @@ type RoutingServiceDependencies = {
 };
 
 function safeOperationFailure(): AppError {
-	return new AppError("The 9router operation failed", {
+	return new AppError("The Router operation failed", {
 		code: "ROUTING_OPERATION_FAILED",
 		statusCode: 502,
 	});
 }
 
 function configurationInvalid(): AppError {
-	return new AppError("The 9router runtime configuration is invalid", {
+	return new AppError("The Router configuration is invalid", {
 		code: "ROUTING_CONFIGURATION_INVALID",
 		statusCode: 500,
 	});
 }
 
 function runtimeUnavailable(): AppError {
-	return new AppError("The 9router sidecar is unavailable", {
+	return new AppError("The Router is unavailable", {
 		code: "ROUTING_RUNTIME_UNAVAILABLE",
 		statusCode: 409,
 	});
@@ -117,6 +118,17 @@ export function createRoutingService(dependencies: RoutingServiceDependencies) {
 		modelSnapshotGeneration += 1;
 		for (const snapshot of modelSnapshots.values()) snapshot.expiresAt = 0;
 	};
+
+	async function refreshRuntimeIfUnavailable(): Promise<NineRouterSidecarStatus> {
+		const status = dependencies.runtime.getStatus();
+		if (status.state === "ready" || !dependencies.runtime.refresh)
+			return status;
+		try {
+			return await dependencies.runtime.refresh();
+		} catch {
+			return dependencies.runtime.getStatus();
+		}
+	}
 
 	function credentialsForRuntime(
 		requireReady: boolean,
@@ -199,6 +211,7 @@ export function createRoutingService(dependencies: RoutingServiceDependencies) {
 		accountSnapshot?: RoutingAccountView[],
 		existingClient?: IRoutingNineRouterClient,
 	) {
+		if (!existingClient) await refreshRuntimeIfUnavailable();
 		const client = existingClient ?? clientForRuntime();
 		const accounts = (accountSnapshot ?? (await client.listAccounts())).filter(
 			(account) => account.active,
@@ -234,7 +247,7 @@ export function createRoutingService(dependencies: RoutingServiceDependencies) {
 		): Promise<RoutingSettingsView> {
 			const settings = emptyRoutingSettingsView();
 			const checkedAt = now().toISOString();
-			const status = dependencies.runtime.getStatus();
+			const status = await refreshRuntimeIfUnavailable();
 			settings.runtime = runtimeView(status, checkedAt);
 
 			try {

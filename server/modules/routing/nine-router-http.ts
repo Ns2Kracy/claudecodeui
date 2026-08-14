@@ -189,10 +189,10 @@ const OPERATIONS: Record<NineRouterOperation, OperationDefinition> = {
 
 function errorMessage(
 	operation: NineRouterOperation,
-	origin: string,
+	_origin: string,
 	detail: string,
 ): string {
-	return `9router ${operation} request to ${origin} ${detail}`;
+	return `Router ${operation} request ${detail}`;
 }
 
 function operationFailed(
@@ -339,7 +339,7 @@ function mergedTimeouts(
 	const timeouts = { ...DEFAULT_TIMEOUTS, ...overrides };
 	for (const value of Object.values(timeouts)) {
 		if (!Number.isFinite(value) || value <= 0) {
-			throw new AppError("9router request timeout configuration is invalid", {
+			throw new AppError("Router request timeout configuration is invalid", {
 				code: "ROUTING_CONFIGURATION_INVALID",
 				statusCode: 500,
 			});

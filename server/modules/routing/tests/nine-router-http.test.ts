@@ -496,7 +496,7 @@ test("turns non-JSON, malformed JSON, and invalid JSON shapes into safe errors",
 	}
 });
 
-test("safe errors identify origin and operation without header credentials", async () => {
+test("safe errors identify Router operations without header credentials", async () => {
 	await withServer(
 		(_request, response) => {
 			response.writeHead(200, { "content-type": "application/json" });
@@ -516,8 +516,10 @@ test("safe errors identify origin and operation without header credentials", asy
 					),
 				"ROUTING_UPSTREAM_RESPONSE_INVALID",
 			);
-			assert.match(error.message, /http:\/\/router\.test:\d+/);
-			assert.match(error.message, /health/);
+			assert.equal(
+				error.message,
+				"Router health request returned an invalid JSON response",
+			);
 			assert.equal(error.message.includes("authorization-secret"), false);
 			assert.equal(error.message.includes("cookie-secret"), false);
 		},

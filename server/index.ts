@@ -366,7 +366,7 @@ async function startServer() {
 		// Sidecar unavailability is advisory and must never prevent CloudCLI from serving its own UI/API.
 		await refreshNineRouterSidecar().catch((error: unknown) => {
 			console.warn(
-				"[Routing] 9router sidecar health check failed:",
+				"[Routing] Router health check failed:",
 				getErrorMessage(error),
 			);
 			return null;
@@ -375,7 +375,6 @@ async function startServer() {
 		// Check if running in production mode (dist folder exists)
 		const distIndexPath = path.join(APP_ROOT, "dist", "index.html");
 		const isProduction = fs.existsSync(distIndexPath);
-
 
 		if (isProduction) {
 			console.log(
