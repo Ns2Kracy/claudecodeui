@@ -59,21 +59,14 @@ async function render(element: ReactElement): Promise<string> {
 	);
 }
 
-test("provider catalog separates Codex OAuth from six peer API-key providers", () => {
+test("provider catalog separates Codex OAuth from four peer API-key providers", () => {
 	assert.deepEqual(methodsForProvider("codex"), ["oauth"]);
 	const apiKeyProfiles = NINE_ROUTER_PROVIDER_PROFILES.filter(
 		(profile) => profile.group === "api_key",
 	);
 	assert.deepEqual(
 		apiKeyProfiles.map((profile) => profile.id),
-		[
-			"openai",
-			"anthropic",
-			"gemini",
-			"deepseek",
-			"openrouter",
-			"openai-compatible",
-		],
+		["openai", "deepseek", "openrouter", "openai-compatible"],
 	);
 	assert.equal(
 		apiKeyProfiles.every(
@@ -97,16 +90,12 @@ test("connection chooser prioritizes ChatGPT OAuth and exposes one peer API-key 
 	assert.match(markup, /Codex OAuth/);
 	assert.match(markup, /API Key authentication/);
 	assert.equal(markup.includes("Popular API keys"), false);
-	for (const provider of [
-		"OpenAI",
-		"Anthropic",
-		"Google Gemini",
-		"DeepSeek",
-		"OpenRouter",
-	]) {
+	for (const provider of ["OpenAI", "DeepSeek", "OpenRouter"]) {
 		assert.match(markup, new RegExp(provider));
 	}
 	assert.match(markup, /OpenAI Compatible/);
+	assert.equal(markup.includes("Anthropic"), false);
+	assert.equal(markup.includes("Google Gemini"), false);
 	assert.match(markup, /aria-label="Codex"/);
 	assert.match(markup, /role="group" aria-label="API Key providers"/);
 	assert.equal(markup.includes('role="list"'), false);
