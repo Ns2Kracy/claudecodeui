@@ -1,4 +1,4 @@
-import { AlertTriangle, Loader2, RefreshCw } from "lucide-react";
+import { Loader2, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type {
@@ -16,7 +16,6 @@ import type { RoutingAccountTestResult } from "./routingApi.js";
 import ProviderConnections from "./ProviderConnections.js";
 
 type ProviderAccountsSectionProps = {
-	configured: boolean;
 	connectionStatus: "connected" | "offline";
 	capabilities: RoutingCapabilities;
 	accounts: RoutingAccountView[];
@@ -40,7 +39,6 @@ function isApiKeyAccount(account: RoutingAccountView): boolean {
 }
 
 export default function ProviderAccountsSection({
-	configured,
 	connectionStatus,
 	capabilities,
 	accounts,
@@ -74,25 +72,7 @@ export default function ProviderAccountsSection({
 			title={t("nineRouter.management.title")}
 			description={t("nineRouter.management.description")}
 		>
-			{!configured && (
-				<SettingsCard>
-					<p className="p-4 text-sm text-muted-foreground">
-						{t("nineRouter.management.connectFirst")}
-					</p>
-				</SettingsCard>
-			)}
-			{configured && !capabilities.readAccounts && (
-				<SettingsCard>
-					<div className="flex gap-2 p-4 text-sm text-muted-foreground">
-						<AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
-						<p>{t("nineRouter.management.unavailable")}</p>
-					</div>
-				</SettingsCard>
-			)}
-			{configured &&
-				capabilities.readAccounts &&
-				loading &&
-				!hasLoadedDetails && (
+			{loading && !hasLoadedDetails && (
 					<SettingsCard>
 						<div
 							role="status"
@@ -103,7 +83,7 @@ export default function ProviderAccountsSection({
 						</div>
 					</SettingsCard>
 				)}
-			{configured && capabilities.readAccounts && detailsError && (
+			{detailsError && (
 				<SettingsCard>
 					<div
 						role="alert"
@@ -125,7 +105,7 @@ export default function ProviderAccountsSection({
 					</div>
 				</SettingsCard>
 			)}
-			{configured && capabilities.readAccounts && hasLoadedDetails && (
+			{hasLoadedDetails && (
 				<div className="space-y-4" aria-busy={refreshing}>
 					{refreshing && (
 						<div

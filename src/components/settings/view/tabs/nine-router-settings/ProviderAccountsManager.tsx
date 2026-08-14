@@ -1,5 +1,3 @@
-import { useEffect } from "react";
-
 import ProviderAccountsSection from "./ProviderAccountsSection.js";
 import { upstreamDetailsState } from "./routingState.js";
 import { useNineRouterSettings } from "./useNineRouterSettings.js";
@@ -8,19 +6,14 @@ import { useNineRouterSettings } from "./useNineRouterSettings.js";
 export default function ProviderAccountsManager() {
 	const controller = useNineRouterSettings();
 	const details = upstreamDetailsState(controller.detailStatus);
-	const runtimeReady = controller.settings.runtime.status === "ready";
-	const hasLoadedDetails =
-		controller.settings.accounts !== undefined &&
-		controller.settings.models !== undefined;
-	const ensureUpstreamDetails = controller.ensureUpstreamDetails;
-
-	useEffect(() => {
-		if (runtimeReady) void ensureUpstreamDetails();
-	}, [ensureUpstreamDetails, runtimeReady]);
+	const runtimeStatus = controller.settings.runtime.status;
+	const runtimeReady = runtimeStatus === "ready";
+	const hasLoadedDetails = controller.settings.accounts !== undefined;
+	const detailsError =
+		details.error || (runtimeStatus === "degraded" && !hasLoadedDetails);
 
 	return (
 		<ProviderAccountsSection
-			configured={runtimeReady}
 			connectionStatus={runtimeReady ? "connected" : "offline"}
 			capabilities={controller.settings.runtime.capabilities}
 			accounts={controller.settings.accounts ?? []}
@@ -28,7 +21,7 @@ export default function ProviderAccountsManager() {
 			loading={details.loading}
 			hasLoadedDetails={hasLoadedDetails}
 			refreshing={details.loading && hasLoadedDetails}
-			detailsError={details.error}
+			detailsError={detailsError}
 			activeMutation={controller.activeMutation}
 			onRetry={() => {
 				void controller.retryUpstreamDetails();

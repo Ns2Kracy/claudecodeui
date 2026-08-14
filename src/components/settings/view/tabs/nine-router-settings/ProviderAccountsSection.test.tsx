@@ -23,7 +23,6 @@ import ProviderAccountsSection from "./ProviderAccountsSection.js";
 
 async function renderAccounts(
 	options: {
-		configured?: boolean;
 		loading?: boolean;
 		detailsError?: boolean;
 		hasLoadedDetails?: boolean;
@@ -54,7 +53,6 @@ async function renderAccounts(
 			I18nextProvider,
 			{ i18n },
 			createElement(ProviderAccountsSection, {
-				configured: options.configured ?? true,
 				connectionStatus: "connected",
 				capabilities: settings.runtime.capabilities,
 				accounts: options.accounts ?? [],
@@ -174,6 +172,21 @@ test("background refresh failure keeps cached accounts with an inline retry", as
 	assert.match(markup, /work@example\.com/);
 	assert.match(markup, /Could not load provider accounts and models/);
 	assert.match(markup, /Retry/);
+});
+
+test("account loading never shows the runtime-ready gate", async () => {
+	const markup = await renderAccounts({
+		loading: true,
+		hasLoadedDetails: false,
+	});
+
+	assert.match(markup, /Loading provider accounts and models/);
+	assert.equal(
+		markup.includes(
+			"The built-in Provider Router runtime must be ready before provider accounts can load.",
+		),
+		false,
+	);
 });
 
 test("provider detail failures stay inside the account retry surface", async () => {

@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { emptyRoutingSettingsView } from "../../../../shared/routing.js";
 import { createRoutingService } from "../routing.service.js";
 
 function createHarness(
@@ -185,19 +184,44 @@ test("settings report sidecar runtime without connection storage", async () => {
 	assert.equal(calls.filter((call) => call === "client").length, 1);
 });
 
-test("unavailable embedded runtime is safe and typed for explicit 9router operations", async () => {
-	const { service } = createHarness("unavailable");
+test("settings request provider accounts even when the cached sidecar status is unavailable", async () => {
+	const { service, calls } = createHarness("unavailable");
+
 	const settings = await service.getSettings(7, { accounts: true });
-	assert.equal(settings.runtime.status, "unavailable");
-	assert.deepEqual(
-		settings.runtime.capabilities,
-		emptyRoutingSettingsView().runtime.capabilities,
-	);
-	await assert.rejects(
-		() => service.listAccounts(7),
-		(error: any) =>
-			error.code === "ROUTING_RUNTIME_UNAVAILABLE" && error.statusCode === 409,
-	);
+
+	assert.equal(calls.filter((call) => call === "client").length, 1);
+	assert.equal(settings.runtime.status, "ready");
+	assert.equal(settings.accounts?.length, 1);
+});
+
+test("failed direct account requests report a retryable degraded runtime", async () => {
+	const runtime = {
+		getStatus: () => ({
+			state: "unavailable" as const,
+			origin: "http://127.0.0.1:20128",
+			version: null,
+			lastError: null,
+		}),
+		getInternalCredentials: () => ({
+			initialPassword: "admin",
+			dataPlaneKey: "data-plane-key",
+		}),
+	};
+	const service = createRoutingService({
+		runtime,
+		clientFactory: () => ({
+			listAccounts: async () => {
+				throw new Error("connection failed");
+			},
+		}) as never,
+	});
+
+	const settings = await service.getSettings(7, { accounts: true });
+
+	assert.equal(settings.runtime.status, "degraded");
+	assert.equal(settings.runtime.capabilities.readAccounts, true);
+	assert.equal(settings.runtime.lastError?.retryable, true);
+	assert.equal(settings.accounts, undefined);
 });
 
 test("provider management workflows delegate through sanitized 9router client contract", async () => {
@@ -287,6 +311,25 @@ function createCatalogHarness(options: {
 		now: options.now,
 	});
 }
+
+test("settings keep directly loaded accounts when model loading fails", async () => {
+	const account = catalogAccount("codex-1", "codex");
+	const service = createCatalogHarness({
+		accounts: [account],
+		listProviderModels: async () => {
+			throw new Error("model lookup failed");
+		},
+	});
+
+	const settings = await service.getSettings(7, {
+		accounts: true,
+		models: true,
+	});
+
+	assert.deepEqual(settings.accounts, [account]);
+	assert.equal(settings.models, undefined);
+	assert.equal(settings.runtime.status, "degraded");
+});
 
 test("concurrent model catalog reads share one account refresh", async () => {
 	const account = catalogAccount("codex-1", "codex");

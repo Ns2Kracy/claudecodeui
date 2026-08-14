@@ -118,9 +118,11 @@ export function createRoutingService(dependencies: RoutingServiceDependencies) {
 		for (const snapshot of modelSnapshots.values()) snapshot.expiresAt = 0;
 	};
 
-	function runtimeCredentials(): RoutingClientCredentials {
+	function credentialsForRuntime(
+		requireReady: boolean,
+	): RoutingClientCredentials {
 		const status = dependencies.runtime.getStatus();
-		if (status.state !== "ready") throw runtimeUnavailable();
+		if (requireReady && status.state !== "ready") throw runtimeUnavailable();
 		if (!status.origin) throw configurationInvalid();
 		const credentials = dependencies.runtime.getInternalCredentials();
 		return {
@@ -132,7 +134,15 @@ export function createRoutingService(dependencies: RoutingServiceDependencies) {
 
 	function clientForRuntime(): IRoutingNineRouterClient {
 		try {
-			return dependencies.clientFactory(runtimeCredentials());
+			return dependencies.clientFactory(credentialsForRuntime(true));
+		} catch (error) {
+			throw safeAppError(error);
+		}
+	}
+
+	function clientForManagement(): IRoutingNineRouterClient {
+		try {
+			return dependencies.clientFactory(credentialsForRuntime(false));
 		} catch (error) {
 			throw safeAppError(error);
 		}
@@ -223,17 +233,17 @@ export function createRoutingService(dependencies: RoutingServiceDependencies) {
 			details: RoutingSettingsDetails = {},
 		): Promise<RoutingSettingsView> {
 			const settings = emptyRoutingSettingsView();
-			settings.runtime = runtimeView(
-				dependencies.runtime.getStatus(),
-				now().toISOString(),
-			);
-
-			const capabilities = settings.runtime.capabilities;
-			if (!capabilities.readAccounts) return settings;
+			const checkedAt = now().toISOString();
+			const status = dependencies.runtime.getStatus();
+			settings.runtime = runtimeView(status, checkedAt);
 
 			try {
-				const client = clientForRuntime();
+				const client = clientForManagement();
 				const accounts = await client.listAccounts();
+				settings.runtime = runtimeView(
+					{ ...status, state: "ready", lastError: null },
+					checkedAt,
+				);
 				settings.accountSummary = {
 					total: accounts.length,
 					degraded: accounts.filter((account) =>
@@ -246,10 +256,8 @@ export function createRoutingService(dependencies: RoutingServiceDependencies) {
 				}
 			} catch (error) {
 				const safeError = safeAppError(error);
-				settings.runtime.status =
-					safeError.code === "ROUTING_RUNTIME_UNAVAILABLE"
-						? "unavailable"
-						: "degraded";
+				settings.runtime.status = "degraded";
+				settings.runtime.capabilities.readAccounts = true;
 				settings.runtime.lastError = {
 					code: safeError.code,
 					message: safeError.message,
@@ -263,7 +271,7 @@ export function createRoutingService(dependencies: RoutingServiceDependencies) {
 			return callSafely(() => listConfiguredModels(forceRefresh));
 		},
 		async listAccounts(_userId: number) {
-			return callSafely(() => clientForRuntime().listAccounts());
+			return callSafely(() => clientForManagement().listAccounts());
 		},
 
 		async getProvider(_userId: number, id: string) {
