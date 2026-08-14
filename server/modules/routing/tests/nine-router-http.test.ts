@@ -44,6 +44,14 @@ async function readRequestBody(request: IncomingMessage): Promise<string> {
 	return Buffer.concat(chunks).toString("utf8");
 }
 
+async function readJsonBody(request: IncomingMessage): Promise<unknown> {
+	try {
+		return JSON.parse(await readRequestBody(request)) as unknown;
+	} catch {
+		return undefined;
+	}
+}
+
 async function assertHttpError(
 	run: () => Promise<unknown>,
 	code: string,
@@ -66,7 +74,7 @@ test("sends and receives JSON through a fixed operation mapping", async () => {
 			assert.equal(request.url, "/api/auth/login");
 			assert.equal(request.headers["content-type"], "application/json");
 			assert.equal(request.headers["accept-encoding"], "identity");
-			assert.deepEqual(JSON.parse(await readRequestBody(request)), {
+			assert.deepEqual(await readJsonBody(request), {
 				password: "submitted-once",
 			});
 			response.writeHead(200, { "content-type": "application/json" });
@@ -101,7 +109,7 @@ test("maps Task 7 provider, OAuth, and provider-node operations to exact upstrea
 				body:
 					request.method === "GET" || request.method === "DELETE"
 						? null
-						: (JSON.parse(await readRequestBody(request)) as unknown),
+						: await readJsonBody(request),
 			});
 			response.writeHead(200, { "content-type": "application/json" });
 			response.end(JSON.stringify({ ok: true }));
@@ -268,7 +276,10 @@ test("rejects malformed, credentialed, fragmented, and oversized base URLs befor
 	]) {
 		await assertHttpError(
 			() =>
-				requestNineRouterJson({ baseUrl, operation: "health" }, dependencies),
+				requestNineRouterJson(
+					{ baseUrl, operation: "authStatus" },
+					dependencies,
+				),
 			"ROUTING_TARGET_BLOCKED",
 		);
 	}
@@ -276,15 +287,18 @@ test("rejects malformed, credentialed, fragmented, and oversized base URLs befor
 
 test("does not retry ambiguous Task 7 mutations after network failure", async () => {
 	let attempts = 0;
+	let destroyedWith: Error | undefined;
 	const requestFactory = () => {
 		attempts += 1;
 		const request = new EventEmitter() as EventEmitter & {
 			write: () => void;
 			end: () => void;
-			destroy: () => void;
+			destroy: (error?: Error) => void;
 		};
 		request.write = () => undefined;
-		request.destroy = () => undefined;
+		request.destroy = (error) => {
+			destroyedWith = error;
+		};
 		request.end = () =>
 			queueMicrotask(() => request.emit("error", new Error("socket reset")));
 		return request;
@@ -303,6 +317,7 @@ test("does not retry ambiguous Task 7 mutations after network failure", async ()
 		"ROUTING_UNREACHABLE",
 	);
 	assert.equal(attempts, 1);
+	assert.equal(destroyedWith, undefined);
 });
 
 test("enforces a connection timeout with an injected never-connecting request", async () => {
@@ -328,7 +343,7 @@ test("enforces a connection timeout with an injected never-connecting request", 
 	await assertHttpError(
 		() =>
 			requestNineRouterJson(
-				{ baseUrl: "https://router.example", operation: "health" },
+				{ baseUrl: "https://router.example", operation: "authStatus" },
 				{
 					requestFactory,
 					targetPolicy: {
@@ -353,7 +368,7 @@ test("enforces headers, body, and total timeouts", async () => {
 			await assertHttpError(
 				() =>
 					requestNineRouterJson(
-						{ baseUrl, operation: "health" },
+						{ baseUrl, operation: "authStatus" },
 						{
 							targetPolicy: localTargetPolicy,
 							timeouts: {
@@ -378,7 +393,7 @@ test("enforces headers, body, and total timeouts", async () => {
 			await assertHttpError(
 				() =>
 					requestNineRouterJson(
-						{ baseUrl, operation: "health" },
+						{ baseUrl, operation: "authStatus" },
 						{
 							targetPolicy: localTargetPolicy,
 							timeouts: {
@@ -405,7 +420,7 @@ test("enforces headers, body, and total timeouts", async () => {
 			await assertHttpError(
 				() =>
 					requestNineRouterJson(
-						{ baseUrl, operation: "health" },
+						{ baseUrl, operation: "authStatus" },
 						{
 							targetPolicy: localTargetPolicy,
 							timeouts: {
@@ -437,7 +452,7 @@ test("rejects redirects without following their Location target", async () => {
 			await assertHttpError(
 				() =>
 					requestNineRouterJson(
-						{ baseUrl, operation: "health" },
+						{ baseUrl, operation: "authStatus" },
 						{ targetPolicy: localTargetPolicy },
 					),
 				"ROUTING_REDIRECT_REJECTED",
@@ -460,7 +475,7 @@ test("rejects bodies over one MiB before parsing", async () => {
 			await assertHttpError(
 				() =>
 					requestNineRouterJson(
-						{ baseUrl, operation: "health" },
+						{ baseUrl, operation: "authStatus" },
 						{ targetPolicy: localTargetPolicy },
 					),
 				"ROUTING_UPSTREAM_RESPONSE_TOO_LARGE",
@@ -486,7 +501,7 @@ test("turns non-JSON, malformed JSON, and invalid JSON shapes into safe errors",
 				await assertHttpError(
 					() =>
 						requestNineRouterJson(
-							{ baseUrl, operation: "health" },
+							{ baseUrl, operation: "authStatus" },
 							{ targetPolicy: localTargetPolicy },
 						),
 					"ROUTING_UPSTREAM_RESPONSE_INVALID",
@@ -508,7 +523,7 @@ test("safe errors identify Router operations without header credentials", async 
 					requestNineRouterJson(
 						{
 							baseUrl,
-							operation: "health",
+							operation: "authStatus",
 							authorization: "Bearer authorization-secret",
 							cookie: "auth_token=cookie-secret",
 						},
@@ -518,7 +533,7 @@ test("safe errors identify Router operations without header credentials", async 
 			);
 			assert.equal(
 				error.message,
-				"Router health request returned an invalid JSON response",
+				"Router authStatus request returned an invalid JSON response",
 			);
 			assert.equal(error.message.includes("authorization-secret"), false);
 			assert.equal(error.message.includes("cookie-secret"), false);

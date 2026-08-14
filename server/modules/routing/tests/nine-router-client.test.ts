@@ -14,6 +14,7 @@ import { requestNineRouterJson } from "../nine-router-http.js";
 
 type FakeRouterOptions = {
 	version?: unknown;
+	versionStatus?: number;
 	password?: string;
 	dataPlaneKey?: string;
 	authMode?: "password" | "oidc";
@@ -23,6 +24,7 @@ type FakeRouterState = {
 	loginCount: number;
 	accountListCount: number;
 	rejectNextAccountList: boolean;
+	probePaths: string[];
 	receivedBodies: Array<{ path: string; body: unknown }>;
 	invalidPollPending?: boolean;
 };
@@ -32,7 +34,11 @@ async function readJsonBody(request: IncomingMessage): Promise<unknown> {
 	for await (const chunk of request) {
 		chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
 	}
-	return JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown;
+	try {
+		return JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown;
+	} catch {
+		return undefined;
+	}
 }
 
 function sendJson(
@@ -83,6 +89,7 @@ async function withFakeRouter(
 		loginCount: 0,
 		accountListCount: 0,
 		rejectNextAccountList: false,
+		probePaths: [],
 		receivedBodies: [],
 	};
 
@@ -92,11 +99,13 @@ async function withFakeRouter(
 			const path = requestUrl.pathname;
 
 			if (request.method === "GET" && path === "/api/health") {
+				state.probePaths.push(path);
 				sendJson(response, 200, { ok: true });
 				return;
 			}
 			if (request.method === "GET" && path === "/api/version") {
-				sendJson(response, 200, {
+				state.probePaths.push(path);
+				sendJson(response, options.versionStatus ?? 200, {
 					currentVersion: options.version ?? "0.5.45",
 				});
 				return;
@@ -345,14 +354,31 @@ test("validates the pinned version, management login, and data-plane key", async
 		});
 
 		const validation = await client.validateConnection();
-		assert.equal(validation.version, "0.5.45");
+		assert.equal(validation.version, "0.5.50");
 		assert.equal(validation.knownVersion, true);
 		assert.equal(validation.capabilities.writeRoutes, true);
 		assert.equal(validation.capabilities.cursorRuntime, false);
 		assert.equal(state.loginCount, 1);
+		assert.deepEqual(state.probePaths, []);
 
 		await client.listAccounts();
 		assert.equal(state.loginCount, 1);
+	});
+});
+
+test("lists accounts when the version endpoint fails but real APIs work", async () => {
+	await withFakeRouter({ versionStatus: 500 }, async ({ baseUrl, request }) => {
+		const client = new NineRouterClient({
+			baseUrl,
+			adminPassword: "admin-password",
+			dataPlaneKey: "data-plane-key",
+			request,
+		});
+
+		const accounts = await client.listAccounts();
+
+		assert.equal(accounts.length, 1);
+		assert.equal(accounts[0]?.id, "account-1");
 	});
 });
 
@@ -438,8 +464,8 @@ test("maps invalid passwords and data-plane keys to redacted errors", async () =
 	});
 });
 
-test("connects unknown versions in reduced mode and blocks guessed management calls", async () => {
-	await withFakeRouter({ version: "0.6.0" }, async ({ baseUrl, request }) => {
+test("uses packaged capabilities without probing a reported Router version", async () => {
+	await withFakeRouter({ version: 545 }, async ({ baseUrl, request }) => {
 		const client = new NineRouterClient({
 			baseUrl,
 			adminPassword: "admin-password",
@@ -448,28 +474,12 @@ test("connects unknown versions in reduced mode and blocks guessed management ca
 		});
 
 		const validation = await client.validateConnection();
-		assert.equal(validation.knownVersion, false);
-		assert.equal(validation.capabilities.writeRoutes, false);
-		assert.equal(validation.capabilities.claudeRuntime, true);
-		await assertClientError(
-			() => client.listAccounts(),
-			"ROUTING_CAPABILITY_UNAVAILABLE",
-		);
-	});
-});
+		const accounts = await client.listAccounts();
 
-test("rejects malformed upstream payloads before mapping them", async () => {
-	await withFakeRouter({ version: 545 }, async ({ baseUrl, request }) => {
-		const client = new NineRouterClient({
-			baseUrl,
-			adminPassword: "admin-password",
-			dataPlaneKey: "data-plane-key",
-			request,
-		});
-		await assertClientError(
-			() => client.validateConnection(),
-			"ROUTING_UPSTREAM_RESPONSE_INVALID",
-		);
+		assert.equal(validation.version, "0.5.50");
+		assert.equal(validation.knownVersion, true);
+		assert.equal(validation.capabilities.writeRoutes, true);
+		assert.equal(accounts.length, 1);
 	});
 });
 

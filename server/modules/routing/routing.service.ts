@@ -27,7 +27,6 @@ import type {
 
 type RuntimeCredentialsProvider = {
 	getStatus(): NineRouterSidecarStatus;
-	refresh?(): Promise<NineRouterSidecarStatus>;
 	getInternalCredentials(): NineRouterInternalCredentials;
 };
 
@@ -119,22 +118,8 @@ export function createRoutingService(dependencies: RoutingServiceDependencies) {
 		for (const snapshot of modelSnapshots.values()) snapshot.expiresAt = 0;
 	};
 
-	async function refreshRuntimeIfUnavailable(): Promise<NineRouterSidecarStatus> {
+	function credentialsForRuntime(): RoutingClientCredentials {
 		const status = dependencies.runtime.getStatus();
-		if (status.state === "ready" || !dependencies.runtime.refresh)
-			return status;
-		try {
-			return await dependencies.runtime.refresh();
-		} catch {
-			return dependencies.runtime.getStatus();
-		}
-	}
-
-	function credentialsForRuntime(
-		requireReady: boolean,
-	): RoutingClientCredentials {
-		const status = dependencies.runtime.getStatus();
-		if (requireReady && status.state !== "ready") throw runtimeUnavailable();
 		if (!status.origin) throw configurationInvalid();
 		const credentials = dependencies.runtime.getInternalCredentials();
 		return {
@@ -146,7 +131,7 @@ export function createRoutingService(dependencies: RoutingServiceDependencies) {
 
 	function clientForRuntime(): IRoutingNineRouterClient {
 		try {
-			return dependencies.clientFactory(credentialsForRuntime(true));
+			return dependencies.clientFactory(credentialsForRuntime());
 		} catch (error) {
 			throw safeAppError(error);
 		}
@@ -154,7 +139,7 @@ export function createRoutingService(dependencies: RoutingServiceDependencies) {
 
 	function clientForManagement(): IRoutingNineRouterClient {
 		try {
-			return dependencies.clientFactory(credentialsForRuntime(false));
+			return dependencies.clientFactory(credentialsForRuntime());
 		} catch (error) {
 			throw safeAppError(error);
 		}
@@ -211,7 +196,6 @@ export function createRoutingService(dependencies: RoutingServiceDependencies) {
 		accountSnapshot?: RoutingAccountView[],
 		existingClient?: IRoutingNineRouterClient,
 	) {
-		if (!existingClient) await refreshRuntimeIfUnavailable();
 		const client = existingClient ?? clientForRuntime();
 		const accounts = (accountSnapshot ?? (await client.listAccounts())).filter(
 			(account) => account.active,
@@ -247,7 +231,7 @@ export function createRoutingService(dependencies: RoutingServiceDependencies) {
 		): Promise<RoutingSettingsView> {
 			const settings = emptyRoutingSettingsView();
 			const checkedAt = now().toISOString();
-			const status = await refreshRuntimeIfUnavailable();
+			const status = dependencies.runtime.getStatus();
 			settings.runtime = runtimeView(status, checkedAt);
 
 			try {

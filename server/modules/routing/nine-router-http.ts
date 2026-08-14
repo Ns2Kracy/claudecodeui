@@ -11,8 +11,6 @@ import { AppError } from "@/shared/utils.js";
 import { validateRoutingTarget } from "./routing-target-policy.js";
 
 type NineRouterOperation =
-	| "health"
-	| "version"
 	| "authStatus"
 	| "login"
 	| "keysList"
@@ -126,8 +124,6 @@ function oauthAuthorizePath(input: NineRouterRequestInput): string {
 }
 
 const OPERATIONS: Record<NineRouterOperation, OperationDefinition> = {
-	health: { method: "GET", path: fixedPath("/api/health") },
-	version: { method: "GET", path: fixedPath("/api/version") },
 	authStatus: { method: "GET", path: fixedPath("/api/auth/status") },
 	login: { method: "POST", path: fixedPath("/api/auth/login") },
 	keysList: { method: "GET", path: fixedPath("/api/keys") },
@@ -413,7 +409,7 @@ export async function requestNineRouterJson(
 			if (settled) return;
 			settled = true;
 			clearTimers();
-			request?.destroy(error);
+			request?.destroy();
 			reject(error);
 		};
 		const succeed = (result: NineRouterHttpResult) => {

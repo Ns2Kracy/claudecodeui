@@ -1,8 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { AppError } from "@/shared/utils.js";
-
 import type { NineRouterSidecarStatus } from "../nine-router-sidecar.service.js";
 import { createRoutingRuntimeService } from "../routing-runtime.service.js";
 
@@ -44,7 +42,7 @@ test("selected Provider Router model resolves sidecar REST credentials without r
 	assert.equal(harness.state.credentialReads, 1);
 });
 
-test("selected 9router model fails safely when the sidecar is unavailable", async () => {
+test("selected Router model resolves real request credentials despite stale unavailable status", async () => {
 	const harness = createHarness();
 	harness.runtime.getStatus = () => ({
 		state: "unavailable",
@@ -57,10 +55,11 @@ test("selected 9router model fails safely when the sidecar is unavailable", asyn
 		},
 	});
 
-	await assert.rejects(
-		() => harness.service.resolveForModel("openai/gpt-5"),
-		(error: unknown) =>
-			error instanceof AppError && error.code === "ROUTING_RUNTIME_UNAVAILABLE",
-	);
-	assert.equal(harness.state.credentialReads, 0);
+	const result = await harness.service.resolveForModel("openai/gpt-5");
+
+	assert.equal(result.source, "9router");
+	if (result.source !== "9router") assert.fail("expected Router configuration");
+	assert.equal(result.baseUrl, "http://127.0.0.1:20128/api");
+	assert.equal(result.apiKey, "sidecar-runtime-key");
+	assert.equal(harness.state.credentialReads, 1);
 });

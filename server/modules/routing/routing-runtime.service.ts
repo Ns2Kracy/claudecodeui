@@ -18,13 +18,6 @@ type RoutingRuntimeServiceDependencies = {
 	runtime: RuntimeCredentialsProvider;
 };
 
-function runtimeUnavailable(): AppError {
-	return new AppError("The Router is unavailable", {
-		code: "ROUTING_RUNTIME_UNAVAILABLE",
-		statusCode: 409,
-	});
-}
-
 function safeOperationFailure(): AppError {
 	return new AppError("The Router configuration could not be resolved", {
 		code: "ROUTING_OPERATION_FAILED",
@@ -52,7 +45,6 @@ export function createRoutingRuntimeService(
 ) {
 	function runtimeCredentials(): RoutingClientCredentials {
 		const status = dependencies.runtime.getStatus();
-		if (status.state !== "ready") throw runtimeUnavailable();
 		const internal = dependencies.runtime.getInternalCredentials();
 		return {
 			baseUrl: status.origin ?? "http://127.0.0.1:20128",

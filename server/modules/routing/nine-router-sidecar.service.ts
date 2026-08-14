@@ -1,8 +1,8 @@
-const MAX_HEALTH_FIELD_LENGTH = 128;
+import { PACKAGED_NINE_ROUTER_VERSION } from "./nine-router-capabilities.js";
 
-export type NineRouterSidecarState = "ready" | "unavailable";
+type NineRouterSidecarState = "ready" | "unavailable";
 
-export type NineRouterSidecarSafeError = {
+type NineRouterSidecarSafeError = {
 	code: string;
 	message: string;
 	retryable: boolean;
@@ -20,16 +20,9 @@ export type NineRouterInternalCredentials = {
 	dataPlaneKey: string;
 };
 
-type NineRouterSidecarHealthResponse = {
-	ok: boolean;
-	version?: string;
-};
-
 type NineRouterSidecarDependencies = {
 	baseUrl?: string;
-	health(baseUrl: string): Promise<NineRouterSidecarHealthResponse>;
 	credentials?: NineRouterInternalCredentials;
-	onStatusChange?: (status: NineRouterSidecarStatus) => void;
 };
 
 function validateBaseUrl(value: string): string {
@@ -50,32 +43,10 @@ function validateBaseUrl(value: string): string {
 	return url.toString().replace(/\/$/, "");
 }
 
-function isValidVersion(value: string | undefined): value is string {
-	return (
-		typeof value === "string" &&
-		value.length > 0 &&
-		value.length <= MAX_HEALTH_FIELD_LENGTH &&
-		/^[\w .:@/-]+$/.test(value)
-	);
-}
-
-function unavailable(origin: string): NineRouterSidecarStatus {
-	return {
-		state: "unavailable",
-		origin,
-		version: null,
-		lastError: {
-			code: "ROUTING_SIDECAR_UNAVAILABLE",
-			message: "Router health check failed",
-			retryable: true,
-		},
-	};
-}
-
 /**
- * Used by routing module composition and tests to observe the Compose-owned
- * 9router sidecar. It performs health/status adaptation only and intentionally
- * exposes no process lifecycle operations because Compose owns the process.
+ * Used by routing module composition and tests to hold the validated origin and
+ * internal credentials for the Compose-owned Router. Availability is determined
+ * by real Router API requests rather than a separate health or version probe.
  */
 export function createNineRouterSidecarService(
 	dependencies: NineRouterSidecarDependencies,
@@ -89,42 +60,16 @@ export function createNineRouterSidecarService(
 		initialPassword: "",
 		dataPlaneKey: "",
 	};
-	let status: NineRouterSidecarStatus = unavailable(origin);
-
-	function cloneStatus(): NineRouterSidecarStatus {
-		return {
-			...status,
-			lastError: status.lastError ? { ...status.lastError } : null,
-		};
-	}
-
-	function transition(
-		nextStatus: NineRouterSidecarStatus,
-	): NineRouterSidecarStatus {
-		status = nextStatus;
-		dependencies.onStatusChange?.(cloneStatus());
-		return cloneStatus();
-	}
+	const status: NineRouterSidecarStatus = {
+		state: "ready",
+		origin,
+		version: PACKAGED_NINE_ROUTER_VERSION,
+		lastError: null,
+	};
 
 	return {
-		async refresh(): Promise<NineRouterSidecarStatus> {
-			try {
-				const result = await dependencies.health(origin);
-				if (result.ok !== true || !isValidVersion(result.version))
-					return transition(unavailable(origin));
-				return transition({
-					state: "ready",
-					origin,
-					version: result.version,
-					lastError: null,
-				});
-			} catch {
-				return transition(unavailable(origin));
-			}
-		},
-
 		getStatus(): NineRouterSidecarStatus {
-			return cloneStatus();
+			return { ...status };
 		},
 
 		getInternalCredentials(): NineRouterInternalCredentials {

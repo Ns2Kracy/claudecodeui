@@ -190,12 +190,12 @@ test("settings report sidecar runtime without connection storage", async () => {
 	assert.equal(calls.filter((call) => call === "client").length, 1);
 });
 
-test("settings refresh stale sidecar status before requesting provider accounts", async () => {
+test("settings request provider accounts directly despite stale unavailable status", async () => {
 	const { service, calls } = createHarness("unavailable");
 
 	const settings = await service.getSettings(7, { accounts: true });
 
-	assert.deepEqual(calls.slice(0, 2), ["refresh", "client"]);
+	assert.equal(calls.includes("refresh"), false);
 	assert.equal(calls.filter((call) => call === "client").length, 1);
 	assert.equal(settings.runtime.status, "ready");
 	assert.equal(settings.accounts?.length, 1);

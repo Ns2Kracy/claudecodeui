@@ -74,7 +74,6 @@ const routingOAuthService = createRoutingOAuthService({
 export const routingService = createRoutingService({
 	runtime: {
 		getStatus: () => getNineRouterSidecar().getStatus(),
-		refresh: () => refreshNineRouterSidecar(),
 		getInternalCredentials: () =>
 			getNineRouterSidecar().getInternalCredentials(),
 	},
@@ -104,8 +103,6 @@ type ConfigurableNineRouterSidecar = Omit<
 > &
 	Partial<Pick<NineRouterSidecar, "updateInternalCredentials">>;
 type NineRouterSidecarFactory = () => ConfigurableNineRouterSidecar;
-const MAX_HEALTH_PAYLOAD_BYTES = 512;
-
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -195,60 +192,9 @@ export async function provisionNineRouterDataPlaneKeyForTesting(
 	return provisionDataPlaneKey(baseUrl, adminPassword);
 }
 
-async function boundedJson(response: Response): Promise<unknown> {
-	const contentLength = response.headers.get("content-length");
-	if (
-		contentLength !== null &&
-		Number(contentLength) > MAX_HEALTH_PAYLOAD_BYTES
-	)
-		return null;
-	const body = await response.text();
-	if (Buffer.byteLength(body, "utf8") > MAX_HEALTH_PAYLOAD_BYTES) return null;
-	try {
-		return JSON.parse(body) as unknown;
-	} catch {
-		return null;
-	}
-}
-
-function createRemoteSidecarHealthChecker() {
-	return async (baseUrl: string) => {
-		const timeout = AbortSignal.timeout(1_000);
-		let healthResponse: Response;
-		let versionResponse: Response;
-		try {
-			[healthResponse, versionResponse] = await Promise.all([
-				fetch(`${baseUrl}/api/health`, { signal: timeout }),
-				fetch(`${baseUrl}/api/version`, { signal: timeout }),
-			]);
-		} catch {
-			return { ok: false };
-		}
-		if (!healthResponse.ok || !versionResponse.ok) return { ok: false };
-		const healthJson = await boundedJson(healthResponse);
-		const versionJson = await boundedJson(versionResponse);
-		if (
-			!isRecord(healthJson) ||
-			healthJson.ok !== true ||
-			!isRecord(versionJson)
-		)
-			return { ok: false };
-		const currentVersion = versionJson.currentVersion;
-		return typeof currentVersion === "string" && currentVersion.length > 0
-			? { ok: true, version: currentVersion }
-			: { ok: false };
-	};
-}
-
-/** Used by routing module tests to exercise the production sidecar health adapter. */
-export function createRemoteSidecarHealthCheckerForTesting() {
-	return createRemoteSidecarHealthChecker();
-}
-
 function createDefaultNineRouterSidecar(): NineRouterSidecar {
 	return createNineRouterSidecarService({
 		baseUrl: process.env.NINE_ROUTER_BASE_URL,
-		health: createRemoteSidecarHealthChecker(),
 		credentials: {
 			initialPassword: configuredInitialPassword(),
 			dataPlaneKey: appConfigDb.getOrCreateSecret(
@@ -282,25 +228,22 @@ export function resetNineRouterSidecarForTesting(): void {
 	nineRouterSidecar = null;
 }
 
-/** Used by the server composition root after database initialization to refresh sidecar health. */
-export async function refreshNineRouterSidecar() {
+/** Used by the server composition root to initialize the data-plane key through real management APIs. */
+export async function initializeNineRouterDataPlaneKey(): Promise<void> {
 	const sidecar = getNineRouterSidecar();
-	const status = await sidecar.refresh();
-	if (status.state !== "ready") return status;
-	if (!sidecar.updateInternalCredentials) return status;
+	if (!sidecar.updateInternalCredentials) return;
+	const status = sidecar.getStatus();
 	const credentials = sidecar.getInternalCredentials();
 	const provisionedKey = await provisionDataPlaneKey(
 		status.origin,
 		credentials.initialPassword,
 	);
-	if (provisionedKey && provisionedKey !== credentials.dataPlaneKey) {
-		appConfigDb.set(sidecarSecretKeys.dataPlaneKey, provisionedKey);
-		sidecar.updateInternalCredentials({
-			...credentials,
-			dataPlaneKey: provisionedKey,
-		});
-	}
-	return status;
+	if (!provisionedKey || provisionedKey === credentials.dataPlaneKey) return;
+	appConfigDb.set(sidecarSecretKeys.dataPlaneKey, provisionedKey);
+	sidecar.updateInternalCredentials({
+		...credentials,
+		dataPlaneKey: provisionedKey,
+	});
 }
 
 /** Used by diagnostics to report the sidecar state without exposing credentials. */

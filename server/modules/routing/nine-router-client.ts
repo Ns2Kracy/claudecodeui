@@ -23,7 +23,10 @@ import type {
 	ValidateRoutingProviderNodeInput,
 } from "../../../shared/routing.js";
 
-import { getNineRouterCapabilityProfile } from "./nine-router-capabilities.js";
+import {
+	getNineRouterCapabilityProfile,
+	PACKAGED_NINE_ROUTER_VERSION,
+} from "./nine-router-capabilities.js";
 import { requestNineRouterJson } from "./nine-router-http.js";
 
 type NineRouterHttpInput = Parameters<typeof requestNineRouterJson>[0];
@@ -55,6 +58,11 @@ type AccountTestResult = {
 
 const COOKIE_TTL_MS = 20 * 60 * 60 * 1000;
 const MAX_UPSTREAM_STRING_LENGTH = 1024;
+const packagedProfile: CapabilityProfile = (() => {
+	const profile = getNineRouterCapabilityProfile(PACKAGED_NINE_ROUTER_VERSION);
+	if (!profile) throw new Error("Packaged Router version is invalid");
+	return profile;
+})();
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -387,7 +395,7 @@ export class NineRouterClient implements IRoutingNineRouterClient {
 	private readonly dataPlaneKey: string;
 	private readonly request: typeof requestNineRouterJson;
 	private readonly now: () => Date;
-	private profile: CapabilityProfile | null = null;
+	private readonly profile: CapabilityProfile = packagedProfile;
 	private cookie: string | null = null;
 	private cookieExpiresAt = 0;
 	private authenticationNotRequired = false;
@@ -401,22 +409,12 @@ export class NineRouterClient implements IRoutingNineRouterClient {
 	}
 
 	async validateConnection(): Promise<NineRouterValidationResult> {
-		const health = await this.request({
-			baseUrl: this.baseUrl,
-			operation: "health",
-		});
-		assertSuccessStatus(health);
-		if (expectRecord(health.data).ok !== true) {
-			throw invalidResponse();
-		}
-
-		const profile = await this.loadProfile(true);
 		await this.ensureAuthenticated(true);
 		await this.validateDataPlaneKey();
 		return {
-			version: profile.version,
-			knownVersion: profile.knownVersion,
-			capabilities: { ...profile.capabilities },
+			version: this.profile.version,
+			knownVersion: this.profile.knownVersion,
+			capabilities: { ...this.profile.capabilities },
 		};
 	}
 
@@ -669,27 +667,6 @@ export class NineRouterClient implements IRoutingNineRouterClient {
 		};
 	}
 
-	private async loadProfile(refresh = false): Promise<CapabilityProfile> {
-		if (this.profile && !refresh) {
-			return this.profile;
-		}
-		const result = await this.request({
-			baseUrl: this.baseUrl,
-			operation: "version",
-		});
-		assertSuccessStatus(result);
-		const version = expectRecord(result.data).currentVersion;
-		if (typeof version !== "string") {
-			throw invalidResponse();
-		}
-		const profile = getNineRouterCapabilityProfile(version);
-		if (!profile) {
-			throw invalidResponse();
-		}
-		this.profile = profile;
-		return profile;
-	}
-
 	private async ensureAuthenticated(force = false): Promise<void> {
 		if (
 			!force &&
@@ -789,8 +766,7 @@ export class NineRouterClient implements IRoutingNineRouterClient {
 		capability: CapabilityName | null,
 		retryGetAfterAuth: boolean,
 	): Promise<NineRouterHttpResult> {
-		const profile = await this.loadProfile();
-		if (capability && profile.capabilities[capability] !== true) {
+		if (capability && this.profile.capabilities[capability] !== true) {
 			throw capabilityUnavailable();
 		}
 		await this.ensureAuthenticated();

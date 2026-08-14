@@ -25,7 +25,7 @@ import {
 	providerRuntimeService,
 } from "@/modules/providers/index.js";
 import {
-	refreshNineRouterSidecar,
+	initializeNineRouterDataPlaneKey,
 	routingOAuthCallbackRoutes,
 	routingRoutes,
 } from "@/modules/routing/index.js";
@@ -362,14 +362,13 @@ async function startServer() {
 		// Configure Web Push (VAPID keys)
 		configureWebPush();
 
-		// Refresh Compose-owned 9router sidecar health after persistence is ready.
-		// Sidecar unavailability is advisory and must never prevent CloudCLI from serving its own UI/API.
-		await refreshNineRouterSidecar().catch((error: unknown) => {
+		// Initialize the Router data-plane key through real management APIs.
+		// Failure is advisory and must never prevent CloudCLI from serving its own UI/API.
+		await initializeNineRouterDataPlaneKey().catch((error: unknown) => {
 			console.warn(
-				"[Routing] Router health check failed:",
+				"[Routing] Router key initialization failed:",
 				getErrorMessage(error),
 			);
-			return null;
 		});
 
 		// Check if running in production mode (dist folder exists)
