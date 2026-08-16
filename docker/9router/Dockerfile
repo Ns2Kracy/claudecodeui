@@ -6,7 +6,11 @@ ENV NODE_ENV=production \
     NPM_CONFIG_FUND=false \
     NPM_CONFIG_AUDIT=false
 
+COPY allow-private-provider-urls.js /tmp/allow-private-provider-urls.js
+
 RUN npm install -g 9router@0.5.50 --omit=dev \
+    && node /tmp/allow-private-provider-urls.js \
+    && rm /tmp/allow-private-provider-urls.js \
     && mkdir -p /data \
     && chown -R node:node /data
 

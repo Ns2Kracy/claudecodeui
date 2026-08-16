@@ -166,6 +166,11 @@ export default function ProviderSelectionEmptyState({
 										>
 											<div className="min-w-0 flex-1">
 												<div className="truncate">{model.label}</div>
+												{model.description && (
+													<div className="truncate text-xs text-muted-foreground">
+														{model.description}
+													</div>
+												)}
 											</div>
 											{codexModel === model.value && (
 												<Check className="ml-auto h-4 w-4 shrink-0 text-primary" />

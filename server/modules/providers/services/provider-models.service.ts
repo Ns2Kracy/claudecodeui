@@ -252,10 +252,13 @@ export const createProviderModelsService = (
 			.map((part) => `${part.slice(0, 1).toUpperCase()}${part.slice(1)}`)
 			.join(" ");
 
-	const routingModelLabel = (model: RoutingModelView): string => {
-		const provider = model.provider.trim();
-		const name = model.name.trim();
-		return provider ? `${toTitle(provider)} · ${name}` : name;
+	const routingProviderLabel = (provider: string): string => {
+		const generated = provider.match(
+			/^(openai|anthropic)-compatible(?:-(chat|responses))?-[0-9a-f]{8}(?:-[0-9a-f-]+)?$/i,
+		);
+		if (!generated) return toTitle(provider);
+		const family = `${generated[1]?.toLowerCase() === "openai" ? "OpenAI" : "Anthropic"} Compatible`;
+		return generated[2] ? `${family} · ${toTitle(generated[2])}` : family;
 	};
 
 	const toRoutedModelCatalog = (
@@ -267,10 +270,12 @@ export const createProviderModelsService = (
 			const name = model.name.trim();
 			if (!id.trim() || !name || seenValues.has(id)) return [];
 			seenValues.add(id);
+			const provider = model.provider.trim();
 			return [
 				{
 					value: id,
-					label: routingModelLabel({ ...model, id, name }),
+					label: name,
+					...(provider ? { description: routingProviderLabel(provider) } : {}),
 					source: "9router" as const,
 				},
 			];
@@ -332,10 +337,12 @@ export const createProviderModelsService = (
 			const value = id;
 			if (!id.trim() || !name || existingValues.has(value)) return [];
 			existingValues.add(value);
+			const provider = model.provider.trim();
 			return [
 				{
 					value,
-					label: routingModelLabel({ ...model, id, name }),
+					label: name,
+					...(provider ? { description: routingProviderLabel(provider) } : {}),
 					source: "9router" as const,
 				},
 			];

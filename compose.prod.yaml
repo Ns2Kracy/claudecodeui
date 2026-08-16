@@ -1,19 +1,22 @@
 services:
   cloudcli:
-    image: ns2kracy/cloudcli:1.37.3
+    image: ns2kracy/cloudcli:1.37.4
     user: "0:0"
     restart: unless-stopped
     environment:
+      HOST: 0.0.0.0
+      SERVER_PORT: "3001"
       WORKSPACES_ROOT: /workspaces
+      NINE_ROUTER_BASE_URL: http://9router:20128
+      NINE_ROUTER_ADMIN_PASSWORD: "${NINE_ROUTER_ADMIN_PASSWORD:-9router}"
       CODEX_OAUTH_CALLBACK_HOST: 0.0.0.0
-      NINE_ROUTER_ADMIN_PASSWORD: 9router
     ports:
       - "3001:3001"
       - "1455"
     volumes:
-      - /DATA/AppData/$AppID/workspace:/workspaces
-      - /DATA/AppData/$AppID/cloudcli:/root/.cloudcli
-      - /DATA/AppData/$AppID/codex:/root/.codex
+      - "${APP_DATA_ROOT:-./data}/workspace:/workspaces"
+      - "${APP_DATA_ROOT:-./data}/cloudcli:/root/.cloudcli"
+      - "${APP_DATA_ROOT:-./data}/codex:/root/.codex"
     depends_on:
       9router:
         condition: service_started
@@ -21,16 +24,16 @@ services:
       - cloudcli-private
 
   9router:
-    image: ns2kracy/9router:0.5.50
+    image: ns2kracy/9router:0.5.50-cloudcli.1
     user: "0:0"
     restart: unless-stopped
     environment:
       DATA_DIR: /data
-      INITIAL_PASSWORD: 9router
+      INITIAL_PASSWORD: "${NINE_ROUTER_ADMIN_PASSWORD:-9router}"
     expose:
       - "20128"
     volumes:
-      - /DATA/AppData/$AppID/9router:/data
+      - "${APP_DATA_ROOT:-./data}/9router:/data"
     networks:
       - cloudcli-private
 

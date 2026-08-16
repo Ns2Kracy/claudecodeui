@@ -210,7 +210,7 @@ test("provider detail, model, and provider-node routes are thin authenticated se
 			},
 			createProviderNode: async (_userId, input) => {
 				calls.push(
-					`nodes:create:${input.name}:${input.prefix}:${input.type}:${input.apiType ?? "none"}`,
+					`nodes:create:${input.name}:${input.prefix}:${input.type}:${input.apiType ?? "none"}:${input.baseUrl ?? "none"}`,
 				);
 				return {
 					id: "node1",
@@ -225,7 +225,7 @@ test("provider detail, model, and provider-node routes are thin authenticated se
 			},
 			validateProviderNode: async (_userId, input) => {
 				calls.push(
-					`nodes:validate:${input.type}:${input.apiKey}:${input.modelId ?? "none"}`,
+					`nodes:validate:${input.type}:${input.apiKey}:${input.modelId ?? "none"}:${input.baseUrl}`,
 				);
 				return { valid: false, message: "URL not allowed" };
 			},
@@ -272,7 +272,7 @@ test("provider detail, model, and provider-node routes are thin authenticated se
 							prefix: "openai",
 							type: "openai-compatible",
 							apiType: "chat",
-							baseUrl: "https://node.test",
+							baseUrl: "http://10.0.1.83;20128/v1",
 						}),
 					})
 				).status,
@@ -284,7 +284,7 @@ test("provider detail, model, and provider-node routes are thin authenticated se
 					method: "POST",
 					headers,
 					body: JSON.stringify({
-						baseUrl: "https://node.test",
+						baseUrl: "http://10.0.1.83;20128/v1",
 						apiKey: "k",
 						type: "custom-embedding",
 						modelId: "embed-1",
@@ -324,8 +324,8 @@ test("provider detail, model, and provider-node routes are thin authenticated se
 				"provider:a/b",
 				"models:a/b",
 				"nodes:list",
-				"nodes:create:n:openai:openai-compatible:chat",
-				"nodes:validate:custom-embedding:k:embed-1",
+				"nodes:create:n:openai:openai-compatible:chat:http://10.0.1.83:20128/v1",
+				"nodes:validate:custom-embedding:k:embed-1:http://10.0.1.83:20128/v1",
 				"nodes:update:node/1:n2:openai:https://node.test:responses",
 				"nodes:delete:node/1",
 			]);

@@ -70,6 +70,12 @@ test("Codex models come only from the configured 9Router catalog", async () => {
 		listRoutingModels: async () => [
 			{ id: "cx/gpt-5", provider: "cx", name: "GPT 5" },
 			{ id: "deepseek/v3", provider: "deepseek", name: "V3" },
+			{
+				id: "openai-compatible-responses-7a13fc09/gpt-5.4",
+				provider:
+					"openai-compatible-responses-7a13fc09-a1fc-4586-9d8e-08a29004baf8",
+				name: "GPT 5.4",
+			},
 		],
 	});
 
@@ -80,10 +86,22 @@ test("Codex models come only from the configured 9Router catalog", async () => {
 	assert.equal(nativeLookups, 0);
 	assert.deepEqual(result.models, {
 		OPTIONS: [
-			{ value: "cx/gpt-5", label: "Cx · GPT 5", source: "9router" },
+			{
+				value: "cx/gpt-5",
+				label: "GPT 5",
+				description: "Cx",
+				source: "9router",
+			},
 			{
 				value: "deepseek/v3",
-				label: "Deepseek · V3",
+				label: "V3",
+				description: "Deepseek",
+				source: "9router",
+			},
+			{
+				value: "openai-compatible-responses-7a13fc09/gpt-5.4",
+				label: "GPT 5.4",
+				description: "OpenAI Compatible · Responses",
 				source: "9router",
 			},
 		],
@@ -156,7 +174,8 @@ test("non-Codex provider models can still use the legacy unified catalog during 
 		{ value: "claude-sonnet-4-5", label: "Claude Sonnet", source: "native" },
 		{
 			value: "anthropic/claude-opus",
-			label: "Anthropic · Claude Opus",
+			label: "Claude Opus",
+			description: "Anthropic",
 			source: "9router",
 		},
 	]);

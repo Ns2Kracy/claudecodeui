@@ -175,7 +175,9 @@ function providerNodeBaseUrl(
 	required: boolean,
 ): string | undefined {
 	if (value === undefined && !required) return undefined;
-	const baseUrl = requiredString(value, "baseUrl", 2048).trim();
+	const baseUrl = requiredString(value, "baseUrl", 2048)
+		.trim()
+		.replace(/^(https?:\/\/[^/?#;]+);(?=\d{1,5}(?:[/?#]|$))/i, "$1:");
 	let url: URL;
 	try {
 		url = new URL(baseUrl);
