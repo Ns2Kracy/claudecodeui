@@ -11,8 +11,8 @@ services:
       NINE_ROUTER_ADMIN_PASSWORD: "${NINE_ROUTER_ADMIN_PASSWORD:-9router}"
       CODEX_OAUTH_CALLBACK_HOST: 0.0.0.0
     ports:
-      - "3001:3001"
-      - "1455"
+      - "${CLOUDCLI_PORT:-3001}:3001"
+      - "${CODEX_CALLBACK_PORT:-1455}:1455"
     volumes:
       - "${APP_DATA_ROOT:-./data}/workspace:/workspaces"
       - "${APP_DATA_ROOT:-./data}/cloudcli:/root/.cloudcli"

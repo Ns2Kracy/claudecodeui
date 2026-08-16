@@ -53,6 +53,8 @@ test("production compose pins the reproducible 1.37.4 release", () => {
 	assert.match(compose, /NINE_ROUTER_BASE_URL:\s+http:\/\/9router:20128/);
 	assert.match(compose, /HOST:\s+0\.0\.0\.0/);
 	assert.match(compose, /SERVER_PORT:\s+["']3001["']/);
+	assert.match(compose, /\$\{CLOUDCLI_PORT:-3001\}:3001/);
+	assert.match(compose, /\$\{CODEX_CALLBACK_PORT:-1455\}:1455/);
 	assert.match(compose, /\$\{APP_DATA_ROOT:-\.\/data\}\/workspace:\/workspaces/);
 	assert.doesNotMatch(compose, /\/DATA\/AppData\/\$AppID/);
 	assert.equal(JSON.parse(readProjectFile("package.json")).version, "1.37.4");
