@@ -87,6 +87,7 @@ export const routingRuntimeService = createRoutingRuntimeService({
 		getStatus: () => getNineRouterSidecar().getStatus(),
 		getInternalCredentials: () =>
 			getNineRouterSidecar().getInternalCredentials(),
+		ensureDataPlaneKey: () => initializeNineRouterDataPlaneKey(),
 	},
 });
 
@@ -229,21 +230,23 @@ export function resetNineRouterSidecarForTesting(): void {
 }
 
 /** Used by the server composition root to initialize the data-plane key through real management APIs. */
-export async function initializeNineRouterDataPlaneKey(): Promise<void> {
+export async function initializeNineRouterDataPlaneKey(): Promise<boolean> {
 	const sidecar = getNineRouterSidecar();
-	if (!sidecar.updateInternalCredentials) return;
+	if (!sidecar.updateInternalCredentials) return false;
 	const status = sidecar.getStatus();
 	const credentials = sidecar.getInternalCredentials();
 	const provisionedKey = await provisionDataPlaneKey(
 		status.origin,
 		credentials.initialPassword,
 	);
-	if (!provisionedKey || provisionedKey === credentials.dataPlaneKey) return;
+	if (!provisionedKey) return false;
+	if (provisionedKey === credentials.dataPlaneKey) return true;
 	appConfigDb.set(sidecarSecretKeys.dataPlaneKey, provisionedKey);
 	sidecar.updateInternalCredentials({
 		...credentials,
 		dataPlaneKey: provisionedKey,
 	});
+	return true;
 }
 
 /** Used by diagnostics to report the sidecar state without exposing credentials. */

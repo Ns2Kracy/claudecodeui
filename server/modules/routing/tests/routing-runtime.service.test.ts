@@ -42,6 +42,77 @@ test("selected Provider Router model resolves sidecar REST credentials without r
 	assert.equal(harness.state.credentialReads, 1);
 });
 
+
+test("routed model refreshes the 9Router data-plane key before returning Codex credentials", async () => {
+	let dataPlaneKey = "unregistered-startup-key";
+	let provisionCalls = 0;
+	const runtime = {
+		getStatus: (): NineRouterSidecarStatus => ({
+			state: "ready",
+			origin: "http://9router:20128",
+			version: "0.5.50",
+			lastError: null,
+		}),
+		getInternalCredentials: () => ({
+			initialPassword: "sidecar-admin",
+			dataPlaneKey,
+		}),
+		async ensureDataPlaneKey() {
+			provisionCalls += 1;
+			dataPlaneKey = "registered-router-key";
+			return true;
+		},
+	};
+	const service = createRoutingRuntimeService({ runtime });
+
+	const result = await service.resolveForModel("openai/gpt-5");
+	await service.resolveForModel("openai/gpt-5-mini");
+
+	assert.equal(provisionCalls, 1);
+	assert.equal(result.source, "9router");
+	if (result.source !== "9router") assert.fail("expected Router configuration");
+	assert.equal(result.apiKey, "registered-router-key");
+});
+
+test("failed 9Router key refresh is retried on the next routed request", async () => {
+	let dataPlaneKey = "unregistered-startup-key";
+	let provisionCalls = 0;
+	const service = createRoutingRuntimeService({
+		runtime: {
+			getStatus: () => ({
+				state: "ready" as const,
+				origin: "http://9router:20128",
+				version: "0.5.50",
+				lastError: null,
+			}),
+			getInternalCredentials: () => ({
+				initialPassword: "sidecar-admin",
+				dataPlaneKey,
+			}),
+			async ensureDataPlaneKey() {
+				provisionCalls += 1;
+				if (provisionCalls === 1) return false;
+				dataPlaneKey = "registered-router-key";
+				return true;
+			},
+		},
+	});
+
+	await assert.rejects(
+		() => service.resolveForModel("openai/gpt-5"),
+		(error: unknown) =>
+			error instanceof Error &&
+			"code" in error &&
+			error.code === "ROUTING_OPERATION_FAILED",
+	);
+	const second = await service.resolveForModel("openai/gpt-5");
+
+	assert.equal(provisionCalls, 2);
+	assert.equal(second.source, "9router");
+	if (second.source !== "9router") assert.fail("expected Router configuration");
+	assert.equal(second.apiKey, "registered-router-key");
+});
+
 test("selected Router model resolves real request credentials despite stale unavailable status", async () => {
 	const harness = createHarness();
 	harness.runtime.getStatus = () => ({

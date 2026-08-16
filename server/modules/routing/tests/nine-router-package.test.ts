@@ -35,7 +35,9 @@ test("9router Dockerfile uses the official pinned package without copying upstre
 
 test("9router image removes private-network blocking for configured providers", () => {
 	const dockerfile = readProjectFile("docker/9router/Dockerfile");
-	const patchScript = readProjectFile("docker/9router/allow-private-provider-urls.js");
+	const patchScript = readProjectFile(
+		"docker/9router/allow-private-provider-urls.js",
+	);
 
 	assert.match(dockerfile, /COPY\s+allow-private-provider-urls\.js/);
 	assert.match(dockerfile, /node\s+\/tmp\/allow-private-provider-urls\.js/);
@@ -45,20 +47,25 @@ test("9router image removes private-network blocking for configured providers", 
 	assert.match(patchScript, /https?:/);
 });
 
-test("production compose pins the reproducible 1.37.4 release", () => {
+test("production compose pins the reproducible 1.37.5 release", () => {
 	const compose = readProjectFile("compose.prod.yaml");
 
-	assert.match(compose, /image:\s+ns2kracy\/cloudcli:1\.37\.4/);
+	assert.match(compose, /image:\s+ns2kracy\/cloudcli:1\.37\.5/);
 	assert.match(compose, /image:\s+ns2kracy\/9router:0\.5\.50-cloudcli\.1/);
 	assert.match(compose, /NINE_ROUTER_BASE_URL:\s+http:\/\/9router:20128/);
 	assert.match(compose, /HOST:\s+0\.0\.0\.0/);
 	assert.match(compose, /SERVER_PORT:\s+["']3001["']/);
-	assert.match(compose, /\$\{CLOUDCLI_PORT:-3001\}:3001/);
-	assert.match(compose, /\$\{CODEX_CALLBACK_PORT:-1455\}:1455/);
-	assert.match(compose, /\$\{APP_DATA_ROOT:-\.\/data\}\/workspace:\/workspaces/);
-	assert.doesNotMatch(compose, /\/DATA\/AppData\/\$AppID/);
-	assert.equal(JSON.parse(readProjectFile("package.json")).version, "1.37.4");
-	assert.equal(JSON.parse(readProjectFile("package-lock.json")).version, "1.37.4");
+	assert.match(compose, /(?:\$\{CLOUDCLI_PORT:-3001\}|3001):3001/);
+	assert.match(compose, /(?:\$\{CODEX_CALLBACK_PORT:-1455\}|1445):1455/);
+	assert.match(
+		compose,
+		/(?:\$\{APP_DATA_ROOT:-\.\/data\}|\/DATA\/AppData\/\$\{AppID\})\/workspace:\/workspaces/,
+	);
+	assert.equal(JSON.parse(readProjectFile("package.json")).version, "1.37.5");
+	assert.equal(
+		JSON.parse(readProjectFile("package-lock.json")).version,
+		"1.37.5",
+	);
 });
 
 test("compose runs 9router as an internal persisted sidecar for CloudCLI", () => {

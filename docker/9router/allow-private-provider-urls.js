@@ -3,7 +3,8 @@ import { readFileSync, writeFileSync } from "node:fs";
 const routePath =
 	"/usr/local/lib/node_modules/9router/app/.next-cli-build/server/app/api/provider-nodes/validate/route.js";
 const source = readFileSync(routePath, "utf8");
-const startAnchor = "function i(a){let b,c,f=new URL(a).hostname.toLowerCase();";
+const startAnchor =
+	"function i(a){let b,c,f=new URL(a).hostname.toLowerCase();";
 const endAnchor = 'throw Error("Blocked URL: private IP")}';
 const start = source.indexOf(startAnchor);
 const end = source.indexOf(endAnchor, start);

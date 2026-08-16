@@ -12,6 +12,7 @@ import type {
 type RuntimeCredentialsProvider = {
 	getStatus(): NineRouterSidecarStatus;
 	getInternalCredentials(): NineRouterInternalCredentials;
+	ensureDataPlaneKey?(): Promise<boolean>;
 };
 
 type RoutingRuntimeServiceDependencies = {
@@ -43,6 +44,20 @@ function safeRuntimeError(error: unknown): AppError {
 export function createRoutingRuntimeService(
 	dependencies: RoutingRuntimeServiceDependencies,
 ) {
+	let dataPlaneKeyReady = false;
+	let dataPlaneKeyRefresh: Promise<boolean> | null = null;
+
+	async function ensureDataPlaneKey(): Promise<void> {
+		if (dataPlaneKeyReady || !dependencies.runtime.ensureDataPlaneKey) return;
+		dataPlaneKeyRefresh ??= dependencies.runtime
+			.ensureDataPlaneKey()
+			.finally(() => {
+				dataPlaneKeyRefresh = null;
+			});
+		dataPlaneKeyReady = await dataPlaneKeyRefresh;
+		if (!dataPlaneKeyReady) throw new Error("Router API key is unavailable");
+	}
+
 	function runtimeCredentials(): RoutingClientCredentials {
 		const status = dependencies.runtime.getStatus();
 		const internal = dependencies.runtime.getInternalCredentials();
@@ -59,6 +74,7 @@ export function createRoutingRuntimeService(
 			if (!officialModelId) return { source: "native" };
 
 			try {
+				await ensureDataPlaneKey();
 				const credentials = runtimeCredentials();
 				return {
 					source: "9router",
