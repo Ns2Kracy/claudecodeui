@@ -121,16 +121,24 @@ const MessageComponent = memo(
 							)}
 							{userCopyContent.trim().length > 0 ||
 							(!message.images?.length && !message.files?.length) ? (
-								<div className="group max-w-full rounded-2xl rounded-br-md bg-blue-600 px-3 py-2 text-white shadow-sm sm:px-4">
-									<div dir="auto" className="break-words font-serif text-sm">
-										<Markdown
-											breaks
-											className="prose prose-sm prose-invert max-w-none font-serif [&_a]:text-blue-100 [&_a]:underline"
-										>
-											{message.content}
-										</Markdown>
+								<>
+									<div
+										data-user-message-bubble="true"
+										className="group max-w-full rounded-2xl rounded-br-md bg-blue-600 px-3 py-2 text-white shadow-sm sm:px-4"
+									>
+										<div dir="auto" className="break-words font-serif text-sm">
+											<Markdown
+												breaks
+												className="prose prose-sm prose-invert max-w-none font-serif [&_a]:text-blue-100 [&_a]:underline"
+											>
+												{message.content}
+											</Markdown>
+										</div>
 									</div>
-									<div className="mt-1 flex items-center justify-end gap-1 text-xs text-blue-100">
+									<div
+										data-user-message-metadata="true"
+										className="-mt-1 flex w-full items-center justify-end gap-1 text-xs text-muted-foreground [&_button:hover]:text-gray-600 dark:[&_button:hover]:text-gray-300 [&_button]:text-gray-400 dark:[&_button]:text-gray-500"
+									>
 										{shouldShowUserCopyControl && (
 											<MessageCopyControl
 												content={userCopyContent}
@@ -139,7 +147,7 @@ const MessageComponent = memo(
 										)}
 										<span>{formattedTime}</span>
 									</div>
-								</div>
+								</>
 							) : (
 								/* Attachment-only turn: no text bubble, but the timestamp still shows */
 								<div className="flex items-center justify-end gap-1 text-xs text-muted-foreground">
