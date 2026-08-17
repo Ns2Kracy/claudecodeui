@@ -20,6 +20,8 @@ type ProviderAccountsSectionProps = {
 	capabilities: RoutingCapabilities;
 	accounts: RoutingAccountView[];
 	models: RoutingModelView[];
+	selectedModel: string;
+	onSelectModel: (model: string) => void;
 	loading: boolean;
 	hasLoadedDetails: boolean;
 	refreshing: boolean;
@@ -43,6 +45,8 @@ export default function ProviderAccountsSection({
 	capabilities,
 	accounts,
 	models,
+	selectedModel,
+	onSelectModel,
 	loading,
 	hasLoadedDetails,
 	refreshing,
@@ -72,16 +76,16 @@ export default function ProviderAccountsSection({
 			description={t("nineRouter.management.description")}
 		>
 			{loading && !hasLoadedDetails && (
-					<SettingsCard>
-						<div
-							role="status"
-							className="flex items-center gap-2 p-4 text-sm text-muted-foreground"
-						>
-							<Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
-							{t("nineRouter.management.loading")}
-						</div>
-					</SettingsCard>
-				)}
+				<SettingsCard>
+					<div
+						role="status"
+						className="flex items-center gap-2 p-4 text-sm text-muted-foreground"
+					>
+						<Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
+						{t("nineRouter.management.loading")}
+					</div>
+				</SettingsCard>
+			)}
 			{detailsError && (
 				<SettingsCard>
 					<div
@@ -117,6 +121,22 @@ export default function ProviderAccountsSection({
 					)}
 					<SettingsCard>
 						<div className="space-y-5 p-4">
+							{models.length > 0 && (
+								<label className="block space-y-1 text-sm text-foreground">
+									{t("nineRouter.management.defaultModel")}
+									<select
+										value={selectedModel}
+										onChange={(event) => onSelectModel(event.target.value)}
+										className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+									>
+										{models.map((model) => (
+											<option key={model.id} value={model.id}>
+												{model.name || model.id}
+											</option>
+										))}
+									</select>
+								</label>
+							)}
 							<ProviderConnections
 								mode="apiKey"
 								disabled={!canMutate}
@@ -126,15 +146,11 @@ export default function ProviderAccountsSection({
 							<AccountEditor
 								{...accountEditorProps}
 								accounts={apiKeyAccounts}
-								title={t(
-									"nineRouter.management.authentication.apiKey.accountsTitle",
-								)}
+								title={t("nineRouter.management.authentication.apiKey.accountsTitle")}
 								description={t(
 									"nineRouter.management.authentication.apiKey.accountsDescription",
 								)}
-								emptyMessage={t(
-									"nineRouter.management.authentication.apiKey.empty",
-								)}
+								emptyMessage={t("nineRouter.management.authentication.apiKey.empty")}
 							/>
 						</div>
 					</SettingsCard>

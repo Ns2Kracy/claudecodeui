@@ -648,6 +648,7 @@
       "loading": "正在加载提供商账户和模型...",
       "refreshing": "正在刷新提供商账户...",
       "loadFailed": "无法加载提供商账户和模型。",
+      "defaultModel": "默认模型",
       "actions": {
         "retry": "重试",
         "save": "保存",

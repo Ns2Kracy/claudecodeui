@@ -28,6 +28,8 @@ async function renderAccounts(
 		hasLoadedDetails?: boolean;
 		refreshing?: boolean;
 		accounts?: RoutingAccountView[];
+		models?: Array<{ id: string; provider: string; name: string }>;
+		selectedModel?: string;
 		language?: "en" | "zh-CN";
 	} = {},
 ): Promise<string> {
@@ -56,7 +58,9 @@ async function renderAccounts(
 				connectionStatus: "connected",
 				capabilities: settings.runtime.capabilities,
 				accounts: options.accounts ?? [],
-				models: [],
+				models: options.models ?? [],
+				selectedModel: options.selectedModel ?? "",
+				onSelectModel: () => {},
 				loading: options.loading ?? false,
 				hasLoadedDetails: options.hasLoadedDetails ?? true,
 				refreshing: options.refreshing ?? false,
@@ -138,6 +142,27 @@ test("empty account surface exposes only API-key authentication", async () => {
 	assert.match(markup, /API Key authentication/);
 	assert.equal(markup.includes("Popular API keys"), false);
 	assert.match(markup, /OpenAI Compatible/);
+});
+
+test("agent configuration shows the selected default model", async () => {
+	const markup = await renderAccounts({
+		models: [
+			{ id: "openai/gpt-5", provider: "openai", name: "GPT-5" },
+			{ id: "deepseek/chat", provider: "deepseek", name: "DeepSeek Chat" },
+		],
+		selectedModel: "openai/gpt-5",
+	});
+
+	assert.match(markup, /Default model/);
+	const chineseMarkup = await renderAccounts({
+		models: [{ id: "openai/gpt-5", provider: "openai", name: "GPT-5" }],
+		selectedModel: "openai/gpt-5",
+		language: "zh-CN",
+	});
+	assert.match(chineseMarkup, /默认模型/);
+	assert.ok(
+		markup.includes('<option value="openai/gpt-5" selected="">GPT-5</option>'),
+	);
 });
 
 test("background refresh keeps cached account content visible", async () => {

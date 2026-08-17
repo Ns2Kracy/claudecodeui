@@ -656,6 +656,7 @@
       "loading": "Loading provider accounts and models...",
       "refreshing": "Refreshing provider accounts...",
       "loadFailed": "Could not load provider accounts and models.",
+      "defaultModel": "Default model",
       "actions": {
         "retry": "Retry",
         "save": "Save",
