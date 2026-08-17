@@ -86,7 +86,7 @@
     "openInEditor": "에디터에서 열기"
   },
   "mainContent": {
-    "loading": "CloudCLI 로딩 중",
+    "loading": "CodexUI 로딩 중",
     "settingUpWorkspace": "워크스페이스 설정 중...",
     "chooseProject": "프로젝트 선택",
     "tip": "팁",

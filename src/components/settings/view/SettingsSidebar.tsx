@@ -2,7 +2,6 @@ import {
 	Bell,
 	Bot,
 	GitBranch,
-	Info,
 	Key,
 	ListChecks,
 	Mic,
@@ -37,7 +36,6 @@ const NAV_ITEMS: NavItem[] = [
 	{ id: "browser", labelKey: "mainTabs.browser", icon: MonitorPlay },
 	{ id: "plugins", labelKey: "mainTabs.plugins", icon: Puzzle },
 	{ id: "notifications", labelKey: "mainTabs.notifications", icon: Bell },
-	{ id: "about", labelKey: "mainTabs.about", icon: Info },
 ];
 
 export default function SettingsSidebar({

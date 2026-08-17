@@ -111,8 +111,7 @@
     "tasks": "任务",
     "browser": "浏览器",
     "notifications": "通知",
-    "plugins": "插件",
-    "about": "关于"
+    "plugins": "插件"
   },
   "notifications": {
     "title": "通知",
@@ -472,7 +471,7 @@
     },
     "managed": {
       "badge": "已托管",
-      "hint": "由 CloudCLI 管理。"
+      "hint": "由 CodexUI 管理。"
     },
     "help": {
       "title": "关于 Codex MCP",
@@ -504,7 +503,7 @@
     "docs": "文档",
     "sections": {
       "officialTitle": "官方插件",
-      "officialDescription": "由 CloudCLI 团队维护，可直接安装。",
+      "officialDescription": "由 CodexUI 团队维护，可直接安装。",
       "unofficialTitle": "其他插件",
       "unofficialDescription": "来自其他用户的非官方插件和集成。安装前请审查源代码。"
     },
@@ -533,7 +532,7 @@
       "description": ""
     },
     "prismCloudCLI": {
-      "name": "PRISM CloudCLI",
+      "name": "PRISM CodexUI",
       "badge": "非官方",
       "install": "安装",
       "description": ""
@@ -579,7 +578,7 @@
       },
       "offline": {
         "title": "提供商路由器已离线",
-        "description": "CloudCLI 无法访问配置的端点。原生智能体登录仍然可用。"
+        "description": "CodexUI 无法访问配置的端点。原生智能体登录仍然可用。"
       },
       "unauthorized": {
         "title": "提供商路由器凭据被拒绝",
@@ -587,14 +586,14 @@
       },
       "incompatible": {
         "title": "此提供商路由器版本的兼容性有限",
-        "description": "仅启用此版本明确报告的能力。CloudCLI 不会猜测不受支持的管理 API。"
+        "description": "仅启用此版本明确报告的能力。CodexUI 不会猜测不受支持的管理 API。"
       },
       "operation": {
         "title": "提供商路由器操作失败"
       },
       "runtimeUnavailable": {
         "title": "内置提供商路由器运行时不可用",
-        "description": "CloudCLI 无法启动内置运行时。原生代理登录仍可使用。请重启运行时后重试。"
+        "description": "CodexUI 无法启动内置运行时。原生代理登录仍可使用。请重启运行时后重试。"
       }
     },
     "codex": {
@@ -607,7 +606,7 @@
     },
     "connection": {
       "title": "连接",
-      "description": "所有浏览器请求都保留在 CloudCLI 同源服务中，由服务器连接到已批准的提供商路由器来源。",
+      "description": "所有浏览器请求都保留在 CodexUI 同源服务中，由服务器连接到已批准的提供商路由器来源。",
       "endpoint": "端点",
       "endpointHelp": "远程地址必须使用 HTTPS。回环 HTTP 需要服务器部署显式启用。",
       "adminPassword": "管理员密码",
@@ -682,7 +681,7 @@
       },
       "accounts": {
         "title": "上游账户",
-        "description": "账户仍由提供商路由器权威管理。CloudCLI 仅显示安全的状态字段。",
+        "description": "账户仍由提供商路由器权威管理。CodexUI 仅显示安全的状态字段。",
         "add": "添加 API 密钥",
         "addTitle": "添加上游账户",
         "apiKeyOnly": "此版本仅支持创建 API 密钥账户。",

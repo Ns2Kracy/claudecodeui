@@ -66,7 +66,7 @@ export default function ProviderConnectionDialog({
 					Connect {profile.name}
 				</h4>
 				<p className="mt-1 text-xs text-muted-foreground">
-					Credentials are sent only to CloudCLI’s same-origin routing API.
+					Credentials are sent only to CodexUI’s same-origin routing API.
 				</p>
 			</div>
 
@@ -77,7 +77,7 @@ export default function ProviderConnectionDialog({
 				>
 					<p className="font-medium text-foreground">
 						{topologyError
-							? "This CloudCLI deployment cannot receive this provider’s browser callback."
+							? "This CodexUI deployment cannot receive this provider’s browser callback."
 							: error.message}
 					</p>
 					{topologyError && profile.methods.includes("device_code") && (

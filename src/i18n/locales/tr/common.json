@@ -86,7 +86,7 @@
     "openInEditor": "Editörde Aç"
   },
   "mainContent": {
-    "loading": "CloudCLI Yükleniyor",
+    "loading": "CodexUI Yükleniyor",
     "settingUpWorkspace": "Çalışma alanın hazırlanıyor...",
     "chooseProject": "Projeni Seç",
     "tip": "İpucu",

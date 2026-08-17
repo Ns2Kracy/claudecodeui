@@ -86,7 +86,7 @@
     "openInEditor": "在編輯器中開啟"
   },
   "mainContent": {
-    "loading": "正在載入 CloudCLI",
+    "loading": "正在載入 CodexUI",
     "settingUpWorkspace": "正在設定您的工作區...",
     "chooseProject": "選擇您的專案",
     "tip": "提示",

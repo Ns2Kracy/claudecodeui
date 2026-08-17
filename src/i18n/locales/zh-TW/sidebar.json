@@ -20,7 +20,7 @@
     "runClaudeCli": ""
   },
   "app": {
-    "title": "CloudCLI",
+    "title": "CodexUI",
     "subtitle": "AI 程式開發助手"
   },
   "sessions": {
@@ -68,8 +68,7 @@
     "delete": "刪除",
     "rename": "重新命名",
     "joinCommunity": "加入社群",
-    "reportIssue": "回報問題",
-    "starOnGithub": "在 GitHub 上加星"
+    "reportIssue": "回報問題"
   },
   "branding": {
     "openSource": "開源"

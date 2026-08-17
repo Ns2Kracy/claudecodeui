@@ -1,85 +1,115 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
-    <title>Clear Cache - Claude Code UI</title>
+  <head>
+    <title>Clear Cache - CodexUI</title>
     <style>
-        body {
-            font-family: system-ui, -apple-system, sans-serif;
-            max-width: 600px;
-            margin: 50px auto;
-            padding: 20px;
-            line-height: 1.6;
-        }
-        .success { color: green; }
-        .error { color: red; }
-        button {
-            background: #007bff;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-            margin: 10px 5px;
-        }
-        button:hover {
-            background: #0056b3;
-        }
-        #status {
-            margin-top: 20px;
-            padding: 15px;
-            border-radius: 5px;
-            background: #f0f0f0;
-        }
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        max-width: 600px;
+        margin: 50px auto;
+        padding: 20px;
+        line-height: 1.6;
+      }
+      .success {
+        color: green;
+      }
+      .error {
+        color: red;
+      }
+      button {
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        margin: 10px 5px;
+      }
+      button:hover {
+        background: #0056b3;
+      }
+      #status {
+        margin-top: 20px;
+        padding: 15px;
+        border-radius: 5px;
+        background: #f0f0f0;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <h1>Clear Cache & Service Worker</h1>
-    <p>If you're seeing a blank page or old content, click the button below to clear all cached data.</p>
+    <p>
+      If you're seeing a blank page or old content, click the button below to
+      clear all cached data.
+    </p>
 
     <button onclick="clearEverything()">Clear Cache & Reload</button>
 
     <div id="status"></div>
 
     <script>
-        async function clearEverything() {
-            const status = document.getElementById('status');
-            status.innerHTML = '<p>Clearing cache and service workers...</p>';
+      const appendStatus = (status, message, className = "") => {
+        const line = document.createElement("p");
+        line.className = className;
+        line.textContent = message;
+        status.append(line);
+      };
 
-            try {
-                // Unregister all service workers
-                if ('serviceWorker' in navigator) {
-                    const registrations = await navigator.serviceWorker.getRegistrations();
-                    for (let registration of registrations) {
-                        await registration.unregister();
-                        status.innerHTML += '<p class="success">✓ Unregistered service worker</p>';
-                    }
-                }
+      async function clearEverything() {
+        const status = document.getElementById("status");
+        status.replaceChildren();
+        appendStatus(status, "Clearing cache and service workers...");
 
-                // Clear all caches
-                if ('caches' in window) {
-                    const cacheNames = await caches.keys();
-                    for (let cacheName of cacheNames) {
-                        await caches.delete(cacheName);
-                        status.innerHTML += `<p class="success">✓ Deleted cache: ${cacheName}</p>`;
-                    }
-                }
-
-                // Clear localStorage
-                localStorage.clear();
-                status.innerHTML += '<p class="success">✓ Cleared localStorage</p>';
-
-                // Clear sessionStorage
-                sessionStorage.clear();
-                status.innerHTML += '<p class="success">✓ Cleared sessionStorage</p>';
-
-                status.innerHTML += '<p class="success"><strong>✓ All caches cleared!</strong></p>';
-                status.innerHTML += '<p>Cache cleared successfully. You can now close this tab or <a href="/">go to home page</a>.</p>';
-
-            } catch (error) {
-                status.innerHTML += `<p class="error">✗ Error: ${error.message}</p>`;
+        try {
+          // Unregister all service workers
+          if ("serviceWorker" in navigator) {
+            const registrations =
+              await navigator.serviceWorker.getRegistrations();
+            for (const registration of registrations) {
+              await registration.unregister();
+              appendStatus(status, "✓ Unregistered service worker", "success");
             }
+          }
+
+          // Clear all caches
+          if ("caches" in window) {
+            const cacheNames = await caches.keys();
+            for (const cacheName of cacheNames) {
+              await caches.delete(cacheName);
+              appendStatus(status, `✓ Deleted cache: ${cacheName}`, "success");
+            }
+          }
+
+          // Clear localStorage
+          localStorage.clear();
+          appendStatus(status, "✓ Cleared localStorage", "success");
+
+          // Clear sessionStorage
+          sessionStorage.clear();
+          appendStatus(status, "✓ Cleared sessionStorage", "success");
+
+          appendStatus(status, "✓ All caches cleared!", "success");
+          const completion = document.createElement("p");
+          completion.append(
+            document.createTextNode(
+              "Cache cleared successfully. You can now close this tab or ",
+            ),
+          );
+          const homeLink = document.createElement("a");
+          homeLink.href = "/";
+          homeLink.textContent = "go to home page";
+          completion.append(homeLink, document.createTextNode("."));
+          status.append(completion);
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : String(error);
+          appendStatus(status, `✗ Error: ${message}`, "error");
         }
+      }
     </script>
-</body>
+  </body>
 </html>

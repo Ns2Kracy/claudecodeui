@@ -3,7 +3,6 @@ import {
 	Bell,
 	Bot,
 	GitBranch,
-	Info,
 	KeyRound,
 	ListChecks,
 	MonitorPlay,
@@ -71,7 +70,6 @@ export const SETTINGS_MAIN_TABS: SettingsMainTabMeta[] = [
 		keywords: "plugins extensions integrations",
 		icon: Plug,
 	},
-	{ id: "about", label: "About", keywords: "about version info", icon: Info },
 ];
 
 export const AGENT_PROVIDERS: AgentProvider[] = ["codex"];

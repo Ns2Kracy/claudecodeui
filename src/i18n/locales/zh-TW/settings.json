@@ -93,8 +93,7 @@
     "tasks": "任務",
     "computer": "電腦使用",
     "notifications": "通知",
-    "plugins": "外掛",
-    "about": "關於"
+    "plugins": "外掛"
   },
   "notifications": {
     "title": "通知",
@@ -492,7 +491,7 @@
       },
       "offline": {
         "title": "提供者路由器已離線",
-        "description": "CloudCLI 無法連線至設定的端點。原生代理程式登入仍然可用。"
+        "description": "CodexUI 無法連線至設定的端點。原生代理程式登入仍然可用。"
       },
       "unauthorized": {
         "title": "提供者路由器憑證遭到拒絕",
@@ -500,19 +499,19 @@
       },
       "incompatible": {
         "title": "此提供者路由器版本的相容性有限",
-        "description": "僅啟用此版本明確回報的功能。CloudCLI 不會猜測不受支援的管理 API。"
+        "description": "僅啟用此版本明確回報的功能。CodexUI 不會猜測不受支援的管理 API。"
       },
       "operation": {
         "title": "提供者路由器操作失敗"
       },
       "runtimeUnavailable": {
         "title": "內建提供者路由器執行階段無法使用",
-        "description": "CloudCLI 無法啟動內建執行階段。原生代理登入仍可使用。請重新啟動執行階段後再試。"
+        "description": "CodexUI 無法啟動內建執行階段。原生代理登入仍可使用。請重新啟動執行階段後再試。"
       }
     },
     "connection": {
       "title": "連線",
-      "description": "所有瀏覽器請求都保留在 CloudCLI 同源服務中，由伺服器連線至已核准的提供者路由器來源。",
+      "description": "所有瀏覽器請求都保留在 CodexUI 同源服務中，由伺服器連線至已核准的提供者路由器來源。",
       "endpoint": "端點",
       "endpointHelp": "遠端位址必須使用 HTTPS。回送 HTTP 需要伺服器部署明確啟用。",
       "adminPassword": "管理員密碼",
@@ -587,7 +586,7 @@
       },
       "accounts": {
         "title": "上游帳戶",
-        "description": "帳戶仍由提供者路由器權威管理。CloudCLI 僅顯示安全的狀態欄位。",
+        "description": "帳戶仍由提供者路由器權威管理。CodexUI 僅顯示安全的狀態欄位。",
         "add": "新增 API 金鑰",
         "addTitle": "新增上游帳戶",
         "apiKeyOnly": "此版本僅支援建立 API 金鑰帳戶。",

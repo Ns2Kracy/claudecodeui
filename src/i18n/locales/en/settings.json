@@ -111,8 +111,7 @@
     "tasks": "Tasks",
     "browser": "Browser",
     "notifications": "Notifications",
-    "plugins": "Plugins",
-    "about": "About"
+    "plugins": "Plugins"
   },
   "notifications": {
     "title": "Notifications",
@@ -472,7 +471,7 @@
     },
     "managed": {
       "badge": "Managed",
-      "hint": "Managed by CloudCLI."
+      "hint": "Managed by CodexUI."
     },
     "help": {
       "title": "About Codex MCP",
@@ -504,7 +503,7 @@
     "docs": "Docs",
     "sections": {
       "officialTitle": "Official Plugins",
-      "officialDescription": "Maintained by the CloudCLI team and ready for direct install.",
+      "officialDescription": "Maintained by the CodexUI team and ready for direct install.",
       "unofficialTitle": "Other Plugins",
       "unofficialDescription": "Unofficial plugins and integrations from other users. Review the source before installing."
     },
@@ -533,7 +532,7 @@
       "description": ""
     },
     "prismCloudCLI": {
-      "name": "PRISM CloudCLI",
+      "name": "PRISM CodexUI",
       "badge": "unofficial",
       "install": "Install",
       "description": ""
@@ -585,7 +584,7 @@
       },
       "offline": {
         "title": "",
-        "description": "CloudCLI could not reach the configured endpoint. Native agent login remains available."
+        "description": "CodexUI could not reach the configured endpoint. Native agent login remains available."
       },
       "unauthorized": {
         "title": "",
@@ -593,14 +592,14 @@
       },
       "incompatible": {
         "title": "",
-        "description": "Only capabilities reported by this version are enabled. CloudCLI does not guess unsupported management APIs."
+        "description": "Only capabilities reported by this version are enabled. CodexUI does not guess unsupported management APIs."
       },
       "operation": {
         "title": ""
       },
       "runtimeUnavailable": {
         "title": "",
-        "description": "CloudCLI could not start the embedded router runtime. Native agent login remains available. Restart the runtime to try again."
+        "description": "CodexUI could not start the embedded router runtime. Native agent login remains available. Restart the runtime to try again."
       }
     },
     "codex": {
@@ -613,7 +612,7 @@
     },
     "connection": {
       "title": "Connection",
-      "description": "All browser requests stay on CloudCLI. The server connects to the approved provider router origin.",
+      "description": "All browser requests stay on CodexUI. The server connects to the approved provider router origin.",
       "endpoint": "Endpoint",
       "endpointHelp": "Use a remote HTTPS origin. Loopback HTTP requires an explicit server deployment opt-in.",
       "adminPassword": "Admin password",

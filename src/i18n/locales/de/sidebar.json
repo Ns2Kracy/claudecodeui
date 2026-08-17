@@ -20,7 +20,7 @@
     "runClaudeCli": ""
   },
   "app": {
-    "title": "CloudCLI",
+    "title": "CodexUI",
     "subtitle": "KI-Programmierassistent-Oberfläche"
   },
   "sessions": {
@@ -69,8 +69,7 @@
     "delete": "Löschen",
     "rename": "Umbenennen",
     "joinCommunity": "Community beitreten",
-    "reportIssue": "Problem melden",
-    "starOnGithub": "Stern auf GitHub"
+    "reportIssue": "Problem melden"
   },
   "branding": {
     "openSource": "Open Source"

@@ -59,7 +59,6 @@ const KNOWN_MAIN_TABS: SettingsMainTab[] = [
 	"browser",
 	"notifications",
 	"plugins",
-	"about",
 ];
 
 export const normalizeMainTab = (tab: string): SettingsMainTab => {

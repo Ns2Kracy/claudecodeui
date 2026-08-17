@@ -112,8 +112,7 @@ export default function McpServers({
 	});
 	const globalButtonLabel = "Add Global MCP Server";
 	const providerButtonLabel = `Add ${providerName} MCP Server`;
-	const globalAddDescription =
-		"";
+	const globalAddDescription = "";
 	const providerAddDescription = `${providerButtonLabel} only changes ${providerName}.`;
 	const globalModalDescription =
 		"Only stdio and HTTP transports are supported because the same config must work across all providers.";
@@ -262,7 +261,7 @@ export default function McpServers({
 										{managed && (
 											<div className="text-xs text-muted-foreground">
 												{t("mcpServers.managed.hint", {
-													defaultValue: "Managed by CloudCLI.",
+													defaultValue: "Managed by CodexUI.",
 												})}
 											</div>
 										)}

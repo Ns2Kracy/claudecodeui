@@ -86,7 +86,7 @@
     "openInEditor": "Abrir en el editor"
   },
   "mainContent": {
-    "loading": "Cargando CloudCLI",
+    "loading": "Cargando CodexUI",
     "settingUpWorkspace": "Preparando tu espacio de trabajo...",
     "chooseProject": "Elige tu proyecto",
     "tip": "Consejo",

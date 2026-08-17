@@ -14,7 +14,7 @@ import SettingsSidebar from "./SettingsSidebar.js";
 
 (globalThis as typeof globalThis & { React: typeof React }).React = React;
 
-test("settings navigation omits the duplicate provider page", async () => {
+test("settings navigation omits removed pages", async () => {
 	const i18n = createInstance();
 	await i18n.init({
 		lng: "en",
@@ -37,4 +37,5 @@ test("settings navigation omits the duplicate provider page", async () => {
 	);
 
 	assert.equal(markup.includes("Providers"), false);
+	assert.equal(markup.includes("About"), false);
 });

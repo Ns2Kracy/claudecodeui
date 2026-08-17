@@ -11,8 +11,7 @@ export type SettingsMainTab =
 	| "tasks"
 	| "browser"
 	| "notifications"
-	| "plugins"
-	| "about";
+	| "plugins";
 export type AgentProvider = "codex";
 export type AgentCategory = "account" | "permissions" | "mcp" | "skills";
 export type ProjectSortOrder = "name" | "date";

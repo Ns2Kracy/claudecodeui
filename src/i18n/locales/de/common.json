@@ -86,7 +86,7 @@
     "openInEditor": "Im Editor öffnen"
   },
   "mainContent": {
-    "loading": "CloudCLI wird geladen",
+    "loading": "CodexUI wird geladen",
     "settingUpWorkspace": "Arbeitsbereich wird eingerichtet...",
     "chooseProject": "Projekt auswählen",
     "tip": "Tipp",

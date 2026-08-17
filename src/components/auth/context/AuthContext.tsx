@@ -1,301 +1,286 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { IS_PLATFORM } from '../../../constants/config';
 import {
-  api,
-  AUTH_SESSION_EXPIRED_EVENT,
-  AUTH_TOKEN_REFRESHED_EVENT,
-  getAuthTokenRefreshDelay,
-  isValidRefreshedToken,
-  storeAuthToken,
-} from '../../../utils/api';
-import { AUTH_ERROR_MESSAGES, AUTH_TOKEN_STORAGE_KEY } from '../constants';
+	createContext,
+	useCallback,
+	useContext,
+	useEffect,
+	useMemo,
+	useState,
+} from "react";
+
+import { IS_PLATFORM } from "../../../constants/config";
+import {
+	api,
+	AUTH_SESSION_EXPIRED_EVENT,
+	AUTH_TOKEN_REFRESHED_EVENT,
+	getAuthTokenRefreshDelay,
+	isValidRefreshedToken,
+	storeAuthToken,
+} from "../../../utils/api";
+import { AUTH_ERROR_MESSAGES, AUTH_TOKEN_STORAGE_KEY } from "../constants";
 import type {
-  AuthContextValue,
-  AuthProviderProps,
-  AuthSessionPayload,
-  AuthStatusPayload,
-  AuthUser,
-  AuthUserPayload,
-  OnboardingStatusPayload,
-} from '../types';
-import { parseJsonSafely, resolveApiErrorMessage } from '../utils';
+	AuthContextValue,
+	AuthProviderProps,
+	AuthSessionPayload,
+	AuthStatusPayload,
+	AuthUser,
+	AuthUserPayload,
+} from "../types";
+import { parseJsonSafely, resolveApiErrorMessage } from "../utils";
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const readStoredToken = (): string | null => localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
+const readStoredToken = (): string | null =>
+	localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
 
 const persistToken = (token: string) => {
-  storeAuthToken(token);
+	storeAuthToken(token);
 };
 
 const clearStoredToken = () => {
-  localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
+	localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
 };
 
 export function useAuth(): AuthContextValue {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+	const context = useContext(AuthContext);
+	if (!context) {
+		throw new Error("useAuth must be used within an AuthProvider");
+	}
 
-  return context;
+	return context;
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [token, setToken] = useState<string | null>(() => readStoredToken());
-  const [isLoading, setIsLoading] = useState(true);
-  const [needsSetup, setNeedsSetup] = useState(false);
-  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+	const [user, setUser] = useState<AuthUser | null>(null);
+	const [token, setToken] = useState<string | null>(() => readStoredToken());
+	const [isLoading, setIsLoading] = useState(true);
+	const [needsSetup, setNeedsSetup] = useState(false);
+	const [error, setError] = useState<string | null>(null);
 
-  const setSession = useCallback((nextUser: AuthUser, nextToken: string) => {
-    setUser(nextUser);
-    setToken(nextToken);
-    persistToken(nextToken);
-  }, []);
+	const setSession = useCallback((nextUser: AuthUser, nextToken: string) => {
+		setUser(nextUser);
+		setToken(nextToken);
+		persistToken(nextToken);
+	}, []);
 
-  const clearSession = useCallback(() => {
-    setUser(null);
-    setToken(null);
-    clearStoredToken();
-  }, []);
+	const clearSession = useCallback(() => {
+		setUser(null);
+		setToken(null);
+		clearStoredToken();
+	}, []);
 
-  const checkOnboardingStatus = useCallback(async () => {
-    try {
-      const response = await api.user.onboardingStatus();
-      if (!response.ok) {
-        return;
-      }
+	const refreshSession = useCallback(async () => {
+		if (IS_PLATFORM || !token || !user) {
+			return;
+		}
 
-      const payload = await parseJsonSafely<OnboardingStatusPayload>(response);
-      setHasCompletedOnboarding(Boolean(payload?.hasCompletedOnboarding));
-    } catch (caughtError) {
-      console.error('Error checking onboarding status:', caughtError);
-      // Fail open to avoid blocking access on transient onboarding status errors.
-      setHasCompletedOnboarding(true);
-    }
-  }, []);
+		try {
+			const response = await api.auth.refresh();
+			if (!response.ok) {
+				return;
+			}
 
-  const refreshOnboardingStatus = useCallback(async () => {
-    await checkOnboardingStatus();
-  }, [checkOnboardingStatus]);
+			const payload = await parseJsonSafely<AuthSessionPayload>(response);
+			if (isValidRefreshedToken(payload?.token)) {
+				setToken(payload.token);
+				persistToken(payload.token);
+			}
+		} catch (caughtError) {
+			// A transient network failure must not sign the user out. Focus/visibility
+			// and the next scheduled refresh will retry while the token remains valid.
+			console.warn("[Auth] Session refresh failed:", caughtError);
+		}
+	}, [token, user]);
 
-  const refreshSession = useCallback(async () => {
-    if (IS_PLATFORM || !token || !user) {
-      return;
-    }
+	useEffect(() => {
+		const handleTokenRefreshed = (event: Event) => {
+			const nextToken = (event as CustomEvent<unknown>).detail;
+			if (isValidRefreshedToken(nextToken)) {
+				setToken(nextToken);
+			}
+		};
+		const handleSessionExpired = () => {
+			clearSession();
+			setError(AUTH_ERROR_MESSAGES.sessionExpired);
+		};
 
-    try {
-      const response = await api.auth.refresh();
-      if (!response.ok) {
-        return;
-      }
+		window.addEventListener(AUTH_TOKEN_REFRESHED_EVENT, handleTokenRefreshed);
+		window.addEventListener(AUTH_SESSION_EXPIRED_EVENT, handleSessionExpired);
+		return () => {
+			window.removeEventListener(
+				AUTH_TOKEN_REFRESHED_EVENT,
+				handleTokenRefreshed,
+			);
+			window.removeEventListener(
+				AUTH_SESSION_EXPIRED_EVENT,
+				handleSessionExpired,
+			);
+		};
+	}, [clearSession]);
 
-      const payload = await parseJsonSafely<AuthSessionPayload>(response);
-      if (isValidRefreshedToken(payload?.token)) {
-        setToken(payload.token);
-        persistToken(payload.token);
-      }
-    } catch (caughtError) {
-      // A transient network failure must not sign the user out. Focus/visibility
-      // and the next scheduled refresh will retry while the token remains valid.
-      console.warn('[Auth] Session refresh failed:', caughtError);
-    }
-  }, [token, user]);
+	const checkAuthStatus = useCallback(async () => {
+		try {
+			setIsLoading(true);
+			setError(null);
 
-  useEffect(() => {
-    const handleTokenRefreshed = (event: Event) => {
-      const nextToken = (event as CustomEvent<unknown>).detail;
-      if (isValidRefreshedToken(nextToken)) {
-        setToken(nextToken);
-      }
-    };
-    const handleSessionExpired = () => {
-      clearSession();
-      setError(AUTH_ERROR_MESSAGES.sessionExpired);
-    };
+			const statusResponse = await api.auth.status();
+			const statusPayload =
+				await parseJsonSafely<AuthStatusPayload>(statusResponse);
 
-    window.addEventListener(AUTH_TOKEN_REFRESHED_EVENT, handleTokenRefreshed);
-    window.addEventListener(AUTH_SESSION_EXPIRED_EVENT, handleSessionExpired);
-    return () => {
-      window.removeEventListener(AUTH_TOKEN_REFRESHED_EVENT, handleTokenRefreshed);
-      window.removeEventListener(AUTH_SESSION_EXPIRED_EVENT, handleSessionExpired);
-    };
-  }, [clearSession]);
+			if (statusPayload?.needsSetup) {
+				setNeedsSetup(true);
+				return;
+			}
 
-  const checkAuthStatus = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
+			setNeedsSetup(false);
 
-      const statusResponse = await api.auth.status();
-      const statusPayload = await parseJsonSafely<AuthStatusPayload>(statusResponse);
+			if (!token) {
+				return;
+			}
 
-      if (statusPayload?.needsSetup) {
-        setNeedsSetup(true);
-        return;
-      }
+			const userResponse = await api.auth.user();
+			if (!userResponse.ok) {
+				clearSession();
+				return;
+			}
 
-      setNeedsSetup(false);
+			const userPayload = await parseJsonSafely<AuthUserPayload>(userResponse);
+			if (!userPayload?.user) {
+				clearSession();
+				return;
+			}
 
-      if (!token) {
-        return;
-      }
+			setUser(userPayload.user);
+		} catch (caughtError) {
+			console.error("[Auth] Auth status check failed:", caughtError);
+			setError(AUTH_ERROR_MESSAGES.authStatusCheckFailed);
+		} finally {
+			setIsLoading(false);
+		}
+	}, [clearSession, token]);
 
-      const userResponse = await api.auth.user();
-      if (!userResponse.ok) {
-        clearSession();
-        return;
-      }
+	useEffect(() => {
+		if (IS_PLATFORM) {
+			setUser({ username: "platform-user" });
+			setNeedsSetup(false);
+			setIsLoading(false);
+			return;
+		}
 
-      const userPayload = await parseJsonSafely<AuthUserPayload>(userResponse);
-      if (!userPayload?.user) {
-        clearSession();
-        return;
-      }
+		void checkAuthStatus();
+	}, [checkAuthStatus]);
 
-      setUser(userPayload.user);
-      await checkOnboardingStatus();
-    } catch (caughtError) {
-      console.error('[Auth] Auth status check failed:', caughtError);
-      setError(AUTH_ERROR_MESSAGES.authStatusCheckFailed);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [checkOnboardingStatus, clearSession, token]);
+	useEffect(() => {
+		if (IS_PLATFORM || !token || !user) {
+			return undefined;
+		}
 
-  useEffect(() => {
-    if (IS_PLATFORM) {
-      setUser({ username: 'platform-user' });
-      setNeedsSetup(false);
-      void checkOnboardingStatus().finally(() => {
-        setIsLoading(false);
-      });
-      return;
-    }
+		const refreshIfNeeded = () => {
+			const refreshDelay = getAuthTokenRefreshDelay(token);
+			if (refreshDelay !== null && refreshDelay <= 0) {
+				void refreshSession();
+			}
+		};
+		const handleVisibilityChange = () => {
+			if (document.visibilityState === "visible") {
+				refreshIfNeeded();
+			}
+		};
 
-    void checkAuthStatus();
-  }, [checkAuthStatus, checkOnboardingStatus]);
+		const refreshDelay = getAuthTokenRefreshDelay(token);
+		const refreshTimer =
+			refreshDelay === null
+				? null
+				: window.setTimeout(() => void refreshSession(), refreshDelay);
 
-  useEffect(() => {
-    if (IS_PLATFORM || !token || !user) {
-      return undefined;
-    }
+		window.addEventListener("focus", refreshIfNeeded);
+		document.addEventListener("visibilitychange", handleVisibilityChange);
 
-    const refreshIfNeeded = () => {
-      const refreshDelay = getAuthTokenRefreshDelay(token);
-      if (refreshDelay !== null && refreshDelay <= 0) {
-        void refreshSession();
-      }
-    };
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        refreshIfNeeded();
-      }
-    };
+		return () => {
+			if (refreshTimer !== null) {
+				window.clearTimeout(refreshTimer);
+			}
+			window.removeEventListener("focus", refreshIfNeeded);
+			document.removeEventListener("visibilitychange", handleVisibilityChange);
+		};
+	}, [refreshSession, token, user]);
 
-    const refreshDelay = getAuthTokenRefreshDelay(token);
-    const refreshTimer = refreshDelay === null
-      ? null
-      : window.setTimeout(() => void refreshSession(), refreshDelay);
+	const login = useCallback<AuthContextValue["login"]>(
+		async (username, password) => {
+			try {
+				setError(null);
+				const response = await api.auth.login(username, password);
+				const payload = await parseJsonSafely<AuthSessionPayload>(response);
 
-    window.addEventListener('focus', refreshIfNeeded);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+				if (!response.ok || !payload?.token || !payload.user) {
+					const message = resolveApiErrorMessage(
+						payload,
+						AUTH_ERROR_MESSAGES.loginFailed,
+					);
+					setError(message);
+					return { success: false, error: message };
+				}
 
-    return () => {
-      if (refreshTimer !== null) {
-        window.clearTimeout(refreshTimer);
-      }
-      window.removeEventListener('focus', refreshIfNeeded);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [refreshSession, token, user]);
+				setSession(payload.user, payload.token);
+				setNeedsSetup(false);
+				return { success: true };
+			} catch (caughtError) {
+				console.error("Login error:", caughtError);
+				setError(AUTH_ERROR_MESSAGES.networkError);
+				return { success: false, error: AUTH_ERROR_MESSAGES.networkError };
+			}
+		},
+		[setSession],
+	);
 
-  const login = useCallback<AuthContextValue['login']>(
-    async (username, password) => {
-      try {
-        setError(null);
-        const response = await api.auth.login(username, password);
-        const payload = await parseJsonSafely<AuthSessionPayload>(response);
+	const register = useCallback<AuthContextValue["register"]>(
+		async (username, password) => {
+			try {
+				setError(null);
+				const response = await api.auth.register(username, password);
+				const payload = await parseJsonSafely<AuthSessionPayload>(response);
 
-        if (!response.ok || !payload?.token || !payload.user) {
-          const message = resolveApiErrorMessage(payload, AUTH_ERROR_MESSAGES.loginFailed);
-          setError(message);
-          return { success: false, error: message };
-        }
+				if (!response.ok || !payload?.token || !payload.user) {
+					const message = resolveApiErrorMessage(
+						payload,
+						AUTH_ERROR_MESSAGES.registrationFailed,
+					);
+					setError(message);
+					return { success: false, error: message };
+				}
 
-        setSession(payload.user, payload.token);
-        setNeedsSetup(false);
-        await checkOnboardingStatus();
-        return { success: true };
-      } catch (caughtError) {
-        console.error('Login error:', caughtError);
-        setError(AUTH_ERROR_MESSAGES.networkError);
-        return { success: false, error: AUTH_ERROR_MESSAGES.networkError };
-      }
-    },
-    [checkOnboardingStatus, setSession],
-  );
+				setSession(payload.user, payload.token);
+				setNeedsSetup(false);
+				return { success: true };
+			} catch (caughtError) {
+				console.error("Registration error:", caughtError);
+				setError(AUTH_ERROR_MESSAGES.networkError);
+				return { success: false, error: AUTH_ERROR_MESSAGES.networkError };
+			}
+		},
+		[setSession],
+	);
 
-  const register = useCallback<AuthContextValue['register']>(
-    async (username, password) => {
-      try {
-        setError(null);
-        const response = await api.auth.register(username, password);
-        const payload = await parseJsonSafely<AuthSessionPayload>(response);
+	const logout = useCallback(() => {
+		// JWT logout is client-side: the server endpoint does not maintain a
+		// revocation list, so clearing the session is the complete operation.
+		clearSession();
+	}, [clearSession]);
 
-        if (!response.ok || !payload?.token || !payload.user) {
-          const message = resolveApiErrorMessage(payload, AUTH_ERROR_MESSAGES.registrationFailed);
-          setError(message);
-          return { success: false, error: message };
-        }
+	const contextValue = useMemo<AuthContextValue>(
+		() => ({
+			user,
+			token,
+			isLoading,
+			needsSetup,
+			error,
+			login,
+			register,
+			logout,
+		}),
+		[error, isLoading, login, logout, needsSetup, register, token, user],
+	);
 
-        setSession(payload.user, payload.token);
-        setNeedsSetup(false);
-        await checkOnboardingStatus();
-        return { success: true };
-      } catch (caughtError) {
-        console.error('Registration error:', caughtError);
-        setError(AUTH_ERROR_MESSAGES.networkError);
-        return { success: false, error: AUTH_ERROR_MESSAGES.networkError };
-      }
-    },
-    [checkOnboardingStatus, setSession],
-  );
-
-  const logout = useCallback(() => {
-    // JWT logout is client-side: the server endpoint does not maintain a
-    // revocation list, so clearing the session is the complete operation.
-    clearSession();
-  }, [clearSession]);
-
-  const contextValue = useMemo<AuthContextValue>(
-    () => ({
-      user,
-      token,
-      isLoading,
-      needsSetup,
-      hasCompletedOnboarding,
-      error,
-      login,
-      register,
-      logout,
-      refreshOnboardingStatus,
-    }),
-    [
-      error,
-      hasCompletedOnboarding,
-      isLoading,
-      login,
-      logout,
-      needsSetup,
-      refreshOnboardingStatus,
-      register,
-      token,
-      user,
-    ],
-  );
-
-  return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
+	return (
+		<AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
+	);
 }
