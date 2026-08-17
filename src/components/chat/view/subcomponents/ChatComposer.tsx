@@ -310,7 +310,7 @@ export default function ChatComposer({
 			)}
 
 			{!hasQuestionPanel && (
-				<div className="relative mx-auto max-w-[54.25rem]">
+				<div className="chat-composer-container relative mx-auto max-w-[54.25rem]">
 					{showFileDropdown && filteredFiles.length > 0 && (
 						<div className="absolute bottom-full left-0 right-0 z-50 mb-2 max-h-48 overflow-y-auto rounded-xl border border-border/50 bg-card/95 shadow-lg backdrop-blur-md">
 							{filteredFiles.map((file, index) => (
@@ -437,8 +437,8 @@ export default function ChatComposer({
 							/>
 						</PromptInputBody>
 
-						<PromptInputFooter>
-							<PromptInputTools className="min-w-0">
+						<PromptInputFooter className="chat-composer-footer">
+							<PromptInputTools className="chat-composer-tools min-w-0 shrink-0">
 								<PromptInputButton
 									tooltip={{ content: t("input.attachFiles") }}
 									onClick={openAttachmentPicker}
@@ -481,16 +481,16 @@ export default function ChatComposer({
 											}),
 										}}
 										onClick={onClearInput}
-										className="hidden sm:flex"
+										className="chat-composer-clear hidden sm:flex"
 									>
 										<XIcon />
 									</PromptInputButton>
 								)}
 							</PromptInputTools>
 
-							<div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+							<div className="chat-composer-actions flex min-w-0 grow items-center justify-end gap-1.5 sm:gap-2">
 								<div
-									className={`hidden text-xs text-muted-foreground/50 transition-opacity duration-200 lg:block ${
+									className={`chat-composer-submit-hint min-w-0 truncate text-xs text-muted-foreground/50 transition-opacity duration-200 ${
 										input.trim() && !canQueueDraft ? "opacity-0" : "opacity-100"
 									}`}
 								>
