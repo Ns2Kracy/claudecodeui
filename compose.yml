@@ -23,16 +23,15 @@ services:
       - cloudcli-private
 
   9router:
-    build:
-      context: ./docker/9router
+    image: decolua/9router:0.5.50
     restart: unless-stopped
     environment:
-      DATA_DIR: /data
+      DATA_DIR: /app/data
       INITIAL_PASSWORD: "9router"
     expose:
       - "20128"
     volumes:
-      - 9router-data:/data
+      - 9router-data:/app/data
     networks:
       - cloudcli-private
 

@@ -19,67 +19,34 @@ function composeServiceBlock(compose: string, serviceName: string): string {
 	return match?.[0] ?? "";
 }
 
-test("9router Dockerfile uses the official pinned package without copying upstream source", () => {
-	const dockerfile = readProjectFile("docker/9router/Dockerfile");
-
-	assert.match(dockerfile, /npm\s+install\s+-g\s+9router@0\.5\.50\b/);
-	assert.match(dockerfile, /CMD\s+\[/);
-	assert.match(dockerfile, /"9router"/);
-	assert.match(dockerfile, /"--host",\s*"0\.0\.0\.0"/);
-	assert.match(dockerfile, /"--port",\s*"20128"/);
-	assert.match(dockerfile, /HOME=\/data/);
-	assert.match(dockerfile, /VOLUME\s+\["\/data"\]/);
-	assert.doesNotMatch(dockerfile, /HEALTHCHECK/);
-	assert.doesNotMatch(dockerfile, /COPY\s+(?:src|app|\.)/);
-});
-
-test("9router image removes private-network blocking for configured providers", () => {
-	const dockerfile = readProjectFile("docker/9router/Dockerfile");
-	const patchScript = readProjectFile(
-		"docker/9router/allow-private-provider-urls.js",
-	);
-
-	assert.match(dockerfile, /COPY\s+allow-private-provider-urls\.js/);
-	assert.match(dockerfile, /node\s+\/tmp\/allow-private-provider-urls\.js/);
-	assert.match(patchScript, /Blocked URL: internal host/);
-	assert.match(patchScript, /Blocked URL: private IP/);
-	assert.doesNotMatch(patchScript, /10\.0\.1\.83/);
-	assert.match(patchScript, /https?:/);
-});
-
-test("production compose pins the reproducible 1.37.5 release", () => {
+test("production compose pins the reproducible 1.37.6 release and official Router", () => {
 	const compose = readProjectFile("compose.prod.yaml");
 
-	assert.match(compose, /image:\s+ns2kracy\/cloudcli:1\.37\.5/);
-	assert.match(compose, /image:\s+ns2kracy\/9router:0\.5\.50-cloudcli\.1/);
+	assert.match(compose, /image:\s+ns2kracy\/cloudcli:1\.37\.6/);
+	assert.match(compose, /image:\s+decolua\/9router:0\.5\.50/);
 	assert.match(compose, /NINE_ROUTER_BASE_URL:\s+http:\/\/9router:20128/);
 	assert.match(compose, /HOST:\s+0\.0\.0\.0/);
 	assert.match(compose, /SERVER_PORT:\s+["']3001["']/);
 	assert.match(compose, /(?:\$\{CLOUDCLI_PORT:-3001\}|3001):3001/);
 	assert.match(compose, /(?:\$\{CODEX_CALLBACK_PORT:-1455\}|1445):1455/);
-	assert.match(
-		compose,
-		/(?:\$\{APP_DATA_ROOT:-\.\/data\}|\/DATA\/AppData\/\$\{AppID\})\/workspace:\/workspaces/,
-	);
-	assert.equal(JSON.parse(readProjectFile("package.json")).version, "1.37.5");
-	assert.equal(
-		JSON.parse(readProjectFile("package-lock.json")).version,
-		"1.37.5",
-	);
+	assert.match(compose, /\/DATA\/AppData\/\$\{AppID\}\/:\/workspaces/);
+	assert.match(compose, /\/DATA\/AppData\/\$\{AppID\}\/9router:\/app\/data/);
+	assert.equal(JSON.parse(readProjectFile("package.json")).version, "1.37.6");
+	assert.equal(JSON.parse(readProjectFile("package-lock.json")).version, "1.37.6");
 });
 
-test("compose runs 9router as an internal persisted sidecar for CloudCLI", () => {
+test("compose runs the official Router as an internal persisted sidecar", () => {
 	const compose = readProjectFile("compose.yml");
 	const nineRouter = composeServiceBlock(`\n${compose}`, "9router");
 
-	assert.match(nineRouter, /9router:/);
-	assert.match(nineRouter, /context:\s+\.\/docker\/9router/);
+	assert.match(nineRouter, /image:\s+decolua\/9router:0\.5\.50/);
+	assert.doesNotMatch(nineRouter, /build:/);
 	assert.match(compose, /NINE_ROUTER_BASE_URL:\s+http:\/\/9router:20128/);
 	assert.match(compose, /NINE_ROUTER_ADMIN_PASSWORD:\s+["']9router["']/);
-	assert.match(nineRouter, /-\s+9router-data:\/data/);
+	assert.match(nineRouter, /-\s+9router-data:\/app\/data/);
 	assert.match(nineRouter, /expose:\s*\n\s*-\s+"?20128"?/);
 	assert.doesNotMatch(nineRouter, /ports:/);
-	assert.match(nineRouter, /DATA_DIR:\s+\/data/);
+	assert.match(nineRouter, /DATA_DIR:\s+\/app\/data/);
 	assert.match(nineRouter, /INITIAL_PASSWORD:\s+["']9router["']/);
 	assert.doesNotMatch(nineRouter, /healthcheck:/);
 	assert.match(compose, /condition:\s+service_started/);
@@ -89,34 +56,19 @@ test("compose runs 9router as an internal persisted sidecar for CloudCLI", () =>
 	assert.match(compose, /dockerfile:\s+docker\/cloudcli\/Dockerfile/);
 	const cloudcliDockerfile = readProjectFile("docker/cloudcli/Dockerfile");
 	assert.match(cloudcliDockerfile, /npm ci --ignore-scripts --include=dev/);
-	assert.match(
-		cloudcliDockerfile,
-		/npm rebuild better-sqlite3 bcrypt node-pty/,
-	);
+	assert.match(cloudcliDockerfile, /npm rebuild better-sqlite3 bcrypt node-pty/);
 	assert.match(cloudcliDockerfile, /RUN npm run build/);
 });
 
 test("Docker build context ignores local dependencies, builds, and secrets", () => {
 	const dockerignore = readProjectFile(".dockerignore");
-
-	for (const ignored of [
-		"node_modules",
-		"dist",
-		"dist-server",
-		".env",
-		"database",
-		".git",
-	]) {
-		assert.match(
-			dockerignore,
-			new RegExp(`(^|\\n)${ignored.replace(".", "\\.")}(\\n|$)`),
-		);
+	for (const ignored of ["node_modules", "dist", "dist-server", ".env", "database", ".git"]) {
+		assert.match(dockerignore, new RegExp(`(^|\\n)${ignored.replace(".", "\\.")}(\\n|$)`));
 	}
 });
 
 test("environment example documents the sidecar origin without baking credentials", () => {
 	const envExample = readProjectFile(".env.example");
-
 	assert.match(envExample, /NINE_ROUTER_BASE_URL=http:\/\/9router:20128/);
 	assert.match(envExample, /Compose-owned 9router sidecar/);
 });

@@ -1,6 +1,6 @@
 services:
   cloudcli:
-    image: ns2kracy/cloudcli:1.37.5
+    image: ns2kracy/cloudcli:1.37.6
     user: "0:0"
     restart: unless-stopped
     environment:
@@ -24,16 +24,16 @@ services:
       - cloudcli-private
 
   9router:
-    image: ns2kracy/9router:0.5.50-cloudcli.1
+    image: decolua/9router:0.5.50
     user: "0:0"
     restart: unless-stopped
     environment:
-      DATA_DIR: /data
+      DATA_DIR: /app/data
       INITIAL_PASSWORD: "9router"
     expose:
       - "20128"
     volumes:
-      - "/DATA/AppData/${AppID}/9router:/data"
+      - "/DATA/AppData/${AppID}/9router:/app/data"
     networks:
       - cloudcli-private
 
