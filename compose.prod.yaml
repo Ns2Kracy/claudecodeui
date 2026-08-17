@@ -14,7 +14,7 @@ services:
       - "3001:3001"
       - "1445:1455"
     volumes:
-      - "/DATA/AppData/${AppID}/workspace:/workspaces"
+      - "/DATA/AppData/${AppID}/:/workspaces"
       - "/DATA/AppData/${AppID}/cloudcli:/root/.cloudcli"
       - "/DATA/AppData/${AppID}/codex:/root/.codex"
     depends_on:
