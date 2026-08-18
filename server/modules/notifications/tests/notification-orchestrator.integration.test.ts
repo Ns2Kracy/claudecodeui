@@ -74,11 +74,27 @@ test('notification delivery reports false when every deliverable channel is disa
   });
 });
 
+test('notification preferences expose only browser channels', async () => {
+  await withIsolatedDatabase(() => {
+    const user = userDb.createUser('web-notification-user', 'hash');
+    const preferences = notificationPreferencesDb.updatePreferences(Number(user.id), {
+      channels: { inApp: true, webPush: true, sound: false },
+      events: {},
+    });
+
+    assert.deepEqual(preferences.channels, {
+      inApp: true,
+      webPush: true,
+      sound: false,
+    });
+  });
+});
+
 test('explicit notification dedupe keys use a rolling suppression window', async () => {
   await withIsolatedDatabase(() => {
     const user = userDb.createUser('notification-dedupe-user', 'hash');
     notificationPreferencesDb.updatePreferences(Number(user.id), {
-      channels: { desktop: true },
+      channels: { webPush: true },
       events: {},
     });
     const event = createNotificationEvent({

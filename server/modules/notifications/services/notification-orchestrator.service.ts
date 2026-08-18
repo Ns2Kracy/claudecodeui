@@ -1,7 +1,6 @@
 import webPush from 'web-push';
 
 import { notificationPreferencesDb, pushSubscriptionsDb, sessionsDb } from '@/modules/database/index.js';
-import { sendDesktopNotification as sendDesktopNotificationToClients } from '@/modules/notifications/services/desktop-notification-clients.service.js';
 
 type NotificationPreferences = ReturnType<typeof notificationPreferencesDb.getPreferences>;
 type NotificationMeta = Record<string, unknown>;
@@ -277,15 +276,8 @@ function sendWebPushPayload(userId: number, payload: NotificationPayload): Promi
 const notificationChannels: NotificationChannel[] = [
   {
     id: 'webPush',
-    // TODO: Web push still uses push_subscriptions. Do not remove that table until
-    // browser push subscriptions are migrated into notification_channel_endpoints.
     isEnabled: (preferences) => Boolean(preferences.channels.webPush),
     send: ({ userId, payload }) => sendWebPushPayload(userId, payload),
-  },
-  {
-    id: 'desktop',
-    isEnabled: (preferences) => Boolean(preferences.channels.desktop),
-    send: ({ userId, payload }) => sendDesktopNotificationToClients(userId, payload),
   },
 ];
 
