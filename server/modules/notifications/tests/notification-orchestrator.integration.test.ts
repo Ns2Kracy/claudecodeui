@@ -1,8 +1,8 @@
-import assert from 'node:assert/strict';
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import test from 'node:test';
+import assert from "node:assert/strict";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import test from "node:test";
 
 import {
   closeConnection,
@@ -10,18 +10,22 @@ import {
   notificationPreferencesDb,
   sessionsDb,
   userDb,
-} from '@/modules/database/index.js';
+} from "@/modules/database/index.js";
 
 import {
   buildNotificationPayload,
   createNotificationEvent,
   notifyUserIfEnabled,
-} from '../services/notification-orchestrator.service.js';
+} from "../services/notification-orchestrator.service.js";
 
-async function withIsolatedDatabase(runTest: () => void | Promise<void>): Promise<void> {
+async function withIsolatedDatabase(
+  runTest: () => void | Promise<void>,
+): Promise<void> {
   const previousDatabasePath = process.env.DATABASE_PATH;
-  const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'notification-orchestrator-'));
-  const databasePath = path.join(temporaryDirectory, 'auth.db');
+  const temporaryDirectory = await mkdtemp(
+    path.join(tmpdir(), "notification-orchestrator-"),
+  );
+  const databasePath = path.join(temporaryDirectory, "auth.db");
 
   closeConnection();
   process.env.DATABASE_PATH = databasePath;
@@ -40,33 +44,35 @@ async function withIsolatedDatabase(runTest: () => void | Promise<void>): Promis
   }
 }
 
-test('notification payload uses the app session id for a provider session id', async () => {
+test("notification payload uses the app session id for a provider session id", async () => {
   await withIsolatedDatabase(() => {
-    sessionsDb.createAppSession('app-session-1', 'claude', '/workspace/demo');
-    sessionsDb.assignProviderSessionId('app-session-1', 'claude-native-1');
+    sessionsDb.createAppSession("app-session-1", "claude", "/workspace/demo");
+    sessionsDb.assignProviderSessionId("app-session-1", "claude-native-1");
 
-    const payload = buildNotificationPayload(createNotificationEvent({
-      provider: 'claude',
-      sessionId: 'claude-native-1',
-      kind: 'stop',
-      code: 'run.stopped',
-      meta: { stopReason: 'completed' },
-    }));
+    const payload = buildNotificationPayload(
+      createNotificationEvent({
+        provider: "claude",
+        sessionId: "claude-native-1",
+        kind: "stop",
+        code: "run.stopped",
+        meta: { stopReason: "completed" },
+      }),
+    );
 
-    assert.equal(payload.data.sessionId, 'app-session-1');
+    assert.equal(payload.data.sessionId, "app-session-1");
     assert.match(payload.data.tag, /app-session-1/);
   });
 });
 
-test('notification delivery reports false when every deliverable channel is disabled', async () => {
+test("notification delivery reports false when every deliverable channel is disabled", async () => {
   await withIsolatedDatabase(() => {
-    const user = userDb.createUser('notification-disabled-user', 'hash');
+    const user = userDb.createUser("notification-disabled-user", "hash");
     const accepted = notifyUserIfEnabled({
       userId: Number(user.id),
       event: createNotificationEvent({
-        provider: 'system',
-        code: 'agent.notification',
-        meta: { message: 'Safe advisory message' },
+        provider: "system",
+        code: "agent.notification",
+        meta: { message: "Safe advisory message" },
       }),
     });
 
@@ -74,13 +80,16 @@ test('notification delivery reports false when every deliverable channel is disa
   });
 });
 
-test('notification preferences expose only browser channels', async () => {
+test("notification preferences expose only browser channels", async () => {
   await withIsolatedDatabase(() => {
-    const user = userDb.createUser('web-notification-user', 'hash');
-    const preferences = notificationPreferencesDb.updatePreferences(Number(user.id), {
-      channels: { inApp: true, webPush: true, sound: false },
-      events: {},
-    });
+    const user = userDb.createUser("web-notification-user", "hash");
+    const preferences = notificationPreferencesDb.updatePreferences(
+      Number(user.id),
+      {
+        channels: { inApp: true, webPush: true, sound: false },
+        events: {},
+      },
+    );
 
     assert.deepEqual(preferences.channels, {
       inApp: true,
@@ -90,17 +99,17 @@ test('notification preferences expose only browser channels', async () => {
   });
 });
 
-test('explicit notification dedupe keys use a rolling suppression window', async () => {
+test("explicit notification dedupe keys use a rolling suppression window", async () => {
   await withIsolatedDatabase(() => {
-    const user = userDb.createUser('notification-dedupe-user', 'hash');
+    const user = userDb.createUser("notification-dedupe-user", "hash");
     notificationPreferencesDb.updatePreferences(Number(user.id), {
       channels: { webPush: true },
       events: {},
     });
     const event = createNotificationEvent({
-      provider: 'system',
-      code: 'agent.notification',
-      meta: { message: 'Safe advisory message' },
+      provider: "system",
+      code: "agent.notification",
+      meta: { message: "Safe advisory message" },
       dedupeKey: `notification-dedupe-test:${user.id}`,
     });
     const originalNow = Date.now;
@@ -108,13 +117,25 @@ test('explicit notification dedupe keys use a rolling suppression window', async
     Date.now = () => now;
 
     try {
-      assert.equal(notifyUserIfEnabled({ userId: Number(user.id), event }), true);
+      assert.equal(
+        notifyUserIfEnabled({ userId: Number(user.id), event }),
+        true,
+      );
       now = 11_000;
-      assert.equal(notifyUserIfEnabled({ userId: Number(user.id), event }), false);
+      assert.equal(
+        notifyUserIfEnabled({ userId: Number(user.id), event }),
+        false,
+      );
       now = 25_000;
-      assert.equal(notifyUserIfEnabled({ userId: Number(user.id), event }), false);
+      assert.equal(
+        notifyUserIfEnabled({ userId: Number(user.id), event }),
+        false,
+      );
       now = 46_000;
-      assert.equal(notifyUserIfEnabled({ userId: Number(user.id), event }), true);
+      assert.equal(
+        notifyUserIfEnabled({ userId: Number(user.id), event }),
+        true,
+      );
     } finally {
       Date.now = originalNow;
     }

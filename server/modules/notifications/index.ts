@@ -7,8 +7,8 @@ export {
   notifyRunFailed,
   // Used by provider runtimes to report stopped or completed agent runs.
   notifyRunStopped,
-} from '@/modules/notifications/services/notification-orchestrator.service.js';
+} from "@/modules/notifications/services/notification-orchestrator.service.js";
 // getPublicKey: used by Settings to expose the Web Push subscription key.
-export { getPublicKey } from './vapid-keys.service.js';
+export { getPublicKey } from "./vapid-keys.service.js";
 // configureWebPush: used by the server entrypoint during notification startup.
-export { configureWebPush } from './vapid-keys.service.js';
+export { configureWebPush } from "./vapid-keys.service.js";
