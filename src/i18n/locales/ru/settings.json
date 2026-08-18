@@ -58,7 +58,7 @@
     },
     "darkMode": "Темная тема",
     "showRawParameters": "Показывать сырые параметры",
-    "showThinking": "Показывать размышления",
+    "showThinking": "Показывать подробные рассуждения",
     "sendByCtrlEnter": "Отправка по Ctrl+Enter",
     "sendByCtrlEnterDescription": "Когда включено, нажатие Ctrl+Enter будет отправлять сообщение вместо просто Enter. Это полезно для пользователей IME, чтобы избежать случайной отправки.",
     "dragHandle": {

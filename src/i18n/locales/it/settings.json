@@ -58,7 +58,7 @@
     },
     "darkMode": "Modalità scura",
     "showRawParameters": "Mostra parametri grezzi",
-    "showThinking": "Mostra ragionamento",
+    "showThinking": "Mostra ragionamento dettagliato",
     "sendByCtrlEnter": "Invia con Ctrl+Invio",
     "sendByCtrlEnterDescription": "Se abilitato, premere Ctrl+Invio invierà il messaggio invece di Invio. Utile per gli utenti IME per evitare invii accidentali.",
     "dragHandle": {

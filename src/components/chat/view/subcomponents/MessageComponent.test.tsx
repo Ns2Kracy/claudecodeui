@@ -33,3 +33,12 @@ test("user copy and time metadata render below the text bubble", () => {
 	assert.match(metadataTag, /text-muted-foreground/);
 	assert.match(metadataTag, /\[&_button\]:text-gray-400/);
 });
+
+test("Codex reasoning uses the compact summary treatment instead of a thinking card", () => {
+	assert.match(messageComponentSource, /data-codex-reasoning-summary="true"/);
+	assert.match(messageComponentSource, /italic/);
+	assert.doesNotMatch(
+		messageComponentSource,
+		/Thinking messages — Reasoning component/,
+	);
+});

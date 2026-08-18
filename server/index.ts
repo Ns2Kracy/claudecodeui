@@ -21,12 +21,14 @@ import {
 import {
 	closeSessionsWatcher,
 	initializeSessionsWatcher,
+	providerModelsService,
 	providerRuntimeService,
 } from "@/modules/providers/index.js";
 import {
 	initializeNineRouterDataPlaneKey,
 	routingOAuthCallbackRoutes,
 	routingRoutes,
+	routingRuntimeService,
 } from "@/modules/routing/index.js";
 import { createWebSocketServer } from "@/modules/websocket/index.js";
 
@@ -115,6 +117,19 @@ const wss = createWebSocketServer(server, {
 			}
 
 			return null;
+		},
+		resolveCodexShellRouting: async (sessionId) => {
+			const sessionModel = await providerModelsService.resolveSessionModel(
+				"codex",
+				{ sessionId },
+			);
+			const routing = await routingRuntimeService.resolveForModel(
+				sessionModel.model,
+			);
+			if (routing.source !== "9router") {
+				throw new Error("Codex routing credentials are unavailable");
+			}
+			return routing;
 		},
 	},
 	getPluginPort,
@@ -255,9 +270,7 @@ app.get("*", (req, res) => {
 		res.sendFile(indexPath);
 	} else {
 		// Development fallback is fixed to the configured local Vite target; never trust Host.
-		res
-			.status(302)
-			.setHeader("Location", `http://${DISPLAY_HOST}:${VITE_PORT}`);
+		res.status(302).setHeader("Location", `http://${DISPLAY_HOST}:${VITE_PORT}`);
 		res.end();
 	}
 });

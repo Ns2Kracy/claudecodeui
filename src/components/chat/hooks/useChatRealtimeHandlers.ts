@@ -1,20 +1,40 @@
-import { useEffect, useRef } from 'react';
-import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
+import { useEffect, useRef } from "react";
+import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 
-import type { ServerEvent } from '../../../contexts/WebSocketContext';
-import { showCompletionTitleIndicator } from '../../../utils/pageTitleNotification';
-import { playChatCompletionSound, playNotificationSound } from '../../../utils/notificationSound';
-import type { MarkSessionIdle, MarkSessionProcessing } from '../../../hooks/useSessionProtection';
-import type { PendingPermissionRequest } from '../types/types';
-import type { ProjectSession, LLMProvider } from '../../../types/app';
-import type { SessionStore, NormalizedMessage } from '../../../stores/useSessionStore';
+import type { ServerEvent } from "../../../contexts/WebSocketContext";
+import { showCompletionTitleIndicator } from "../../../utils/pageTitleNotification";
+import {
+  playChatCompletionSound,
+  playNotificationSound,
+} from "../../../utils/notificationSound";
+import type {
+  MarkSessionIdle,
+  MarkSessionProcessing,
+} from "../../../hooks/useSessionProtection";
+import type { PendingPermissionRequest } from "../types/types";
+import type { ProjectSession, LLMProvider } from "../../../types/app";
+import type {
+  SessionStore,
+  NormalizedMessage,
+} from "../../../stores/useSessionStore";
+import { parseCodexReasoningSummary } from "../utils/reasoningSummary";
 
-const isActionablePermissionRequest = (request: { toolName?: unknown } | null | undefined): boolean => {
-  return request?.toolName !== 'ExitPlanMode' && request?.toolName !== 'exit_plan_mode';
+const isActionablePermissionRequest = (
+  request: { toolName?: unknown } | null | undefined,
+): boolean => {
+  return (
+    request?.toolName !== "ExitPlanMode" &&
+    request?.toolName !== "exit_plan_mode"
+  );
 };
 
-const hasActionablePermissionRequests = (requests: Array<{ toolName?: unknown }> | null | undefined): boolean => {
-  return Array.isArray(requests) && requests.some((request) => isActionablePermissionRequest(request));
+const hasActionablePermissionRequests = (
+  requests: Array<{ toolName?: unknown }> | null | undefined,
+): boolean => {
+  return (
+    Array.isArray(requests) &&
+    requests.some((request) => isActionablePermissionRequest(request))
+  );
 };
 
 interface UseChatRealtimeHandlersArgs {
@@ -24,7 +44,9 @@ interface UseChatRealtimeHandlersArgs {
   currentSessionId: string | null;
   setTokenBudget: (budget: Record<string, unknown> | null) => void;
   pendingPermissionRequests: PendingPermissionRequest[];
-  setPendingPermissionRequests: Dispatch<SetStateAction<PendingPermissionRequest[]>>;
+  setPendingPermissionRequests: Dispatch<
+    SetStateAction<PendingPermissionRequest[]>
+  >;
   streamTimerRef: MutableRefObject<number | null>;
   accumulatedStreamRef: MutableRefObject<string>;
   /**
@@ -76,8 +98,11 @@ export function useChatRealtimeHandlers({
   // to rebind the websocket listener. Read the visible session id from a ref
   // so a fast `chat_subscribed` ack is matched against the current view, not
   // the previous render's closed-over selection.
-  const activeViewSessionIdRef = useRef<string | null>(selectedSession?.id || currentSessionId || null);
-  activeViewSessionIdRef.current = selectedSession?.id || currentSessionId || null;
+  const activeViewSessionIdRef = useRef<string | null>(
+    selectedSession?.id || currentSessionId || null,
+  );
+  activeViewSessionIdRef.current =
+    selectedSession?.id || currentSessionId || null;
 
   // Keep the latest pending-permission snapshot available to the websocket
   // listener so back-to-back permission events can dedupe and re-arm the
@@ -95,10 +120,12 @@ export function useChatRealtimeHandlers({
       }
 
       const activeViewSessionId = activeViewSessionIdRef.current;
-      const sid = (typeof msg.sessionId === 'string' && msg.sessionId) || activeViewSessionId;
+      const sid =
+        (typeof msg.sessionId === "string" && msg.sessionId) ||
+        activeViewSessionId;
 
       // Record replay progress for every sequenced live event.
-      if (sid && typeof msg.seq === 'number') {
+      if (sid && typeof msg.seq === "number") {
         const known = lastSeqRef.current.get(sid) ?? 0;
         if (msg.seq > known) {
           lastSeqRef.current.set(sid, msg.seq);
@@ -106,11 +133,11 @@ export function useChatRealtimeHandlers({
       }
 
       switch (msg.kind) {
-        case 'websocket_reconnected':
+        case "websocket_reconnected":
           onWebSocketReconnect?.();
           return;
 
-        case 'chat_subscribed': {
+        case "chat_subscribed": {
           // Ack for chat.subscribe: authoritative processing state plus any
           // pending tool-permission prompts for the run.
           if (!sid) return;
@@ -127,22 +154,31 @@ export function useChatRealtimeHandlers({
 
           const isViewedSession = sid === activeViewSessionId;
           if (isViewedSession && Array.isArray(msg.pendingPermissions)) {
-            const nextPendingPermissionRequests = msg.pendingPermissions as PendingPermissionRequest[];
-            const hadActionablePermissionRequests = hasActionablePermissionRequests(pendingPermissionRequestsRef.current);
-            const hasPendingActionablePermissionRequests = hasActionablePermissionRequests(nextPendingPermissionRequests);
+            const nextPendingPermissionRequests =
+              msg.pendingPermissions as PendingPermissionRequest[];
+            const hadActionablePermissionRequests =
+              hasActionablePermissionRequests(
+                pendingPermissionRequestsRef.current,
+              );
+            const hasPendingActionablePermissionRequests =
+              hasActionablePermissionRequests(nextPendingPermissionRequests);
 
-            pendingPermissionRequestsRef.current = nextPendingPermissionRequests;
+            pendingPermissionRequestsRef.current =
+              nextPendingPermissionRequests;
             setPendingPermissionRequests(nextPendingPermissionRequests);
 
-            if (hasPendingActionablePermissionRequests && !hadActionablePermissionRequests) {
+            if (
+              hasPendingActionablePermissionRequests &&
+              !hadActionablePermissionRequests
+            ) {
               void playNotificationSound();
             }
           }
           return;
         }
 
-        case 'protocol_error': {
-          console.error('[Chat] Protocol error:', msg.code, msg.error);
+        case "protocol_error": {
+          console.error("[Chat] Protocol error:", msg.code, msg.error);
           if (sid) {
             // Surface the failure in the conversation and stop the spinner —
             // the run never started (or was rejected), so no `complete` follows.
@@ -152,16 +188,16 @@ export function useChatRealtimeHandlers({
               sessionId: sid,
               timestamp: new Date().toISOString(),
               provider,
-              kind: 'error',
-              content: String(msg.error || 'Request failed'),
+              kind: "error",
+              content: String(msg.error || "Request failed"),
             } as NormalizedMessage);
           }
           return;
         }
 
         // Sidebar/global events — owned by useProjectsState.
-        case 'session_upserted':
-        case 'loading_progress':
+        case "session_upserted":
+        case "loading_progress":
           return;
 
         default:
@@ -173,15 +209,19 @@ export function useChatRealtimeHandlers({
       /* -------------------------------------------------------------- */
 
       // --- Streaming: buffer for performance ---
-      if (msg.kind === 'stream_delta') {
-        const text = (msg.content as string) || '';
+      if (msg.kind === "stream_delta") {
+        const text = (msg.content as string) || "";
         if (!text) return;
         accumulatedStreamRef.current += text;
         if (!streamTimerRef.current) {
           streamTimerRef.current = window.setTimeout(() => {
             streamTimerRef.current = null;
             if (sid) {
-              sessionStore.updateStreaming(sid, accumulatedStreamRef.current, provider);
+              sessionStore.updateStreaming(
+                sid,
+                accumulatedStreamRef.current,
+                provider,
+              );
             }
           }, 100);
         }
@@ -192,27 +232,31 @@ export function useChatRealtimeHandlers({
         return;
       }
 
-      if (msg.kind === 'stream_end') {
+      if (msg.kind === "stream_end") {
         if (streamTimerRef.current) {
           clearTimeout(streamTimerRef.current);
           streamTimerRef.current = null;
         }
         if (sid) {
           if (accumulatedStreamRef.current) {
-            sessionStore.updateStreaming(sid, accumulatedStreamRef.current, provider);
+            sessionStore.updateStreaming(
+              sid,
+              accumulatedStreamRef.current,
+              provider,
+            );
           }
           sessionStore.finalizeStreaming(sid);
         }
-        accumulatedStreamRef.current = '';
+        accumulatedStreamRef.current = "";
         return;
       }
 
       // --- All other messages: route to store ---
       const shouldPersist =
-        msg.kind !== 'complete'
-        && msg.kind !== 'status'
-        && msg.kind !== 'permission_request'
-        && msg.kind !== 'permission_cancelled';
+        msg.kind !== "complete" &&
+        msg.kind !== "status" &&
+        msg.kind !== "permission_request" &&
+        msg.kind !== "permission_cancelled";
 
       if (sid && shouldPersist) {
         sessionStore.appendRealtime(sid, msg as unknown as NormalizedMessage);
@@ -220,17 +264,21 @@ export function useChatRealtimeHandlers({
 
       // --- UI side effects for specific kinds ---
       switch (msg.kind) {
-        case 'complete': {
+        case "complete": {
           // Flush any remaining streaming state
           if (streamTimerRef.current) {
             clearTimeout(streamTimerRef.current);
             streamTimerRef.current = null;
           }
           if (sid && accumulatedStreamRef.current) {
-            sessionStore.updateStreaming(sid, accumulatedStreamRef.current, provider);
+            sessionStore.updateStreaming(
+              sid,
+              accumulatedStreamRef.current,
+              provider,
+            );
             sessionStore.finalizeStreaming(sid);
           }
-          accumulatedStreamRef.current = '';
+          accumulatedStreamRef.current = "";
 
           // `complete` is the unified terminal event — every provider run ends
           // with exactly one, regardless of success, failure, or abort. The
@@ -268,25 +316,34 @@ export function useChatRealtimeHandlers({
         // providers emit it for mid-run stderr output too. Run teardown is
         // always signalled by the unified 'complete' that follows.
 
-        case 'permission_request': {
+        case "permission_request": {
           if (!msg.requestId) break;
           if (isActionablePermissionRequest({ toolName: msg.toolName })) {
             void playNotificationSound();
           }
 
           if (sid === activeViewSessionId) {
-            const previousPendingPermissionRequests = pendingPermissionRequestsRef.current;
-            if (!previousPendingPermissionRequests.some((request) => request.requestId === msg.requestId)) {
-              const nextPendingPermissionRequests = [...previousPendingPermissionRequests, {
-                requestId: msg.requestId as string,
-                toolName: (msg.toolName as string) || 'UnknownTool',
-                input: msg.input,
-                context: msg.context,
-                sessionId: sid || null,
-                receivedAt: new Date(),
-              }];
+            const previousPendingPermissionRequests =
+              pendingPermissionRequestsRef.current;
+            if (
+              !previousPendingPermissionRequests.some(
+                (request) => request.requestId === msg.requestId,
+              )
+            ) {
+              const nextPendingPermissionRequests = [
+                ...previousPendingPermissionRequests,
+                {
+                  requestId: msg.requestId as string,
+                  toolName: (msg.toolName as string) || "UnknownTool",
+                  input: msg.input,
+                  context: msg.context,
+                  sessionId: sid || null,
+                  receivedAt: new Date(),
+                },
+              ];
 
-              pendingPermissionRequestsRef.current = nextPendingPermissionRequests;
+              pendingPermissionRequestsRef.current =
+                nextPendingPermissionRequests;
               setPendingPermissionRequests(nextPendingPermissionRequests);
             }
           }
@@ -296,20 +353,38 @@ export function useChatRealtimeHandlers({
           break;
         }
 
-        case 'permission_cancelled': {
+        case "permission_cancelled": {
           if (msg.requestId && sid === activeViewSessionId) {
-            const nextPendingPermissionRequests = pendingPermissionRequestsRef.current.filter(
-              (request: PendingPermissionRequest) => request.requestId !== msg.requestId,
-            );
+            const nextPendingPermissionRequests =
+              pendingPermissionRequestsRef.current.filter(
+                (request: PendingPermissionRequest) =>
+                  request.requestId !== msg.requestId,
+              );
 
-            pendingPermissionRequestsRef.current = nextPendingPermissionRequests;
+            pendingPermissionRequestsRef.current =
+              nextPendingPermissionRequests;
             setPendingPermissionRequests(nextPendingPermissionRequests);
           }
           break;
         }
 
-        case 'status': {
-          if (msg.text === 'token_budget' && msg.tokenBudget) {
+        case "thinking": {
+          if (provider === "codex" && sid) {
+            const summary = parseCodexReasoningSummary(
+              String(msg.content || ""),
+            );
+            if (summary.statusLabel) {
+              onSessionProcessing?.(sid, {
+                statusText: summary.statusLabel,
+                canInterrupt: true,
+              });
+            }
+          }
+          break;
+        }
+
+        case "status": {
+          if (msg.text === "token_budget" && msg.tokenBudget) {
             setTokenBudget(msg.tokenBudget as Record<string, unknown>);
           } else if (msg.text && sid) {
             onSessionProcessing?.(sid, {
@@ -320,7 +395,7 @@ export function useChatRealtimeHandlers({
           break;
         }
 
-        // text, tool_use, tool_result, thinking, interactive_prompt, task_notification
+        // text, tool_use, tool_result, interactive_prompt, task_notification
         // → already routed to store above, no UI side effects needed
         default:
           break;

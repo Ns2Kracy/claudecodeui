@@ -10,6 +10,7 @@ import type {
 	ProviderModelsDefinition,
 } from "../../../../types/app";
 import { getIntrinsicMessageKey } from "../../utils/messageKeys";
+import { filterMessagesForDisplay } from "../../utils/reasoningSummary";
 import {
 	groupConsecutiveTools,
 	isToolGroupItem,
@@ -103,9 +104,18 @@ function ChatMessagesPane({
 	selectedProject,
 }: ChatMessagesPaneProps) {
 	const { t } = useTranslation("chat");
+	const displayMessages = useMemo(
+		() =>
+			filterMessagesForDisplay(visibleMessages, provider, Boolean(showThinking)),
+		[visibleMessages, provider, showThinking],
+	);
+	const exportMessages = useMemo(
+		() => filterMessagesForDisplay(chatMessages, provider, Boolean(showThinking)),
+		[chatMessages, provider, showThinking],
+	);
 	const groupedVisibleMessages = useMemo(
-		() => groupConsecutiveTools(visibleMessages, Boolean(showThinking)),
-		[visibleMessages, showThinking],
+		() => groupConsecutiveTools(displayMessages),
+		[displayMessages],
 	);
 
 	// Stable, deterministic keys for the messages rendered this pass.
@@ -122,8 +132,7 @@ function ChatMessagesPane({
 		const keys = new WeakMap<ChatMessage, string>();
 		const occurrences = new Map<string, number>();
 		const assign = (message: ChatMessage) => {
-			const intrinsicKey =
-				getIntrinsicMessageKey(message) ?? "message-generated";
+			const intrinsicKey = getIntrinsicMessageKey(message) ?? "message-generated";
 			const seen = occurrences.get(intrinsicKey) ?? 0;
 			occurrences.set(intrinsicKey, seen + 1);
 			keys.set(message, seen === 0 ? intrinsicKey : `${intrinsicKey}__${seen}`);
@@ -159,15 +168,14 @@ function ChatMessagesPane({
 				<div className="pointer-events-none sticky right-4 top-3 z-10 mb-2 flex justify-end sm:px-4">
 					<div className="pointer-events-auto">
 						<ChatExportMenu
-							messages={chatMessages}
+							messages={exportMessages}
 							sessionTitle={selectedSession?.title}
 						/>
 					</div>
 				</div>
 			)}
 			<div className="mx-auto w-full max-w-[54.25rem] space-y-3 px-4 sm:space-y-4">
-				{(isLoadingSessionMessages || isProcessing) &&
-				chatMessages.length === 0 ? (
+				{(isLoadingSessionMessages || isProcessing) && chatMessages.length === 0 ? (
 					<div className="mt-8 text-center text-gray-500 dark:text-gray-400">
 						<div className="flex items-center justify-center space-x-2">
 							<div className="h-4 w-4 animate-spin rounded-full border-b-2 border-gray-400" />
@@ -191,37 +199,29 @@ function ChatMessagesPane({
 				) : (
 					<>
 						{/* Loading indicator for older messages (hide when load-all is active) */}
-						{isLoadingMoreMessages &&
-							!isLoadingAllMessages &&
-							!allMessagesLoaded && (
-								<div className="py-3 text-center text-gray-500 dark:text-gray-400">
-									<div className="flex items-center justify-center space-x-2">
-										<div className="h-4 w-4 animate-spin rounded-full border-b-2 border-gray-400" />
-										<p className="text-sm">
-											{t("session.loading.olderMessages")}
-										</p>
-									</div>
+						{isLoadingMoreMessages && !isLoadingAllMessages && !allMessagesLoaded && (
+							<div className="py-3 text-center text-gray-500 dark:text-gray-400">
+								<div className="flex items-center justify-center space-x-2">
+									<div className="h-4 w-4 animate-spin rounded-full border-b-2 border-gray-400" />
+									<p className="text-sm">{t("session.loading.olderMessages")}</p>
 								</div>
-							)}
+							</div>
+						)}
 
 						{/* Indicator showing there are more messages to load (hide when all loaded) */}
-						{hasMoreMessages &&
-							!isLoadingMoreMessages &&
-							!allMessagesLoaded && (
-								<div className="border-b border-gray-200 py-2 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
-									{totalMessages > 0 && (
-										<span>
-											{t("session.messages.showingOf", {
-												shown: sessionMessagesCount,
-												total: totalMessages,
-											})}{" "}
-											<span className="text-xs">
-												{t("session.messages.scrollToLoad")}
-											</span>
-										</span>
-									)}
-								</div>
-							)}
+						{hasMoreMessages && !isLoadingMoreMessages && !allMessagesLoaded && (
+							<div className="border-b border-gray-200 py-2 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
+								{totalMessages > 0 && (
+									<span>
+										{t("session.messages.showingOf", {
+											shown: sessionMessagesCount,
+											total: totalMessages,
+										})}{" "}
+										<span className="text-xs">{t("session.messages.scrollToLoad")}</span>
+									</span>
+								)}
+							</div>
+						)}
 
 						<LoadAllMessagesOverlay
 							showLoadAllOverlay={showLoadAllOverlay}
@@ -261,8 +261,7 @@ function ChatMessagesPane({
 							return groupedVisibleMessages.map((item) => {
 								if (isToolGroupItem(item)) {
 									const groupPrevMessage = prevMessage;
-									prevMessage =
-										item.messages[item.messages.length - 1] || prevMessage;
+									prevMessage = item.messages[item.messages.length - 1] || prevMessage;
 
 									return (
 										<ToolGroupContainer

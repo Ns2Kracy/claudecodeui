@@ -52,6 +52,9 @@ test("a stale socket close cannot detach the socket that replaced it", () => {
 	const pty = createFakePty();
 	const dependencies = {
 		resolveProviderSessionId: () => null,
+		resolveCodexShellRouting: async () => {
+			throw new Error("not used by plain shell");
+		},
 		spawnPty: () => pty as never,
 	};
 	const initMessage = JSON.stringify({
@@ -89,6 +92,9 @@ test("shell output detects and normalizes a wrapped authentication URL", () => {
 	const socket = createFakeSocket();
 	const dependencies = {
 		resolveProviderSessionId: () => null,
+		resolveCodexShellRouting: async () => {
+			throw new Error("not used by plain shell");
+		},
 		spawnPty: () => pty as never,
 	};
 
@@ -124,14 +130,90 @@ test("shell output detects and normalizes a wrapped authentication URL", () => {
 	pty.emitExit();
 });
 
-test("agent-backed shell always starts Codex even for a stale provider value", () => {
+test("agent-backed shell injects routed Codex credentials only into its PTY", async () => {
 	const pty = createFakePty();
 	const socket = createFakeSocket();
+	let shellExecutable = "";
 	let shellArguments: readonly string[] = [];
+	let shellEnvironment: Record<string, string | undefined> = {};
+	const dependencies = {
+		resolveProviderSessionId: () => null,
+		resolveCodexShellRouting: async () => ({
+			source: "9router" as const,
+			baseUrl: "https://router.example/api",
+			openAiBaseUrl: "https://router.example/v1",
+			apiKey: "temporary-router-key",
+			routeName: "openai/gpt-5.4",
+			model: "openai/gpt-5.4",
+		}),
+		spawnPty: (
+			file: string,
+			args: readonly string[],
+			options: { env?: Record<string, string | undefined> },
+		) => {
+			shellExecutable = file;
+			shellArguments = args;
+			shellEnvironment = options.env ?? {};
+			return pty as never;
+		},
+	};
+
+	handleShellConnection(socket as never, dependencies as never);
+	socket.emit(
+		"message",
+		JSON.stringify({
+			type: "init",
+			projectPath: process.cwd(),
+			sessionId: null,
+			hasSession: false,
+			provider: "codex",
+		}),
+	);
+	await new Promise((resolve) => setImmediate(resolve));
+
+	const command = shellArguments.join(" ");
+	assert.match(shellExecutable, /bash|powershell/i);
+	assert.match(command, /openai_base_url/);
+	assert.match(command, /CLOUDCLI_CODEX_BASE_URL/);
+	assert.match(command, /CLOUDCLI_CODEX_MODEL/);
+	assert.doesNotMatch(
+		command,
+		/temporary-router-key|router\.example|openai\/gpt-5\.4/,
+	);
+	assert.equal(shellEnvironment.CODEX_API_KEY, "temporary-router-key");
+	assert.equal(
+		shellEnvironment.CLOUDCLI_CODEX_BASE_URL,
+		"https://router.example/v1",
+	);
+	assert.equal(shellEnvironment.CLOUDCLI_CODEX_MODEL, "openai/gpt-5.4");
+
+	pty.emitExit();
+});
+
+test("agent-backed shell always starts Codex even for a stale provider value", async () => {
+	const pty = createFakePty();
+	const socket = createFakeSocket();
+	let shellExecutable = "";
+	let shellArguments: readonly string[] = [];
+	let shellEnvironment: Record<string, string | undefined> = {};
 	const dependencies = {
 		resolveProviderSessionId: () => "native-session",
-		spawnPty: (_file: string, args: readonly string[]) => {
+		resolveCodexShellRouting: async () => ({
+			source: "9router" as const,
+			baseUrl: "https://router.example/api",
+			openAiBaseUrl: "https://router.example/v1",
+			apiKey: "temporary-router-key",
+			routeName: "openai/gpt-5.4",
+			model: "openai/gpt-5.4",
+		}),
+		spawnPty: (
+			file: string,
+			args: readonly string[],
+			options: { env?: Record<string, string | undefined> },
+		) => {
+			shellExecutable = file;
 			shellArguments = args;
+			shellEnvironment = options.env ?? {};
 			return pty as never;
 		},
 	};
@@ -147,11 +229,150 @@ test("agent-backed shell always starts Codex even for a stale provider value", (
 			provider: "claude",
 		}),
 	);
+	await new Promise((resolve) => setImmediate(resolve));
 
-	assert.match(shellArguments.join(" "), /codex resume "native-session"/);
+	assert.match(shellExecutable, /bash|powershell/i);
+	assert.match(shellArguments.join(" "), /codex.*resume/);
+	assert.equal(shellEnvironment.CLOUDCLI_CODEX_RESUME_ID, "native-session");
 	assert.doesNotMatch(shellArguments.join(" "), /claude|cursor-agent|opencode/);
 	const output = socket.frames.join("\n");
 	assert.match(output, /Resuming Codex session native-session/);
 
 	pty.emitExit();
+});
+
+test("closing the socket while Codex routing resolves does not spawn a PTY", async () => {
+	const socket = createFakeSocket();
+	let resolveRouting!: (routing: {
+		source: "9router";
+		baseUrl: string;
+		openAiBaseUrl: string;
+		apiKey: string;
+		routeName: string;
+		model: string;
+	}) => void;
+	let spawned = false;
+	const dependencies = {
+		resolveProviderSessionId: () => null,
+		resolveCodexShellRouting: () =>
+			new Promise((resolve) => {
+				resolveRouting = resolve;
+			}),
+		spawnPty: () => {
+			spawned = true;
+			return createFakePty() as never;
+		},
+	};
+
+	handleShellConnection(socket as never, dependencies as never);
+	socket.emit(
+		"message",
+		JSON.stringify({
+			type: "init",
+			projectPath: process.cwd(),
+			provider: "codex",
+		}),
+	);
+	await new Promise((resolve) => setImmediate(resolve));
+	socket.readyState = WebSocket.CLOSED;
+	socket.emit("close");
+	resolveRouting({
+		source: "9router",
+		baseUrl: "https://router.example/api",
+		openAiBaseUrl: "https://router.example/v1",
+		apiKey: "temporary-router-key",
+		routeName: "openai/gpt-5.4",
+		model: "openai/gpt-5.4",
+	});
+	await new Promise((resolve) => setImmediate(resolve));
+
+	assert.equal(spawned, false);
+});
+
+test("a different init cannot overtake pending Codex routing initialization", async () => {
+	const pty = createFakePty();
+	const socket = createFakeSocket();
+	let resolveRouting!: (routing: {
+		source: "9router";
+		baseUrl: string;
+		openAiBaseUrl: string;
+		apiKey: string;
+		routeName: string;
+		model: string;
+	}) => void;
+	let routingCalls = 0;
+	let spawnCalls = 0;
+	const dependencies = {
+		resolveProviderSessionId: () => null,
+		resolveCodexShellRouting: () => {
+			routingCalls += 1;
+			return new Promise((resolve) => {
+				resolveRouting = resolve;
+			});
+		},
+		spawnPty: () => {
+			spawnCalls += 1;
+			return pty as never;
+		},
+	};
+	const codexInitMessage = JSON.stringify({
+		type: "init",
+		projectPath: process.cwd(),
+		provider: "codex",
+	});
+	const plainShellInitMessage = JSON.stringify({
+		type: "init",
+		projectPath: process.cwd(),
+		provider: "plain-shell",
+		isPlainShell: true,
+		initialCommand: "pwd",
+	});
+
+	handleShellConnection(socket as never, dependencies as never);
+	socket.emit("message", codexInitMessage);
+	socket.emit("message", plainShellInitMessage);
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.equal(routingCalls, 1);
+	resolveRouting({
+		source: "9router",
+		baseUrl: "https://router.example/api",
+		openAiBaseUrl: "https://router.example/v1",
+		apiKey: "temporary-router-key",
+		routeName: "openai/gpt-5.4",
+		model: "openai/gpt-5.4",
+	});
+	await new Promise((resolve) => setImmediate(resolve));
+
+	assert.equal(spawnCalls, 1);
+	pty.emitExit();
+});
+
+test("agent-backed shell does not spawn an unauthenticated Codex process when routing fails", async () => {
+	const socket = createFakeSocket();
+	let spawned = false;
+	const dependencies = {
+		resolveProviderSessionId: () => null,
+		resolveCodexShellRouting: async () => {
+			throw new Error("Router is unavailable");
+		},
+		spawnPty: () => {
+			spawned = true;
+			return createFakePty() as never;
+		},
+	};
+
+	handleShellConnection(socket as never, dependencies as never);
+	socket.emit(
+		"message",
+		JSON.stringify({
+			type: "init",
+			projectPath: process.cwd(),
+			sessionId: `routing-failure-${Date.now()}`,
+			provider: "codex",
+		}),
+	);
+	await new Promise((resolve) => setImmediate(resolve));
+
+	assert.equal(spawned, false);
+	assert.match(socket.frames.join("\n"), /Router is unavailable/);
 });

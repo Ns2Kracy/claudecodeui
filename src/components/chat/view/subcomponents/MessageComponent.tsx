@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import SessionProviderLogo from "../../../llm-logo-provider/SessionProviderLogo";
 import type { ChatMessage, Provider } from "../../types/types";
 import { formatUsageLimitText } from "../../utils/chatFormatting";
+import { parseCodexReasoningSummary } from "../../utils/reasoningSummary";
 import type { Project } from "../../../../types/app";
 import {
 	ToolRenderer,
@@ -92,8 +93,12 @@ const MessageComponent = memo(
 			() => new Date(message.timestamp).toLocaleTimeString(),
 			[message.timestamp],
 		);
+		const codexReasoningSummary =
+			message.isThinking && provider === "codex"
+				? parseCodexReasoningSummary(String(message.content || ""))
+				: null;
 		const shouldHideThinkingMessage = Boolean(
-			message.isThinking && !showThinking,
+			message.isThinking && provider !== "codex" && !showThinking,
 		);
 
 		if (shouldHideThinkingMessage) {
@@ -140,10 +145,7 @@ const MessageComponent = memo(
 										className="-mt-1 flex w-full items-center justify-end gap-1 text-xs text-muted-foreground [&_button:hover]:text-gray-600 dark:[&_button:hover]:text-gray-300 [&_button]:text-gray-400 dark:[&_button]:text-gray-500"
 									>
 										{shouldShowUserCopyControl && (
-											<MessageCopyControl
-												content={userCopyContent}
-												messageType="user"
-											/>
+											<MessageCopyControl content={userCopyContent} messageType="user" />
 										)}
 										<span>{formattedTime}</span>
 									</div>
@@ -188,10 +190,7 @@ const MessageComponent = memo(
 									</div>
 								) : (
 									<div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full p-1 text-sm text-foreground">
-										<SessionProviderLogo
-											provider={provider}
-											className="h-full w-full"
-										/>
+										<SessionProviderLogo provider={provider} className="h-full w-full" />
 									</div>
 								)}
 								<div className="text-sm font-medium text-gray-900 dark:text-white">
@@ -253,10 +252,7 @@ const MessageComponent = memo(
 										) &&
 										(message.toolResult.isError ? (
 											// Error results — collapsed red row that expands to the content
-											<div
-												id={`tool-result-${message.toolId}`}
-												className="scroll-mt-4"
-											>
+											<div id={`tool-result-${message.toolId}`} className="scroll-mt-4">
 												<ToolErrorDisplay
 													label={t("messageTypes.error")}
 													content={String(message.toolResult.content || "")}
@@ -264,10 +260,7 @@ const MessageComponent = memo(
 											</div>
 										) : (
 											// Non-error results - route through ToolRenderer (single source of truth)
-											<div
-												id={`tool-result-${message.toolId}`}
-												className="scroll-mt-4"
-											>
+											<div id={`tool-result-${message.toolId}`} className="scroll-mt-4">
 												<ToolRenderer
 													toolName={message.toolName || "UnknownTool"}
 													toolInput={message.toolInput}
@@ -309,16 +302,13 @@ const MessageComponent = memo(
 													.split("\n")
 													.filter((line) => line.trim());
 												const questionLine =
-													lines.find((line) => line.includes("?")) ||
-													lines[0] ||
-													"";
+													lines.find((line) => line.includes("?")) || lines[0] || "";
 												const options: InteractiveOption[] = [];
 
 												// Parse the menu options
 												lines.forEach((line) => {
 													// Match lines like "❯ 1. Yes" or "  2. No"
-													const optionMatch =
-														line.match(/[❯\s]*(\d+)\.\s+(.+)/);
+													const optionMatch = line.match(/[❯\s]*(\d+)\.\s+(.+)/);
 													if (optionMatch) {
 														const isSelected = line.includes("❯");
 														options.push({
@@ -360,9 +350,7 @@ const MessageComponent = memo(
 																		<span className="flex-1 text-sm font-medium sm:text-base">
 																			{option.text}
 																		</span>
-																		{option.isSelected && (
-																			<span className="text-lg">❯</span>
-																		)}
+																		{option.isSelected && <span className="text-lg">❯</span>}
 																	</div>
 																</button>
 															))}
@@ -383,34 +371,45 @@ const MessageComponent = memo(
 									</div>
 								</div>
 							) : message.isThinking ? (
-								/* Thinking messages — Reasoning component (ai-elements pattern) */
-								<Reasoning defaultOpen={false}>
-									<ReasoningTrigger />
-									<ReasoningContent>
-										<Markdown className="prose prose-sm prose-gray max-w-none font-serif dark:prose-invert">
-											{message.content}
-										</Markdown>
-										<div className="mt-3 flex items-center text-[11px]">
-											<MessageCopyControl
-												content={String(message.content || "")}
-												messageType="assistant"
-											/>
+								codexReasoningSummary ? (
+									codexReasoningSummary.transcriptOnly ? (
+										<Reasoning defaultOpen={false}>
+											<ReasoningTrigger />
+											<ReasoningContent>
+												<Markdown className="prose prose-sm prose-gray max-w-none font-serif dark:prose-invert">
+													{codexReasoningSummary.displayContent}
+												</Markdown>
+											</ReasoningContent>
+										</Reasoning>
+									) : (
+										<div
+											data-codex-reasoning-summary="true"
+											className="flex gap-2 text-sm italic text-muted-foreground/75"
+										>
+											<span aria-hidden>•</span>
+											<Markdown className="prose prose-sm max-w-none flex-1 font-serif italic text-muted-foreground/75 dark:prose-invert">
+												{codexReasoningSummary.displayContent}
+											</Markdown>
 										</div>
-									</ReasoningContent>
-								</Reasoning>
+									)
+								) : (
+									<Reasoning defaultOpen={false}>
+										<ReasoningTrigger />
+										<ReasoningContent>
+											<Markdown className="prose prose-sm prose-gray max-w-none font-serif dark:prose-invert">
+												{message.content}
+											</Markdown>
+										</ReasoningContent>
+									</Reasoning>
+								)
 							) : (
-								<div
-									dir="auto"
-									className="text-sm text-gray-700 dark:text-gray-300"
-								>
+								<div dir="auto" className="text-sm text-gray-700 dark:text-gray-300">
 									{/* Reasoning accordion */}
 									{showThinking && message.reasoning && (
 										<Reasoning className="mb-3" defaultOpen={false}>
 											<ReasoningTrigger />
 											<ReasoningContent>
-												<div className="whitespace-pre-wrap">
-													{message.reasoning}
-												</div>
+												<div className="whitespace-pre-wrap">{message.reasoning}</div>
 											</ReasoningContent>
 										</Reasoning>
 									)}
@@ -421,10 +420,8 @@ const MessageComponent = memo(
 										// Detect if content is pure JSON (starts with { or [)
 										const trimmedContent = content.trim();
 										if (
-											(trimmedContent.startsWith("{") ||
-												trimmedContent.startsWith("[")) &&
-											(trimmedContent.endsWith("}") ||
-												trimmedContent.endsWith("]"))
+											(trimmedContent.startsWith("{") || trimmedContent.startsWith("[")) &&
+											(trimmedContent.endsWith("}") || trimmedContent.endsWith("]"))
 										) {
 											try {
 												const parsed = JSON.parse(trimmedContent);
@@ -446,9 +443,7 @@ const MessageComponent = memo(
 																	d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
 																/>
 															</svg>
-															<span className="font-medium">
-																{t("json.response")}
-															</span>
+															<span className="font-medium">{t("json.response")}</span>
 														</div>
 														<div className="overflow-hidden rounded-lg border border-border bg-muted">
 															<pre className="overflow-x-auto p-4">

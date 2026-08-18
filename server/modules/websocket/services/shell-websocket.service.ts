@@ -5,6 +5,7 @@ import path from "node:path";
 import pty, { type IPty } from "node-pty";
 import { WebSocket, type RawData } from "ws";
 
+import type { RuntimeRoutingConfiguration } from "@/shared/types.js";
 import { parseIncomingJsonObject } from "@/shared/utils.js";
 
 type ShellIncomingMessage = {
@@ -101,11 +102,19 @@ function shouldAutoOpenUrlFromOutput(value: string): boolean {
 	);
 }
 
+type CodexShellRouting = Extract<
+	RuntimeRoutingConfiguration,
+	{ source: "9router" }
+>;
+
 type ShellWebSocketDependencies = {
 	resolveProviderSessionId: (
 		sessionId: string,
 		provider: string,
 	) => string | null | undefined;
+	resolveCodexShellRouting: (
+		sessionId: string | null,
+	) => Promise<CodexShellRouting>;
 	spawnPty?: typeof pty.spawn;
 };
 
@@ -159,10 +168,7 @@ function resolveResumeSessionId(
 
 	let resumeSessionId: string | null | undefined;
 	try {
-		resumeSessionId = dependencies.resolveProviderSessionId(
-			sessionId,
-			provider,
-		);
+		resumeSessionId = dependencies.resolveProviderSessionId(sessionId, provider);
 	} catch (error) {
 		console.error("Failed to resolve provider session ID:", error);
 		resumeSessionId = undefined;
@@ -178,32 +184,24 @@ function resolveResumeSessionId(
 }
 
 /**
- * Resolves provider command line for plain shell and agent-backed shell modes.
+ * Builds a static shell command whose dynamic values are read from quoted
+ * process-local environment variables. The shell wrapper preserves npm/PATHEXT
+ * command resolution on Windows without exposing credentials in arguments.
  */
-function buildShellCommand(
-	message: ShellIncomingMessage,
-	dependencies: ShellWebSocketDependencies,
-): string {
-	const hasSession = readBoolean(message.hasSession);
-	const initialCommand = readString(message.initialCommand);
-	const provider = readString(message.provider, "codex");
-	const resumeSessionId = resolveResumeSessionId(message, dependencies);
-	const isPlainShell =
-		readBoolean(message.isPlainShell) ||
-		(!!initialCommand && !hasSession) ||
-		provider === "plain-shell";
-
-	if (isPlainShell) {
-		return initialCommand;
+function buildCodexShellCommand(resumeSessionId: string): string {
+	if (os.platform() === "win32") {
+		const command =
+			'codex --config "openai_base_url=$env:CLOUDCLI_CODEX_BASE_URL" --model "$env:CLOUDCLI_CODEX_MODEL"';
+		return resumeSessionId
+			? `${command} resume "$env:CLOUDCLI_CODEX_RESUME_ID"; if ($LASTEXITCODE -ne 0) { ${command} }`
+			: command;
 	}
 
-	if (resumeSessionId) {
-		if (os.platform() === "win32") {
-			return `codex resume "${resumeSessionId}"; if ($LASTEXITCODE -ne 0) { codex }`;
-		}
-		return `codex resume "${resumeSessionId}" || codex`;
-	}
-	return "codex";
+	const command =
+		'codex --config "openai_base_url=$CLOUDCLI_CODEX_BASE_URL" --model "$CLOUDCLI_CODEX_MODEL"';
+	return resumeSessionId
+		? `${command} resume "$CLOUDCLI_CODEX_RESUME_ID" || ${command}`
+		: command;
 }
 
 function readEnvValue(env: NodeJS.ProcessEnv, key: string): string | undefined {
@@ -283,6 +281,8 @@ export function handleShellConnection(
 
 	let shellProcess: IPty | null = null;
 	let ptySessionKey: string | null = null;
+	let initializationPending = false;
+	let socketClosed = false;
 	let urlDetectionBuffer = "";
 	const announcedAuthUrls = new Set<string>();
 
@@ -294,6 +294,10 @@ export function handleShellConnection(
 			}
 
 			if (data.type === "init") {
+				if (initializationPending || shellProcess) {
+					return;
+				}
+				initializationPending = true;
 				const projectPath = readString(data.projectPath, process.cwd());
 				const sessionId = readString(data.sessionId) || null;
 				const hasSession = readBoolean(data.hasSession);
@@ -315,23 +319,23 @@ export function handleShellConnection(
 					isPlainShell && initialCommand
 						? `_cmd_${Buffer.from(initialCommand).toString("base64").slice(0, 16)}`
 						: "";
-				ptySessionKey = `${projectPath}_${sessionId ?? "default"}${commandSuffix}`;
+				const currentPtySessionKey = `${projectPath}_${sessionId ?? "default"}${commandSuffix}`;
 
 				if (isLoginCommand || forceRestart) {
-					const oldSession = ptySessionsMap.get(ptySessionKey);
+					const oldSession = ptySessionsMap.get(currentPtySessionKey);
 					if (oldSession) {
 						if (oldSession.timeoutId) {
 							clearTimeout(oldSession.timeoutId);
 						}
 						oldSession.pty.kill();
-						ptySessionsMap.delete(ptySessionKey);
+						ptySessionsMap.delete(currentPtySessionKey);
 					}
 				}
 
 				const existingSession =
 					isLoginCommand || forceRestart
 						? null
-						: ptySessionsMap.get(ptySessionKey);
+						: ptySessionsMap.get(currentPtySessionKey);
 				if (existingSession) {
 					shellProcess = existingSession.pty;
 					if (existingSession.timeoutId) {
@@ -358,6 +362,8 @@ export function handleShellConnection(
 					}
 
 					existingSession.ws = ws;
+					ptySessionKey = currentPtySessionKey;
+					initializationPending = false;
 					return;
 				}
 
@@ -371,57 +377,96 @@ export function handleShellConnection(
 					ws.send(
 						JSON.stringify({ type: "error", message: "Invalid project path" }),
 					);
+					initializationPending = false;
 					return;
 				}
 
 				const safeSessionIdPattern = /^[a-zA-Z0-9_.\-:]+$/;
 				if (sessionId && !safeSessionIdPattern.test(sessionId)) {
-					ws.send(
-						JSON.stringify({ type: "error", message: "Invalid session ID" }),
-					);
+					ws.send(JSON.stringify({ type: "error", message: "Invalid session ID" }));
+					initializationPending = false;
 					return;
 				}
 
-				const shellCommand = buildShellCommand(data, dependencies);
 				const resumeSessionId = resolveResumeSessionId(data, dependencies);
-				const shell = os.platform() === "win32" ? "powershell.exe" : "bash";
-				const shellArgs =
-					os.platform() === "win32"
-						? ["-Command", shellCommand]
-						: ["-c", shellCommand];
 				const termCols = readNumber(data.cols, 80);
 				const termRows = readNumber(data.rows, 24);
 				const prioritizedPath = prioritizeUserNpmGlobalBin(process.env);
+				let executable: string;
+				let executableArgs: string[];
+				let codexRouting: CodexShellRouting | null = null;
 
-				shellProcess = (dependencies.spawnPty ?? pty.spawn)(shell, shellArgs, {
-					name: "xterm-256color",
-					cols: termCols,
-					rows: termRows,
-					cwd: resolvedProjectPath,
-					env: {
-						...process.env,
-						[prioritizedPath.key]: prioritizedPath.value,
-						TERM: "xterm-256color",
-						COLORTERM: "truecolor",
-						FORCE_COLOR: "3",
+				if (isPlainShell) {
+					const shell = os.platform() === "win32" ? "powershell.exe" : "bash";
+					executable = shell;
+					executableArgs =
+						os.platform() === "win32"
+							? ["-Command", initialCommand]
+							: ["-c", initialCommand];
+				} else {
+					const routing = await dependencies.resolveCodexShellRouting(sessionId);
+					if (socketClosed || ws.readyState !== WebSocket.OPEN) {
+						initializationPending = false;
+						return;
+					}
+					if (
+						!routing.apiKey.trim() ||
+						!routing.openAiBaseUrl.trim() ||
+						!routing.routeName.trim()
+					) {
+						throw new Error("Codex routing credentials are unavailable");
+					}
+					executable = os.platform() === "win32" ? "powershell.exe" : "bash";
+					const codexCommand = buildCodexShellCommand(resumeSessionId);
+					executableArgs =
+						os.platform() === "win32"
+							? ["-Command", codexCommand]
+							: ["-c", codexCommand];
+					codexRouting = routing;
+				}
+
+				const shellEnvironment: NodeJS.ProcessEnv = {
+					...process.env,
+					[prioritizedPath.key]: prioritizedPath.value,
+					TERM: "xterm-256color",
+					COLORTERM: "truecolor",
+					FORCE_COLOR: "3",
+				};
+				if (codexRouting) {
+					shellEnvironment.CODEX_API_KEY = codexRouting.apiKey;
+					shellEnvironment.CLOUDCLI_CODEX_BASE_URL = codexRouting.openAiBaseUrl;
+					shellEnvironment.CLOUDCLI_CODEX_MODEL = codexRouting.routeName;
+					if (resumeSessionId) {
+						shellEnvironment.CLOUDCLI_CODEX_RESUME_ID = resumeSessionId;
+					}
+				}
+
+				const spawnedProcess = (dependencies.spawnPty ?? pty.spawn)(
+					executable,
+					executableArgs,
+					{
+						name: "xterm-256color",
+						cols: termCols,
+						rows: termRows,
+						cwd: resolvedProjectPath,
+						env: shellEnvironment,
 					},
-				});
+				);
+				shellProcess = spawnedProcess;
 
-				ptySessionsMap.set(ptySessionKey, {
-					pty: shellProcess,
+				ptySessionKey = currentPtySessionKey;
+				ptySessionsMap.set(currentPtySessionKey, {
+					pty: spawnedProcess,
 					ws,
 					buffer: [],
 					timeoutId: null,
 					projectPath,
 					sessionId,
 				});
+				initializationPending = false;
 
-				shellProcess.onData((chunk) => {
-					if (!ptySessionKey) {
-						return;
-					}
-
-					const session = ptySessionsMap.get(ptySessionKey);
+				spawnedProcess.onData((chunk) => {
+					const session = ptySessionsMap.get(currentPtySessionKey);
 					if (!session) {
 						return;
 					}
@@ -464,9 +509,7 @@ export function handleShellConnection(
 							}
 						};
 
-						const normalizedDetectedUrls = extractUrlsFromText(
-							urlDetectionBuffer,
-						)
+						const normalizedDetectedUrls = extractUrlsFromText(urlDetectionBuffer)
 							.map((url) => normalizeDetectedUrl(url))
 							.filter((url): url is string => Boolean(url));
 
@@ -474,9 +517,7 @@ export function handleShellConnection(
 							new Set(normalizedDetectedUrls),
 						).filter(
 							(url, _, urls) =>
-								!urls.some(
-									(otherUrl) => otherUrl !== url && otherUrl.startsWith(url),
-								),
+								!urls.some((otherUrl) => otherUrl !== url && otherUrl.startsWith(url)),
 						);
 
 						dedupedDetectedUrls.forEach((url) => emitAuthUrl(url, false));
@@ -500,21 +541,13 @@ export function handleShellConnection(
 					}
 				});
 
-				shellProcess.onExit((exitCode) => {
-					if (!ptySessionKey) {
+				spawnedProcess.onExit((exitCode) => {
+					const session = ptySessionsMap.get(currentPtySessionKey);
+					if (session && session.pty !== spawnedProcess) {
 						return;
 					}
 
-					const session = ptySessionsMap.get(ptySessionKey);
-					if (session && session.pty !== shellProcess) {
-						return;
-					}
-
-					if (
-						session &&
-						session.ws &&
-						session.ws.readyState === WebSocket.OPEN
-					) {
+					if (session && session.ws && session.ws.readyState === WebSocket.OPEN) {
 						session.ws.send(
 							JSON.stringify({
 								type: "output",
@@ -529,8 +562,10 @@ export function handleShellConnection(
 						clearTimeout(session.timeoutId);
 					}
 
-					ptySessionsMap.delete(ptySessionKey);
-					shellProcess = null;
+					ptySessionsMap.delete(currentPtySessionKey);
+					if (shellProcess === spawnedProcess) {
+						shellProcess = null;
+					}
 				});
 
 				let welcomeMsg = `\x1b[36mStarting terminal in: ${projectPath}\x1b[0m\r\n`;
@@ -559,13 +594,11 @@ export function handleShellConnection(
 
 			if (data.type === "resize") {
 				if (shellProcess) {
-					shellProcess.resize(
-						readNumber(data.cols, 80),
-						readNumber(data.rows, 24),
-					);
+					shellProcess.resize(readNumber(data.cols, 80), readNumber(data.rows, 24));
 				}
 			}
 		} catch (error) {
+			initializationPending = false;
 			const message = error instanceof Error ? error.message : String(error);
 			console.error("[ERROR] Shell WebSocket error:", message);
 			if (ws.readyState === WebSocket.OPEN) {
@@ -580,6 +613,7 @@ export function handleShellConnection(
 	});
 
 	ws.on("close", () => {
+		socketClosed = true;
 		if (!ptySessionKey) {
 			return;
 		}
