@@ -399,6 +399,7 @@ test("Codex history hides commentary while preserving reasoning and final answer
         JSON.stringify({
           type: "response_item",
           payload: {
+            id: "final-answer-1",
             type: "message",
             role: "assistant",
             phase: "final_answer",
@@ -436,6 +437,10 @@ test("Codex history hides commentary while preserving reasoning and final answer
         (message) => message.kind === "thinking",
       );
       assert.equal(reasoning?.id, "reasoning-1");
+      const finalAnswer = history.messages.find(
+        (message) => message.content === "Fixed the duplicate output.",
+      );
+      assert.equal(finalAnswer?.id, "final-answer-1");
       assert.ok(visibleContent.includes("Inspecting the relevant files"));
       assert.ok(visibleContent.includes("Fixed the duplicate output."));
       assert.ok(visibleContent.includes("Legacy final answer."));

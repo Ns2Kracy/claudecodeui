@@ -39,6 +39,15 @@ test("Codex live reasoning preserves its canonical SDK item id", () => {
 	assert.equal((transformed as { uuid?: unknown }).uuid, "reasoning-1");
 });
 
+test("Codex live agent messages preserve their canonical SDK item id", () => {
+	const transformed = transformCodexEvent({
+		type: "item.completed",
+		item: { id: "final-1", type: "agent_message", text: "Hi!" },
+	});
+
+	assert.equal((transformed as { uuid?: unknown }).uuid, "final-1");
+});
+
 test("Codex live output publishes only the final agent message", () => {
 	const buffer = createCodexVisibleEventBuffer();
 	const commentary: ThreadEvent = {

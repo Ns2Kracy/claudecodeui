@@ -357,6 +357,7 @@ async function getCodexSessionMessages(
           if (textContent.trim()) {
             messages.push({
               type: "assistant",
+              uuid: entry.payload.id,
               timestamp: entry.timestamp,
               message: {
                 role: "assistant",

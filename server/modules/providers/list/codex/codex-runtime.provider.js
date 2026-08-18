@@ -86,6 +86,7 @@ export function transformCodexEvent(event) {
 				case "agent_message":
 					return {
 						type: "item",
+						uuid: item.id,
 						itemType: "agent_message",
 						message: {
 							role: "assistant",
