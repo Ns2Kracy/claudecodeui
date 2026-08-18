@@ -6,8 +6,6 @@
 node_modules
 dist
 dist-server
-release
-.desktop-build
 database
 *.log
 findings.md

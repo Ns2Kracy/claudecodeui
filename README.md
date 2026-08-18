@@ -1,7 +1,7 @@
 <div align="center">
  <img src="public/logo.svg" alt="CloudCLI UI" width="64" height="64">
  <h1>Cloud CLI</h1>
- <p>A desktop and mobile UI for <a href="https://developers.openai.com/codex">Codex</a>, with provider authentication and model discovery managed by 9Router.<br>Use it locally or remotely to work with your projects and sessions from everywhere.</p>
+ <p>A web UI for desktop and mobile access to <a href="https://developers.openai.com/codex">Codex</a>, with provider authentication and model discovery managed by 9Router.<br>Use it locally or remotely to work with your projects and sessions from everywhere.</p>
 </div>
 
 <p align="center">
@@ -102,18 +102,6 @@ npx @cloudcli-ai/cloudcli@latest sandbox ~/my-project
 
 Supports Codex through 9Router. See the [sandbox docs](docker/) for setup and advanced options.
 
-### Desktop Companion App
-
-CloudCLI Desktop is an optional native companion for CloudCLI Cloud and Local CloudCLI. It ships from this repository's GitHub Releases and keeps CloudCLI available from your menu bar or tray.
-
-- **[macOS](https://cloudcli.ai/download/macos)**
-- **[Windows](https://cloudcli.ai/download/windows)**
-- **[Download page](https://cloudcli.ai/download)** · **[GitHub Releases and checksums](https://github.com/siteboon/claudecodeui/releases)**
-
-Use it to open CloudCLI Cloud environments, switch between local and remote workspaces, and copy mobile/browser URLs. To work locally, choose **Local CloudCLI** in the desktop app; it will use your running local server or start one for you.
-
----
-
 ## Which option is right for you?
 
 CloudCLI UI is the open source UI layer that powers CloudCLI Cloud. You can self-host it on your own machine, run it in a Docker sandbox for isolation, or use CloudCLI Cloud for a fully managed environment.
@@ -126,7 +114,6 @@ CloudCLI UI is the open source UI layer that powers CloudCLI Cloud. You can self
 | **Isolation** | Runs on your host | Hypervisor-level sandbox (microVM) | Full cloud isolation |
 | **Machine needs to stay on** | Yes | Yes | No |
 | **Mobile access** | Any browser on your network | Any browser on your network | Any device |
-| **Desktop companion** | Optional. Choose Local CloudCLI | Optional. Choose Local CloudCLI | Optional. Opens cloud environments |
 | **Agents supported** | Codex | Codex | Codex |
 | **File explorer and Git** | Yes | Yes | Yes |
 | **MCP configuration** | Managed for Codex via UI | Managed via UI | Managed via UI |
