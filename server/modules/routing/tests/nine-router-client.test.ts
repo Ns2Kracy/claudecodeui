@@ -133,9 +133,7 @@ async function withFakeRouter(
 				return;
 			}
 			if (request.method === "GET" && path === "/v1/models") {
-				if (
-					request.headers.authorization !== `Bearer ${expectedDataPlaneKey}`
-				) {
+				if (request.headers.authorization !== `Bearer ${expectedDataPlaneKey}`) {
 					sendJson(response, 401, {
 						error: `invalid key ${request.headers.authorization}`,
 					});
@@ -255,10 +253,7 @@ async function withFakeRouter(
 				});
 				return;
 			}
-			if (
-				request.method === "POST" &&
-				path === "/api/provider-nodes/validate"
-			) {
+			if (request.method === "POST" && path === "/api/provider-nodes/validate") {
 				const body = await readJsonBody(request);
 				state.receivedBodies.push({ path, body });
 				sendJson(response, 200, { valid: true, error: "hidden detail" });
@@ -778,6 +773,51 @@ test("maps current OpenAI-compatible provider model rows using the envelope prov
 				},
 			],
 		});
+	});
+});
+
+test("qualifies leading-slash upstream model ids with the configured node prefix", async () => {
+	await withFakeRouter({}, async ({ baseUrl, request }) => {
+		const client = new NineRouterClient({
+			baseUrl,
+			adminPassword: "admin-password",
+			dataPlaneKey: "data-plane-key",
+			request: async (input, dependencies) => {
+				if (input.operation === "providerGet") {
+					return {
+						statusCode: 200,
+						headers: {},
+						data: {
+							connection: {
+								providerSpecificData: { prefix: "custom" },
+							},
+						},
+					};
+				}
+				if (input.operation === "providerModels") {
+					return {
+						statusCode: 200,
+						headers: {},
+						data: {
+							provider: "openai-compatible-chat-node-id",
+							connectionId: "account-1",
+							models: [
+								{
+									id: "/llm/models/Qwen.gguf",
+									object: "model",
+								},
+							],
+						},
+					};
+				}
+				return request(input, dependencies);
+			},
+		});
+
+		assert.equal(
+			(await client.listProviderModels("account-1")).models[0]?.id,
+			"custom//llm/models/Qwen.gguf",
+		);
 	});
 });
 

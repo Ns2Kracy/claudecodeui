@@ -270,6 +270,7 @@ function sanitizeAccount(value: unknown, now: Date): RoutingAccountView {
 function sanitizeModel(
 	value: unknown,
 	envelopeProvider: string,
+	routePrefix?: string,
 ): RoutingModelView {
 	if (!isRecord(value)) {
 		throw invalidResponse();
@@ -278,8 +279,12 @@ function sanitizeModel(
 	const model = optionalString(value.model);
 	const modelId = optionalString(value.id);
 	let fallbackId: string | null = null;
-	if (modelId) {
-		fallbackId = modelId.includes("/") ? modelId : `${provider}/${modelId}`;
+	if (modelId?.startsWith("/") && routePrefix) {
+		fallbackId = `${routePrefix}/${modelId}`;
+	} else if (modelId?.includes("/")) {
+		fallbackId = modelId;
+	} else if (modelId) {
+		fallbackId = `${provider}/${modelId}`;
 	}
 	const id =
 		optionalString(value.fullModel) ??
@@ -295,7 +300,10 @@ function sanitizeModel(
 	return { id, provider, name };
 }
 
-function sanitizeProviderModels(value: unknown): RoutingProviderModelsView {
+function sanitizeProviderModels(
+	value: unknown,
+	routePrefix?: string,
+): RoutingProviderModelsView {
 	const data = expectRecord(value);
 	const provider = requiredString(data.provider);
 	const models = data.models;
@@ -303,7 +311,7 @@ function sanitizeProviderModels(value: unknown): RoutingProviderModelsView {
 	return {
 		provider,
 		connectionId: requiredString(data.connectionId),
-		models: models.map((model) => sanitizeModel(model, provider)),
+		models: models.map((model) => sanitizeModel(model, provider, routePrefix)),
 	};
 }
 
@@ -496,12 +504,31 @@ export class NineRouterClient implements IRoutingNineRouterClient {
 	}
 
 	async listProviderModels(id: string): Promise<RoutingProviderModelsView> {
-		const result = await this.managementRequest(
+		const modelsResult = await this.managementRequest(
 			{ baseUrl: this.baseUrl, operation: "providerModels", id },
 			"readAccounts",
 			true,
 		);
-		return sanitizeProviderModels(result.data);
+		const models = expectRecord(modelsResult.data).models;
+		const needsRoutePrefix =
+			Array.isArray(models) &&
+			models.some(
+				(model) => isRecord(model) && optionalString(model.id)?.startsWith("/"),
+			);
+		if (!needsRoutePrefix) return sanitizeProviderModels(modelsResult.data);
+
+		const providerResult = await this.managementRequest(
+			{ baseUrl: this.baseUrl, operation: "providerGet", id },
+			"readAccounts",
+			true,
+		);
+		const connection = expectRecord(providerResult.data).connection;
+		const providerSpecificData = isRecord(connection)
+			? connection.providerSpecificData
+			: undefined;
+		if (!isRecord(providerSpecificData)) throw invalidResponse();
+		const routePrefix = requiredString(providerSpecificData.prefix);
+		return sanitizeProviderModels(modelsResult.data, routePrefix);
 	}
 
 	async startOAuth(
@@ -571,8 +598,7 @@ export class NineRouterClient implements IRoutingNineRouterClient {
 			true,
 		);
 		const nodes =
-			expectRecord(result.data).nodes ??
-			expectRecord(result.data).providerNodes;
+			expectRecord(result.data).nodes ?? expectRecord(result.data).providerNodes;
 		if (!Array.isArray(nodes)) throw invalidResponse();
 		return nodes.map(sanitizeProviderNode);
 	}
@@ -761,10 +787,7 @@ export class NineRouterClient implements IRoutingNineRouterClient {
 	private readAuthCookie(setCookie: string[] | undefined): string | null {
 		for (const item of setCookie ?? []) {
 			const pair = item.split(";", 1)[0]?.trim();
-			if (
-				pair?.startsWith("auth_token=") &&
-				pair.length > "auth_token=".length
-			) {
+			if (pair?.startsWith("auth_token=") && pair.length > "auth_token=".length) {
 				return pair;
 			}
 		}
