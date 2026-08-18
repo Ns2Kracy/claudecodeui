@@ -19,22 +19,22 @@ function composeServiceBlock(compose: string, serviceName: string): string {
 	return match?.[0] ?? "";
 }
 
-test("production compose pins the reproducible 1.37.6 release and official Router", () => {
+test("production compose pins the reproducible 1.37.7 release and official Router", () => {
 	const compose = readProjectFile("compose.prod.yaml");
 
-	assert.match(compose, /image:\s+ns2kracy\/cloudcli:1\.37\.6/);
+	assert.match(compose, /image:\s+ns2kracy\/cloudcli:1\.37\.7/);
 	assert.match(compose, /image:\s+decolua\/9router:0\.5\.50/);
 	assert.match(compose, /NINE_ROUTER_BASE_URL:\s+http:\/\/9router:20128/);
 	assert.match(compose, /HOST:\s+0\.0\.0\.0/);
 	assert.match(compose, /SERVER_PORT:\s+["']3001["']/);
 	assert.match(compose, /(?:\$\{CLOUDCLI_PORT:-3001\}|3001):3001/);
 	assert.match(compose, /(?:\$\{CODEX_CALLBACK_PORT:-1455\}|1445):1455/);
-	assert.match(compose, /\/DATA\/AppData\/\$\{AppID\}\/:\/workspaces/);
+	assert.match(compose, /\/DATA\/AppData:\/workspaces/);
 	assert.match(compose, /\/DATA\/AppData\/\$\{AppID\}\/9router:\/app\/data/);
-	assert.equal(JSON.parse(readProjectFile("package.json")).version, "1.37.6");
+	assert.equal(JSON.parse(readProjectFile("package.json")).version, "1.37.7");
 	assert.equal(
 		JSON.parse(readProjectFile("package-lock.json")).version,
-		"1.37.6",
+		"1.37.7",
 	);
 });
 

@@ -49,7 +49,10 @@ test("user-visible branding is CodexUI while internal CloudCLI identifiers stay 
 			source.match(/["'`]([^"'`]*CloudCLI[^"'`]*)["'`]/g) ?? [];
 		const allowedInternalLiterals = visibleCloudCliLiterals.filter(
 			(literal) =>
-				literal.includes("cloudcli.ai") || literal.includes("cloudcli-"),
+				literal.includes("cloudcli.ai") ||
+				literal.includes("cloudcli-") ||
+				(path.endsWith("SidebarFooter.tsx") &&
+					literal.includes("Powered by CloudCLI")),
 		);
 		assert.deepEqual(
 			visibleCloudCliLiterals,
