@@ -4,10 +4,10 @@ import type { TFunction } from "i18next";
 import { IS_PLATFORM } from "../../../../constants/config";
 import type { ReleaseInfo } from "../../../../types/sharedTypes";
 
-const GITHUB_ISSUES_URL = "https://github.com/siteboon/claudecodeui/issues/new";
-const GITHUB_REPO_URL = "https://github.com/siteboon/claudecodeui";
+const GITHUB_ISSUES_URL = "https://community.zimaspace.com/";
+const GITHUB_REPO_URL = "https://github.com/Ns2Kracy/claudecodeui";
 
-const DISCORD_INVITE_URL = "https://discord.gg/buxwujPNRE";
+const DISCORD_INVITE_URL = "https://discord.com/invite/b5CuAU6nEs";
 
 function DiscordIcon({ className }: { className?: string }) {
 	return (
@@ -161,7 +161,7 @@ export default function SidebarFooter({
 						rel="noopener noreferrer"
 						className="text-[10px] text-muted-foreground/40 transition-colors hover:text-muted-foreground"
 					>
-						CodexUI v{currentVersion} – {t("branding.openSource")}
+						CodexUI v{currentVersion} · Powered by CloudCLI
 					</a>
 				</div>
 			)}
