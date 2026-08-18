@@ -1,8 +1,8 @@
 import { Settings, Sparkles, PanelLeftOpen, Bug, AlertTriangle } from 'lucide-react';
 import type { TFunction } from 'i18next';
 
-const DISCORD_INVITE_URL = 'https://discord.gg/buxwujPNRE';
-const GITHUB_ISSUES_URL = 'https://github.com/siteboon/claudecodeui/issues/new';
+const DISCORD_INVITE_URL = 'https://discord.com/invite/b5CuAU6nEs';
+const ISSUES_URL = 'https://community.zimaspace.com/';
 
 function DiscordIcon({ className }: { className?: string }) {
   return (
@@ -55,7 +55,7 @@ export default function SidebarCollapsed({
 
       {/* Report Issue */}
       <a
-        href={GITHUB_ISSUES_URL}
+        href={ISSUES_URL}
         target="_blank"
         rel="noopener noreferrer"
         className="group flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-accent/80"

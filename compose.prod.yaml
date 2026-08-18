@@ -14,14 +14,14 @@ services:
       - "3001:3001"
       - "1445:1455"
     volumes:
-      - "/DATA/AppData/${AppID}/:/workspaces"
-      - "/DATA/AppData/${AppID}/cloudcli:/root/.cloudcli"
-      - "/DATA/AppData/${AppID}/codex:/root/.codex"
+      - "/DATA/AppData:/workspaces"
+      - "/DATA/AppData/${AppID}/.cloudcli:/root/.cloudcli"
+      - "/DATA/AppData/${AppID}/.codex:/root/.codex"
     depends_on:
       9router:
         condition: service_started
     networks:
-      - cloudcli-private
+      - codex-private
 
   9router:
     image: decolua/9router:0.5.50
@@ -35,7 +35,14 @@ services:
     volumes:
       - "/DATA/AppData/${AppID}/9router:/app/data"
     networks:
-      - cloudcli-private
+      - codex-private
 
 networks:
-  cloudcli-private:
+  codex-private:
+
+x-casaos:
+  main: cloudcli
+  title:
+    custom: codexui
+  port_map: "3001"
+  icon: https://cloudcli.ai/icon.svg

@@ -25,6 +25,7 @@ import {
 	notifyRunStopped,
 } from "@/modules/notifications/index.js";
 import { buildCodexRouteOptions } from "@/modules/providers/shared/routing/runtime-routing-options.js";
+import { createCodexVisibleEventBuffer } from "@/modules/providers/list/codex/codex-visible-event-buffer.provider.js";
 import {
 	createCompleteMessage,
 	createNormalizedMessage,
@@ -47,8 +48,7 @@ function extractCodexTokenBudget(event) {
 
 	const inputTokens = readUsageNumber(usage.input_tokens);
 	const outputTokens = readUsageNumber(usage.output_tokens);
-	const used =
-		readUsageNumber(usage.total_tokens) || inputTokens + outputTokens;
+	const used = readUsageNumber(usage.total_tokens) || inputTokens + outputTokens;
 
 	return {
 		used,
@@ -351,6 +351,7 @@ export async function queryCodex(command, options = {}, ws, context) {
 		const streamedTurn = await thread.runStreamed(turnInput, {
 			signal: abortController.signal,
 		});
+		const visibleEventBuffer = createCodexVisibleEventBuffer();
 
 		for await (const event of streamedTurn.events) {
 			// Capture thread/session id lazily from the stream (Codex emits this asynchronously).
@@ -394,15 +395,17 @@ export async function queryCodex(command, options = {}, ws, context) {
 				continue;
 			}
 
-			const transformed = transformCodexEvent(event);
+			for (const visibleEvent of visibleEventBuffer.push(event)) {
+				const transformed = transformCodexEvent(visibleEvent);
 
-			// Normalize the transformed event into NormalizedMessage(s) via adapter
-			const normalizedMsgs = context.normalizeMessage(
-				transformed,
-				capturedSessionId || sessionId || null,
-			);
-			for (const msg of normalizedMsgs) {
-				sendMessage(ws, msg);
+				// Normalize the transformed event into NormalizedMessage(s) via adapter
+				const normalizedMsgs = context.normalizeMessage(
+					transformed,
+					capturedSessionId || sessionId || null,
+				);
+				for (const msg of normalizedMsgs) {
+					sendMessage(ws, msg);
+				}
 			}
 
 			if (event.type === "turn.failed" && !terminalFailure) {

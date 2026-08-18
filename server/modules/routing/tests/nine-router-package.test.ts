@@ -32,7 +32,10 @@ test("production compose pins the reproducible 1.37.6 release and official Route
 	assert.match(compose, /\/DATA\/AppData\/\$\{AppID\}\/:\/workspaces/);
 	assert.match(compose, /\/DATA\/AppData\/\$\{AppID\}\/9router:\/app\/data/);
 	assert.equal(JSON.parse(readProjectFile("package.json")).version, "1.37.6");
-	assert.equal(JSON.parse(readProjectFile("package-lock.json")).version, "1.37.6");
+	assert.equal(
+		JSON.parse(readProjectFile("package-lock.json")).version,
+		"1.37.6",
+	);
 });
 
 test("compose runs the official Router as an internal persisted sidecar", () => {
@@ -62,8 +65,18 @@ test("compose runs the official Router as an internal persisted sidecar", () => 
 
 test("Docker build context ignores local dependencies, builds, and secrets", () => {
 	const dockerignore = readProjectFile(".dockerignore");
-	for (const ignored of ["node_modules", "dist", "dist-server", ".env", "database", ".git"]) {
-		assert.match(dockerignore, new RegExp(`(^|\\n)${ignored.replace(".", "\\.")}(\\n|$)`));
+	for (const ignored of [
+		"node_modules",
+		"dist",
+		"dist-server",
+		".env",
+		"database",
+		".git",
+	]) {
+		assert.match(
+			dockerignore,
+			new RegExp(`(^|\\n)${ignored.replace(".", "\\.")}(\\n|$)`),
+		);
 	}
 });
 

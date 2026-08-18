@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { Codex } from "@openai/codex-sdk";
+import type { Codex, ThreadEvent } from "@openai/codex-sdk";
 
+import { createCodexVisibleEventBuffer } from "./codex-visible-event-buffer.provider.js";
 import { createCodexClientForRouting } from "./codex-runtime.provider.js";
 
 class FakeCodex {
@@ -15,12 +16,75 @@ class FakeCodex {
 
 const FakeCodexConstructor = FakeCodex as unknown as typeof Codex;
 
+const completed: ThreadEvent = {
+	type: "turn.completed",
+	usage: {
+		input_tokens: 0,
+		cached_input_tokens: 0,
+		output_tokens: 0,
+		reasoning_output_tokens: 0,
+	},
+};
+
+test("Codex live output publishes only the final agent message", () => {
+	const buffer = createCodexVisibleEventBuffer();
+	const commentary: ThreadEvent = {
+		type: "item.completed",
+		item: {
+			id: "commentary-1",
+			type: "agent_message",
+			text: "I will inspect the files first.",
+		},
+	};
+	const reasoning: ThreadEvent = {
+		type: "item.completed",
+		item: {
+			id: "reasoning-1",
+			type: "reasoning",
+			text: "Inspecting the relevant files",
+		},
+	};
+	const finalAnswer: ThreadEvent = {
+		type: "item.completed",
+		item: {
+			id: "final-1",
+			type: "agent_message",
+			text: "Fixed the duplicate output.",
+		},
+	};
+	assert.deepEqual(buffer.push(commentary), []);
+	assert.deepEqual(buffer.push(reasoning), [reasoning]);
+	assert.deepEqual(buffer.push(finalAnswer), []);
+	assert.deepEqual(buffer.push(completed), [finalAnswer, completed]);
+});
+
+test("Codex live output drops pending commentary when a turn fails", () => {
+	const buffer = createCodexVisibleEventBuffer();
+	const commentary: ThreadEvent = {
+		type: "item.completed",
+		item: { id: "commentary-1", type: "agent_message", text: "Still working." },
+	};
+	const failed: ThreadEvent = {
+		type: "turn.failed",
+		error: { message: "Provider failed" },
+	};
+
+	assert.deepEqual(buffer.push(commentary), []);
+	assert.deepEqual(buffer.push(failed), [failed]);
+	assert.deepEqual(buffer.push(completed), [completed]);
+});
+
+test("Codex live output completes cleanly without an agent message", () => {
+	const buffer = createCodexVisibleEventBuffer();
+
+	assert.deepEqual(buffer.push(completed), [completed]);
+});
+
 test("Codex runtime rejects native dispatch before constructing the SDK", () => {
 	FakeCodex.constructorCalls = [];
 
 	assert.throws(
-		() =>
-			createCodexClientForRouting({ source: "native" }, FakeCodexConstructor),
+		() => createCodexClientForRouting({ source: "native" }, FakeCodexConstructor),
 		Error,
 	);
 	assert.deepEqual(FakeCodex.constructorCalls, []);
