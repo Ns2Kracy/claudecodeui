@@ -324,7 +324,7 @@ function dedupeAdjacentAssistantEchoes(
  * JSONL indexing lags) stays in `realtimeMessages` so the chat pane never
  * flashes the empty "Continue your conversation" state.
  */
-function pruneRealtimeSupersededByServer(
+export function pruneRealtimeSupersededByServer(
   serverMessages: NormalizedMessage[],
   realtimeMessages: NormalizedMessage[],
 ): NormalizedMessage[] {
@@ -351,7 +351,7 @@ function pruneRealtimeSupersededByServer(
         isAssistantTextEchoedInSameTurnOnServer(
           message,
           serverMessages,
-          realtimeMessages,
+          reconciledRealtimeMessages,
         )
       ) {
         return false;
@@ -364,7 +364,7 @@ function pruneRealtimeSupersededByServer(
         isAssistantTextEchoedInSameTurnOnServer(
           message,
           serverMessages,
-          realtimeMessages,
+          reconciledRealtimeMessages,
         )
       ) {
         return false;
