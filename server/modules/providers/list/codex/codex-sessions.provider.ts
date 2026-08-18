@@ -22,6 +22,11 @@ import {
 
 const PROVIDER = "codex";
 
+const CODEX_MODEL_METADATA_WARNING =
+  /^Model metadata for `[^`]+` not found\. Defaulting to fallback metadata; this can degrade performance and cause issues\.$/;
+const CODEX_WEBSOCKET_FALLBACK_PREFIX =
+  "Falling back from WebSockets to HTTPS transport.";
+
 type CodexHistoryResult =
   | AnyRecord[]
   | {
@@ -375,6 +380,7 @@ async function getCodexSessionMessages(
           if (summaryText.trim()) {
             messages.push({
               type: "thinking",
+              uuid: entry.payload.id,
               timestamp: entry.timestamp,
               message: {
                 role: "assistant",
@@ -847,7 +853,7 @@ export class CodexSessionsProvider implements IProviderSessions {
       return [];
     }
 
-    if (raw.message?.role) {
+    if (raw.type !== "item" && raw.message?.role) {
       return this.normalizeHistoryEntry(raw, sessionId);
     }
 
@@ -952,7 +958,18 @@ export class CodexSessionsProvider implements IProviderSessions {
               toolId: baseId,
             }),
           ];
-        case "error":
+        case "error": {
+          const rawContent = raw.message?.content;
+          const content =
+            typeof rawContent === "string" && rawContent.length > 0
+              ? rawContent
+              : "Unknown error";
+          if (
+            CODEX_MODEL_METADATA_WARNING.test(content.trim()) ||
+            content.startsWith(CODEX_WEBSOCKET_FALLBACK_PREFIX)
+          ) {
+            return [];
+          }
           return [
             createNormalizedMessage({
               id: baseId,
@@ -960,9 +977,10 @@ export class CodexSessionsProvider implements IProviderSessions {
               timestamp: ts,
               provider: PROVIDER,
               kind: "error",
-              content: raw.message?.content || "Unknown error",
+              content,
             }),
           ];
+        }
         default:
           return [
             createNormalizedMessage({

@@ -1,4 +1,4 @@
-import type { NormalizedMessage } from './useSessionStore';
+import type { NormalizedMessage } from "./useSessionStore";
 
 const LOCAL_USER_DEDUPE_WINDOW_MS = 5 * 60 * 1000;
 const LOCAL_USER_DEDUPE_CLOCK_SKEW_MS = 10_000;
@@ -10,10 +10,12 @@ type UserTurnFingerprint = {
   fileCount: number;
 };
 
-function userTurnFingerprint(message: NormalizedMessage): UserTurnFingerprint | null {
-  if (message.kind !== 'text' || message.role !== 'user') return null;
+function userTurnFingerprint(
+  message: NormalizedMessage,
+): UserTurnFingerprint | null {
+  if (message.kind !== "text" || message.role !== "user") return null;
 
-  const text = (message.content || '').trim();
+  const text = (message.content || "").trim();
   const imageCount = Array.isArray(message.images) ? message.images.length : 0;
   const fileCount = Array.isArray(message.files) ? message.files.length : 0;
   if (!text && imageCount === 0 && fileCount === 0) return null;
@@ -26,9 +28,9 @@ function userTurnFingerprintsMatch(
   server: UserTurnFingerprint,
 ): boolean {
   return (
-    local.text === server.text
-    && local.imageCount === server.imageCount
-    && local.fileCount === server.fileCount
+    local.text === server.text &&
+    local.imageCount === server.imageCount &&
+    local.fileCount === server.fileCount
   );
 }
 
@@ -60,15 +62,18 @@ function findServerEchoForLocalUser(
     }
 
     const serverFingerprint = userTurnFingerprint(serverMessage);
-    if (!serverFingerprint || !userTurnFingerprintsMatch(localFingerprint, serverFingerprint)) {
+    if (
+      !serverFingerprint ||
+      !userTurnFingerprintsMatch(localFingerprint, serverFingerprint)
+    ) {
       continue;
     }
 
     const serverTime = readMessageTime(serverMessage);
     if (
-      serverTime === null
-      || serverTime < localTime - LOCAL_USER_DEDUPE_CLOCK_SKEW_MS
-      || serverTime - localTime > dedupeWindow
+      serverTime === null ||
+      serverTime < localTime - LOCAL_USER_DEDUPE_CLOCK_SKEW_MS ||
+      serverTime - localTime > dedupeWindow
     ) {
       continue;
     }
@@ -84,6 +89,37 @@ function findServerEchoForLocalUser(
 }
 
 /**
+ * Appends live messages idempotently. Replayed WebSocket events replace the
+ * row with the same canonical id in place; distinct ids remain distinct even
+ * when their rendered content is identical.
+ */
+export function upsertRealtimeMessages(
+  existingMessages: NormalizedMessage[],
+  incomingMessages: NormalizedMessage[],
+): NormalizedMessage[] {
+  if (incomingMessages.length === 0) {
+    return existingMessages;
+  }
+
+  const updatedMessages = [...existingMessages];
+  const indexById = new Map(
+    updatedMessages.map((message, index) => [message.id, index]),
+  );
+
+  for (const message of incomingMessages) {
+    const existingIndex = indexById.get(message.id);
+    if (existingIndex === undefined) {
+      indexById.set(message.id, updatedMessages.length);
+      updatedMessages.push(message);
+    } else {
+      updatedMessages[existingIndex] = message;
+    }
+  }
+
+  return updatedMessages;
+}
+
+/**
  * Removes local optimistic user rows once a corresponding persisted turn is
  * available. Matches are one-to-one so repeated sends cannot claim one row.
  */
@@ -94,11 +130,15 @@ export function removeOptimisticUserEchoes(
   const claimedServerIds = new Set<string>();
 
   return realtimeMessages.filter((message) => {
-    if (!message.id.startsWith('local_')) {
+    if (!message.id.startsWith("local_")) {
       return true;
     }
 
-    const serverEcho = findServerEchoForLocalUser(message, serverMessages, claimedServerIds);
+    const serverEcho = findServerEchoForLocalUser(
+      message,
+      serverMessages,
+      claimedServerIds,
+    );
     if (!serverEcho) {
       return true;
     }

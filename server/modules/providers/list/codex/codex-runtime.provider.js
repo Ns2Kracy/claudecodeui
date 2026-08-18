@@ -70,7 +70,7 @@ function extractCodexTokenBudget(event) {
  * @param {object} event - SDK event
  * @returns {object} - Transformed event for WebSocket
  */
-function transformCodexEvent(event) {
+export function transformCodexEvent(event) {
 	// Map SDK event types to a consistent format
 	switch (event.type) {
 		case "item.started":
@@ -96,6 +96,7 @@ function transformCodexEvent(event) {
 				case "reasoning":
 					return {
 						type: "item",
+						uuid: item.id,
 						itemType: "reasoning",
 						message: {
 							role: "assistant",

@@ -4,7 +4,10 @@ import test from "node:test";
 import type { Codex, ThreadEvent } from "@openai/codex-sdk";
 
 import { createCodexVisibleEventBuffer } from "./codex-visible-event-buffer.provider.js";
-import { createCodexClientForRouting } from "./codex-runtime.provider.js";
+import {
+	createCodexClientForRouting,
+	transformCodexEvent,
+} from "./codex-runtime.provider.js";
 
 class FakeCodex {
 	static constructorCalls: unknown[][] = [];
@@ -26,6 +29,15 @@ const completed: ThreadEvent = {
 		reasoning_output_tokens: 0,
 	},
 };
+
+test("Codex live reasoning preserves its canonical SDK item id", () => {
+	const transformed = transformCodexEvent({
+		type: "item.completed",
+		item: { id: "reasoning-1", type: "reasoning", text: "Inspecting files" },
+	});
+
+	assert.equal((transformed as { uuid?: unknown }).uuid, "reasoning-1");
+});
 
 test("Codex live output publishes only the final agent message", () => {
 	const buffer = createCodexVisibleEventBuffer();

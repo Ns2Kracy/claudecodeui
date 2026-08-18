@@ -214,6 +214,143 @@ test("Codex synchronizer leaves indexed sessions untitled when no name is availa
   }
 });
 
+test("Codex live reasoning is normalized as thinking, not assistant text", () => {
+  const messages = new CodexSessionsProvider().normalizeMessage(
+    {
+      type: "item",
+      uuid: "reasoning-1",
+      itemType: "reasoning",
+      message: {
+        role: "assistant",
+        content: "The user just said hi. This is internal reasoning.",
+      },
+    },
+    "session-1",
+  );
+
+  assert.equal(messages.length, 1);
+  assert.equal(messages[0].id, "reasoning-1");
+  assert.equal(messages[0].kind, "thinking");
+  assert.equal(messages.filter((message) => message.kind === "text").length, 0);
+});
+
+test("Codex live agent messages remain assistant text", () => {
+  const messages = new CodexSessionsProvider().normalizeMessage(
+    {
+      type: "item",
+      itemType: "agent_message",
+      message: {
+        role: "assistant",
+        content: "Hi! What can I help you with today?",
+      },
+    },
+    "session-1",
+  );
+
+  assert.equal(messages.length, 1);
+  assert.equal(messages[0].kind, "text");
+  assert.equal(messages[0].role, "assistant");
+});
+
+test("Codex live model metadata warnings are omitted from chat output", () => {
+  const messages = new CodexSessionsProvider().normalizeMessage(
+    {
+      type: "item",
+      itemType: "error",
+      message: {
+        role: "error",
+        content:
+          "Model metadata for `deepseek/deepseek-v4-pro` not found. Defaulting to fallback metadata; this can degrade performance and cause issues.",
+      },
+    },
+    "session-1",
+  );
+
+  assert.deepEqual(messages, []);
+});
+
+test("Codex live WebSocket fallback warnings are omitted from chat output", () => {
+  const messages = new CodexSessionsProvider().normalizeMessage(
+    {
+      type: "item",
+      itemType: "error",
+      message: {
+        role: "error",
+        content:
+          "Falling back from WebSockets to HTTPS transport. stream disconnected before completion: WebSocket protocol error: Handshake not finished",
+      },
+    },
+    "session-1",
+  );
+
+  assert.deepEqual(messages, []);
+});
+
+test("Codex live errors with whitespace before the fallback prefix remain visible", () => {
+  const messages = new CodexSessionsProvider().normalizeMessage(
+    {
+      type: "item",
+      itemType: "error",
+      message: {
+        role: "error",
+        content: " Falling back from WebSockets to HTTPS transport.",
+      },
+    },
+    "session-1",
+  );
+
+  assert.equal(messages.length, 1);
+  assert.equal(messages[0].kind, "error");
+});
+
+test("Codex live non-string errors fall back safely", () => {
+  const messages = new CodexSessionsProvider().normalizeMessage(
+    {
+      type: "item",
+      itemType: "error",
+      message: { role: "error", content: { code: "transport_error" } },
+    },
+    "session-1",
+  );
+
+  assert.equal(messages.length, 1);
+  assert.equal(messages[0].kind, "error");
+  assert.equal(messages[0].content, "Unknown error");
+});
+
+test("Codex live WebSocket failures without a fallback remain visible", () => {
+  const messages = new CodexSessionsProvider().normalizeMessage(
+    {
+      type: "item",
+      itemType: "error",
+      message: {
+        role: "error",
+        content:
+          "stream disconnected before completion: WebSocket protocol error: Handshake not finished",
+      },
+    },
+    "session-1",
+  );
+
+  assert.equal(messages.length, 1);
+  assert.equal(messages[0].kind, "error");
+});
+
+test("Codex live runtime errors remain visible", () => {
+  const messages = new CodexSessionsProvider().normalizeMessage(
+    {
+      type: "item",
+      itemType: "error",
+      message: { role: "error", content: "Provider request failed" },
+    },
+    "session-1",
+  );
+
+  assert.equal(messages.length, 1);
+  assert.equal(messages[0].kind, "error");
+  assert.equal(messages[0].content, "Provider request failed");
+});
+
 test("Codex history hides commentary while preserving reasoning and final answers", {
   concurrency: false,
 }, async () => {
@@ -241,6 +378,7 @@ test("Codex history hides commentary while preserving reasoning and final answer
         JSON.stringify({
           type: "response_item",
           payload: {
+            id: "reasoning-1",
             type: "reasoning",
             summary: [
               { type: "summary_text", text: "Inspecting the relevant files" },
@@ -294,6 +432,10 @@ test("Codex history hides commentary while preserving reasoning and final answer
       );
       const visibleContent = history.messages.map((message) => message.content);
 
+      const reasoning = history.messages.find(
+        (message) => message.kind === "thinking",
+      );
+      assert.equal(reasoning?.id, "reasoning-1");
       assert.ok(visibleContent.includes("Inspecting the relevant files"));
       assert.ok(visibleContent.includes("Fixed the duplicate output."));
       assert.ok(visibleContent.includes("Legacy final answer."));
