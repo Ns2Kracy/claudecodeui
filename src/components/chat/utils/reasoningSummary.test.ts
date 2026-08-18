@@ -5,6 +5,7 @@ import type { ChatMessage } from "../types/types";
 
 import {
   filterMessagesForDisplay,
+  mergeConsecutiveCodexReasoning,
   parseCodexReasoningSummary,
 } from "./reasoningSummary";
 
@@ -88,6 +89,128 @@ test("classifies unstructured reasoning prose as transcript-only", () => {
 
   assert.equal(summary.statusLabel, null);
   assert.equal(summary.transcriptOnly, true);
+});
+
+test("merges adjacent unstructured Codex reasoning into one block", () => {
+  const messages: ChatMessage[] = [
+    {
+      type: "assistant",
+      content: "Inspecting files",
+      timestamp: "2026-08-18T00:00:00.000Z",
+      isThinking: true,
+    },
+    {
+      type: "assistant",
+      content: "Inspecting files",
+      timestamp: "2026-08-18T00:00:01.000Z",
+      isThinking: true,
+    },
+    {
+      type: "assistant",
+      content: "Running tests",
+      timestamp: "2026-08-18T00:00:02.000Z",
+      isThinking: true,
+    },
+  ];
+
+  const merged = mergeConsecutiveCodexReasoning(messages, "codex");
+
+  assert.equal(merged.length, 1);
+  assert.notEqual(merged[0], messages[0]);
+  assert.equal(messages[0].content, "Inspecting files");
+  assert.equal(merged[0].content, "Inspecting files\n\nRunning tests");
+});
+
+test("preserves distinct full items that normalize to the same display content", () => {
+  const first: ChatMessage = {
+    type: "assistant",
+    content: "Inspecting files",
+    timestamp: "2026-08-18T00:00:00.000Z",
+    isThinking: true,
+  };
+  const second: ChatMessage = {
+    ...first,
+    content: "<!-- -->\n\nInspecting files",
+  };
+
+  const merged = mergeConsecutiveCodexReasoning([first, second], "codex");
+
+  assert.equal(merged.length, 1);
+  assert.equal(merged[0].content, "Inspecting files\n\nInspecting files");
+});
+
+test("does not merge Codex reasoning across a user, tool, or answer boundary", () => {
+  const thinking = (content: string, seconds: number): ChatMessage => ({
+    type: "assistant",
+    content,
+    timestamp: `2026-08-18T00:00:0${seconds}.000Z`,
+    isThinking: true,
+  });
+  const boundaries: ChatMessage[] = [
+    {
+      type: "user",
+      content: "Next turn",
+      timestamp: "2026-08-18T00:00:01.000Z",
+    },
+    {
+      type: "assistant",
+      content: "",
+      timestamp: "2026-08-18T00:00:01.000Z",
+      isToolUse: true,
+      toolName: "Read",
+    },
+    {
+      type: "assistant",
+      content: "Final answer",
+      timestamp: "2026-08-18T00:00:01.000Z",
+    },
+  ];
+
+  for (const boundary of boundaries) {
+    const first = thinking("Same thought", 0);
+    const second = thinking("Same thought", 2);
+    assert.deepEqual(
+      mergeConsecutiveCodexReasoning([first, boundary, second], "codex"),
+      [first, boundary, second],
+    );
+  }
+});
+
+test("does not merge across visible or empty structured summary boundaries", () => {
+  const thinking = (content: string): ChatMessage => ({
+    type: "assistant",
+    content,
+    timestamp: "2026-08-18T00:00:00.000Z",
+    isThinking: true,
+  });
+  const first = thinking("Inspecting files");
+  const second = thinking("Running tests");
+  const boundaries = [
+    thinking("**Checking files**"),
+    thinking("**Checking files**\n<!-- -->"),
+  ];
+
+  for (const boundary of boundaries) {
+    assert.deepEqual(
+      mergeConsecutiveCodexReasoning([first, boundary, second], "codex"),
+      [first, boundary, second],
+    );
+  }
+});
+
+test("does not merge reasoning from other providers", () => {
+  const first: ChatMessage = {
+    type: "assistant",
+    content: "Inspecting files",
+    timestamp: "2026-08-18T00:00:00.000Z",
+    isThinking: true,
+  };
+  const second = { ...first, content: "Running tests" };
+
+  assert.deepEqual(mergeConsecutiveCodexReasoning([first, second], "claude"), [
+    first,
+    second,
+  ]);
 });
 
 test("filters transcript-only Codex reasoning unless detailed reasoning is enabled", () => {

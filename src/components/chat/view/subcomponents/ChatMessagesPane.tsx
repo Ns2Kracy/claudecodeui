@@ -10,7 +10,10 @@ import type {
 	ProviderModelsDefinition,
 } from "../../../../types/app";
 import { getIntrinsicMessageKey } from "../../utils/messageKeys";
-import { filterMessagesForDisplay } from "../../utils/reasoningSummary";
+import {
+	filterMessagesForDisplay,
+	mergeConsecutiveCodexReasoning,
+} from "../../utils/reasoningSummary";
 import {
 	groupConsecutiveTools,
 	isToolGroupItem,
@@ -106,11 +109,20 @@ function ChatMessagesPane({
 	const { t } = useTranslation("chat");
 	const displayMessages = useMemo(
 		() =>
-			filterMessagesForDisplay(visibleMessages, provider, Boolean(showThinking)),
+			filterMessagesForDisplay(
+				mergeConsecutiveCodexReasoning(visibleMessages, provider),
+				provider,
+				Boolean(showThinking),
+			),
 		[visibleMessages, provider, showThinking],
 	);
 	const exportMessages = useMemo(
-		() => filterMessagesForDisplay(chatMessages, provider, Boolean(showThinking)),
+		() =>
+			filterMessagesForDisplay(
+				mergeConsecutiveCodexReasoning(chatMessages, provider),
+				provider,
+				Boolean(showThinking),
+			),
 		[chatMessages, provider, showThinking],
 	);
 	const groupedVisibleMessages = useMemo(

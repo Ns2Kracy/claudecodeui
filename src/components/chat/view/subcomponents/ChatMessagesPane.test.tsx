@@ -8,8 +8,10 @@ const source = readFileSync(
 );
 
 test("filters provider reasoning before tool grouping and export", () => {
-  const filterIndex = source.indexOf(
-    "filterMessagesForDisplay(visibleMessages",
+  const filterIndex = source.indexOf("filterMessagesForDisplay(");
+  const mergeIndex = source.indexOf(
+    "mergeConsecutiveCodexReasoning(visibleMessages",
+    filterIndex,
   );
   const groupingIndex = source.indexOf("groupConsecutiveTools(displayMessages");
 
@@ -19,8 +21,8 @@ test("filters provider reasoning before tool grouping and export", () => {
     "visible messages must use the display policy",
   );
   assert.ok(
-    filterIndex < groupingIndex,
-    "hidden reasoning must be removed before grouping",
+    filterIndex < mergeIndex && mergeIndex < groupingIndex,
+    "raw reasoning must be merged inside the display filter before tool grouping",
   );
   assert.match(source, /messages=\{exportMessages\}/);
 });

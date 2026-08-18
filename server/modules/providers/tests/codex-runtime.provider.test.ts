@@ -3,11 +3,11 @@ import test from "node:test";
 
 import type { Codex, ThreadEvent } from "@openai/codex-sdk";
 
-import { createCodexVisibleEventBuffer } from "./codex-visible-event-buffer.provider.js";
+import { createCodexVisibleEventBuffer } from "../list/codex/codex-visible-event-buffer.provider.js";
 import {
 	createCodexClientForRouting,
 	transformCodexEvent,
-} from "./codex-runtime.provider.js";
+} from "../list/codex/codex-runtime.provider.js";
 
 class FakeCodex {
 	static constructorCalls: unknown[][] = [];

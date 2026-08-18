@@ -67,6 +67,55 @@ export function parseCodexReasoningSummary(
 }
 
 /**
+ * Coalesces only adjacent, unstructured Codex reasoning rows into one
+ * transcript block. Boundaries such as users, tools, answers, and structured
+ * status summaries remain independent. Repeated content is kept once while
+ * distinct content remains available inside the same accordion.
+ */
+export function mergeConsecutiveCodexReasoning(
+  messages: ChatMessage[],
+  provider: Provider | string,
+): ChatMessage[] {
+  if (provider !== "codex") {
+    return messages;
+  }
+
+  const merged: ChatMessage[] = [];
+  let transcriptContents: Set<string> | null = null;
+
+  for (const message of messages) {
+    const summary = message.isThinking
+      ? parseCodexReasoningSummary(String(message.content || ""))
+      : null;
+
+    if (summary?.transcriptOnly && summary.displayContent) {
+      const sourceContent = String(message.content || "");
+
+      if (transcriptContents) {
+        if (!transcriptContents.has(sourceContent)) {
+          const previous = merged[merged.length - 1];
+          merged[merged.length - 1] = {
+            ...previous,
+            content: `${String(previous.content || "")}\n\n${summary.displayContent}`,
+          };
+          transcriptContents.add(sourceContent);
+        }
+        continue;
+      }
+
+      merged.push({ ...message, content: summary.displayContent });
+      transcriptContents = new Set([sourceContent]);
+      continue;
+    }
+
+    merged.push(message);
+    transcriptContents = null;
+  }
+
+  return merged;
+}
+
+/**
  * Filters provider events before grouping and rendering. Codex keeps structured
  * summary headings in the normal view but hides transcript-only reasoning;
  * other providers preserve the existing all-or-nothing preference.
