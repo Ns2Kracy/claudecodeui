@@ -1,6 +1,4 @@
 export {
-  // Used by notification tests and delivery workflows to create channel payloads.
-  buildNotificationPayload,
   // Used by provider runtimes and Settings to create normalized notification events.
   createNotificationEvent,
   // Used by provider runtimes and Settings to deliver events through enabled channels.
