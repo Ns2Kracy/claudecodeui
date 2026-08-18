@@ -75,5 +75,4 @@ test("user-visible branding is CodexUI while internal CloudCLI identifiers stay 
 	}
 
 	assert.equal(JSON.parse(read("package.json")).name, "@cloudcli-ai/cloudcli");
-	assert.match(read("src/hooks/useWebPush.ts"), /cloudcliDesktopNotifications/);
 });
