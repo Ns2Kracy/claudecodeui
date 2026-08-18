@@ -1,6 +1,6 @@
 services:
   cloudcli:
-    image: ns2kracy/cloudcli:1.37.8
+    image: ns2kracy/cloudcli:1.37.9
     user: "0:0"
     restart: unless-stopped
     environment:
