@@ -301,8 +301,7 @@ export default function ChatComposer({
 				<QueuedMessageCard
 					content={queuedDraft.content}
 					attachmentCount={
-						queuedDraft.uploadedAttachments?.length ??
-						queuedDraft.attachments.length
+						queuedDraft.uploadedAttachments?.length ?? queuedDraft.attachments.length
 					}
 					onEdit={onEditQueuedDraft}
 					onDelete={onDeleteQueuedDraft}
@@ -455,13 +454,10 @@ export default function ChatComposer({
 									/>
 								)}
 
-								<TokenUsageSummary
-									usage={tokenBudget}
-									onClick={onShowTokenUsage}
-								/>
+								<TokenUsageSummary usage={tokenBudget} onClick={onShowTokenUsage} />
 
 								<PromptInputButton
-									tooltip={{ content: t("input.showAllCommands") }}
+									aria-label={t("input.showAllCommands")}
 									onClick={onToggleCommandMenu}
 									className="relative"
 								>
@@ -537,8 +533,7 @@ export default function ChatComposer({
 												? false
 												: isTranscribing
 													? true
-													: !modelAvailable ||
-														(!input.trim() && attachedFiles.length === 0)
+													: !modelAvailable || (!input.trim() && attachedFiles.length === 0)
 									}
 									aria-label={submitAriaLabel}
 									title={submitAriaLabel}

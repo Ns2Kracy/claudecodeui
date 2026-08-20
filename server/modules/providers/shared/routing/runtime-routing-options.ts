@@ -1,4 +1,4 @@
-import type { RuntimeRoutingConfiguration } from '@/shared/types.js';
+import type { RuntimeRoutingConfiguration } from "@/shared/types.js";
 
 type ClaudeRouteOptions = {
   model?: string;
@@ -26,7 +26,7 @@ type OpenCodeRouteOptions = {
 export function buildClaudeRouteOptions(
   routing: RuntimeRoutingConfiguration | null | undefined,
 ): ClaudeRouteOptions {
-  if (!routing || routing.source === 'native') {
+  if (!routing || routing.source === "native") {
     return {};
   }
 
@@ -36,7 +36,7 @@ export function buildClaudeRouteOptions(
       ANTHROPIC_BASE_URL: routing.baseUrl,
       ANTHROPIC_AUTH_TOKEN: routing.apiKey,
     },
-    unsetEnv: ['ANTHROPIC_API_KEY'],
+    unsetEnv: ["ANTHROPIC_API_KEY"],
   };
 }
 
@@ -44,7 +44,7 @@ export function buildClaudeRouteOptions(
 export function buildCodexRouteOptions(
   routing: RuntimeRoutingConfiguration | null | undefined,
 ): CodexRouteOptions {
-  if (!routing || routing.source === 'native') {
+  if (!routing || routing.source === "native") {
     return {};
   }
 
@@ -62,7 +62,7 @@ export function buildCodexRouteOptions(
 export function buildOpenCodeRouteOptions(
   routing: RuntimeRoutingConfiguration | null | undefined,
 ): OpenCodeRouteOptions | null {
-  if (!routing || routing.source === 'native') {
+  if (!routing || routing.source === "native") {
     return null;
   }
 
@@ -72,8 +72,8 @@ export function buildOpenCodeRouteOptions(
     env: {
       OPENCODE_CONFIG_CONTENT: JSON.stringify({
         provider: {
-          'cloudcli-9router': {
-            npm: '@ai-sdk/openai-compatible',
+          "cloudcli-9router": {
+            npm: "@ai-sdk/openai-compatible",
             name: routing.routeName,
             options: {
               baseURL: routing.openAiBaseUrl,
