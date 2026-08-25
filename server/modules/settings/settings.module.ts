@@ -4,6 +4,9 @@ import {
   notificationPreferencesDb,
   pushSubscriptionsDb,
 } from '@/modules/database/index.js';
+import { abortAllActiveCodexSessions } from '@/modules/providers/index.js';
+import { workspacePolicyService } from '@/modules/workspace/index.js';
+import { terminateRetainedAgentShellSessions } from '@/modules/websocket/index.js';
 import {
   createNotificationEvent,
   getPublicKey,
@@ -44,6 +47,15 @@ const settingsService = createSettingsService({
     save: (userId, endpoint, p256dh, auth) =>
       pushSubscriptionsDb.saveSubscription(userId, endpoint, p256dh, auth),
     remove: (endpoint) => pushSubscriptionsDb.removeSubscription(endpoint),
+  },
+  workspace: {
+    getPolicy: () => workspacePolicyService.getPolicy(),
+    updatePolicy: async (input) => {
+      const policy = await workspacePolicyService.updatePolicy(input);
+      abortAllActiveCodexSessions();
+      terminateRetainedAgentShellSessions();
+      return policy;
+    },
   },
   getVapidPublicKey: getPublicKey,
 });

@@ -12,6 +12,7 @@ import {
 	userDb,
 } from "@/modules/database/index.js";
 import { providerModelsService } from "@/modules/providers/index.js";
+import { workspacePolicyService } from "@/modules/workspace/index.js";
 
 import { createAgentRouter } from "./agent.routes.js";
 
@@ -47,6 +48,7 @@ export function createAgentModule(
 			createProjectPath: (projectPath, customName) =>
 				projectsDb.createProjectPath(projectPath, customName),
 		},
+		workspacePolicy: workspacePolicyService,
 		models: providerModelsService,
 		GithubClient: Octokit,
 		...externalDependencies,

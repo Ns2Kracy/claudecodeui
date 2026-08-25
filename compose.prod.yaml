@@ -3,6 +3,11 @@ services:
     image: ns2kracy/cloudcli:1.37.10
     user: "0:0"
     restart: unless-stopped
+    # Bubblewrap needs namespace syscalls and mount propagation inside the container.
+    # AppArmor remains enforced by Bubblewrap's own filesystem namespace boundary.
+    security_opt:
+      - seccomp=unconfined
+      - apparmor=unconfined
     environment:
       HOST: 0.0.0.0
       SERVER_PORT: "3001"

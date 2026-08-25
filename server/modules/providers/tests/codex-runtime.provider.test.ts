@@ -131,6 +131,29 @@ test("Codex runtime rejects incomplete routed credentials", () => {
 	assert.deepEqual(FakeCodex.constructorCalls, []);
 });
 
+test('routed Codex runtime applies strict workspace launch options to the SDK client', () => {
+	FakeCodex.constructorCalls = [];
+	createCodexClientForRouting(
+		{
+			source: '9router', baseUrl: 'https://router.example',
+			openAiBaseUrl: 'https://router.example/v1', apiKey: 'key', routeName: 'model',
+		},
+		FakeCodexConstructor,
+		{
+			codexPathOverride: '/app/scripts/codex-bwrap-wrapper.sh',
+			replaceEnvironment: true,
+			environment: { PATH: '/usr/bin', CLOUDCLI_WORKSPACE_ROOT: '/media/projects' },
+		},
+	);
+	const clientOptions = FakeCodex.constructorCalls[0]?.[0] as {
+		codexPathOverride?: string; env?: NodeJS.ProcessEnv;
+	};
+	assert.equal(clientOptions.codexPathOverride, '/app/scripts/codex-bwrap-wrapper.sh');
+	assert.equal(clientOptions.env?.CLOUDCLI_WORKSPACE_ROOT, '/media/projects');
+	assert.equal(clientOptions.env?.PATH, '/usr/bin');
+	assert.equal(clientOptions.env?.DATABASE_PATH, undefined);
+});
+
 test("routed Codex runtime constructs one isolated SDK client and route model", () => {
 	FakeCodex.constructorCalls = [];
 

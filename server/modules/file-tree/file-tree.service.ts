@@ -69,17 +69,9 @@ function validateFilename(name: string): void {
   }
 }
 
-function resolvePathInsideProject(projectRoot: string, targetPath: string): string {
-  const resolvedPath = path.isAbsolute(targetPath)
-    ? path.resolve(targetPath)
-    : path.resolve(projectRoot, targetPath);
-  const normalizedProjectRoot = path.resolve(projectRoot) + path.sep;
-
-  if (!resolvedPath.startsWith(normalizedProjectRoot)) {
-    throw createFileTreeError('Path must be under project root', 403, 'PATH_OUTSIDE_PROJECT');
-  }
-
-  return resolvedPath;
+function isPathWithin(rootPath: string, candidatePath: string): boolean {
+  const relative = path.relative(rootPath, candidatePath);
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
 }
 
 function expandWorkspacePath(workspaceRoot: string, inputPath: string): string {
@@ -164,7 +156,35 @@ export function createFileTreeService(dependencies: FileTreeServiceDependencies)
     if (!projectRoot) {
       throw createFileTreeError('Project not found', 404, 'PROJECT_NOT_FOUND');
     }
-    return projectRoot;
+    const validation = await dependencies.workspace.validatePath(projectRoot);
+    if (!validation.valid || !validation.resolvedPath) {
+      throw createFileTreeError(
+        validation.error || 'Project is outside the configured workspace',
+        403,
+        'PROJECT_OUTSIDE_WORKSPACE',
+      );
+    }
+    return validation.resolvedPath;
+  }
+
+  async function resolvePathInsideProject(projectRoot: string, targetPath: string): Promise<string> {
+    const lexicalPath = path.isAbsolute(targetPath)
+      ? path.resolve(targetPath)
+      : path.resolve(projectRoot, targetPath);
+    if (!isPathWithin(projectRoot, lexicalPath)) {
+      throw createFileTreeError('Path must be under project root', 403, 'PATH_OUTSIDE_PROJECT');
+    }
+
+    const validation = await dependencies.workspace.validatePath(lexicalPath);
+    if (!validation.valid || !validation.resolvedPath
+      || !isPathWithin(projectRoot, validation.resolvedPath)) {
+      throw createFileTreeError(
+        validation.error || 'Path resolves outside the project root',
+        403,
+        'PATH_OUTSIDE_PROJECT',
+      );
+    }
+    return validation.resolvedPath;
   }
 
   async function buildFileTree(
@@ -271,9 +291,10 @@ export function createFileTreeService(dependencies: FileTreeServiceDependencies)
 
   return {
     async browseWorkspace(inputPath) {
+      const workspaceRoot = await dependencies.workspace.getRootPath();
       const requestedPath = inputPath
-        ? expandWorkspacePath(dependencies.workspace.rootPath, inputPath)
-        : dependencies.workspace.rootPath;
+        ? expandWorkspacePath(workspaceRoot, inputPath)
+        : workspaceRoot;
       const targetPath = path.resolve(requestedPath);
       const validation = await dependencies.workspace.validatePath(targetPath);
       if (!validation.valid) {
@@ -304,9 +325,9 @@ export function createFileTreeService(dependencies: FileTreeServiceDependencies)
           return left.name.localeCompare(right.name);
         });
 
-      let resolvedWorkspaceRoot = dependencies.workspace.rootPath;
+      let resolvedWorkspaceRoot = workspaceRoot;
       try {
-        resolvedWorkspaceRoot = await fileSystem.realpath(dependencies.workspace.rootPath);
+        resolvedWorkspaceRoot = await fileSystem.realpath(workspaceRoot);
       } catch {
         // The configured workspace root remains the comparison fallback.
       }
@@ -322,7 +343,8 @@ export function createFileTreeService(dependencies: FileTreeServiceDependencies)
     },
 
     async createWorkspaceFolder(folderPath) {
-      const expandedPath = expandWorkspacePath(dependencies.workspace.rootPath, folderPath);
+      const workspaceRoot = await dependencies.workspace.getRootPath();
+      const expandedPath = expandWorkspacePath(workspaceRoot, folderPath);
       const resolvedInput = path.resolve(expandedPath);
       const validation = await dependencies.workspace.validatePath(resolvedInput);
       if (!validation.valid) {
@@ -356,7 +378,7 @@ export function createFileTreeService(dependencies: FileTreeServiceDependencies)
 
     async readTextFile(projectId, filePath) {
       const projectRoot = await resolveProjectRoot(projectId);
-      const resolvedPath = resolvePathInsideProject(projectRoot, filePath);
+      const resolvedPath = await resolvePathInsideProject(projectRoot, filePath);
       try {
         const content = await fileSystem.readTextFile(resolvedPath);
         return { content, path: resolvedPath };
@@ -370,7 +392,7 @@ export function createFileTreeService(dependencies: FileTreeServiceDependencies)
 
     async openFile(projectId, filePath) {
       const projectRoot = await resolveProjectRoot(projectId);
-      const resolvedPath = resolvePathInsideProject(projectRoot, filePath);
+      const resolvedPath = await resolvePathInsideProject(projectRoot, filePath);
       try {
         await fileSystem.access(resolvedPath);
       } catch {
@@ -385,7 +407,7 @@ export function createFileTreeService(dependencies: FileTreeServiceDependencies)
 
     async saveTextFile(projectId, filePath, content) {
       const projectRoot = await resolveProjectRoot(projectId);
-      const resolvedPath = resolvePathInsideProject(projectRoot, filePath);
+      const resolvedPath = await resolvePathInsideProject(projectRoot, filePath);
       try {
         await fileSystem.writeTextFile(resolvedPath, content);
       } catch (error) {
@@ -427,7 +449,7 @@ export function createFileTreeService(dependencies: FileTreeServiceDependencies)
       const targetPath = input.parentPath
         ? path.join(input.parentPath, input.name)
         : input.name;
-      const resolvedPath = resolvePathInsideProject(projectRoot, targetPath);
+      const resolvedPath = await resolvePathInsideProject(projectRoot, targetPath);
 
       try {
         await fileSystem.access(resolvedPath);
@@ -471,7 +493,7 @@ export function createFileTreeService(dependencies: FileTreeServiceDependencies)
     async renameEntry(input) {
       validateFilename(input.newName);
       const projectRoot = await resolveProjectRoot(input.projectId);
-      const resolvedOldPath = resolvePathInsideProject(projectRoot, input.oldPath);
+      const resolvedOldPath = await resolvePathInsideProject(projectRoot, input.oldPath);
 
       try {
         await fileSystem.access(resolvedOldPath);
@@ -479,8 +501,10 @@ export function createFileTreeService(dependencies: FileTreeServiceDependencies)
         throw createFileTreeError('File or directory not found', 404, 'FILE_TREE_ENTRY_NOT_FOUND');
       }
 
-      const resolvedNewPath = path.join(path.dirname(resolvedOldPath), input.newName);
-      resolvePathInsideProject(projectRoot, resolvedNewPath);
+      const resolvedNewPath = await resolvePathInsideProject(
+        projectRoot,
+        path.join(path.dirname(resolvedOldPath), input.newName),
+      );
       try {
         await fileSystem.access(resolvedNewPath);
         throw createFileTreeError(
@@ -513,7 +537,7 @@ export function createFileTreeService(dependencies: FileTreeServiceDependencies)
 
     async deleteEntry(input) {
       const projectRoot = await resolveProjectRoot(input.projectId);
-      const resolvedPath = resolvePathInsideProject(projectRoot, input.targetPath);
+      const resolvedPath = await resolvePathInsideProject(projectRoot, input.targetPath);
       let stats;
       try {
         stats = await fileSystem.stat(resolvedPath);
@@ -559,7 +583,7 @@ export function createFileTreeService(dependencies: FileTreeServiceDependencies)
           || input.targetPath === '.'
           || input.targetPath === './'
           ? path.resolve(projectRoot)
-          : resolvePathInsideProject(projectRoot, input.targetPath);
+          : await resolvePathInsideProject(projectRoot, input.targetPath);
 
         try {
           await fileSystem.access(resolvedTargetDirectory);
@@ -574,7 +598,7 @@ export function createFileTreeService(dependencies: FileTreeServiceDependencies)
           const destinationPath = path.join(resolvedTargetDirectory, fileName);
 
           try {
-            resolvePathInsideProject(projectRoot, destinationPath);
+            await resolvePathInsideProject(projectRoot, destinationPath);
           } catch (error) {
             if (error instanceof AppError && error.statusCode === 403) {
               await cleanupTemporaryFiles([file]);

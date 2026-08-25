@@ -5,6 +5,7 @@ import type { ProviderAuthStatus } from "../../provider-auth/types";
 export type SettingsMainTab =
 	| "agents"
 	| "appearance"
+	| "workspace"
 	| "git"
 	| "api"
 	| "voice"

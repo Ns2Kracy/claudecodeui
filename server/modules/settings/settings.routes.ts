@@ -22,6 +22,8 @@ export function createSettingsRouter(
       try { res.json(await operation(req)); } catch (error) { next(error); }
     };
 
+  router.get('/workspace', respond(() => service.getWorkspacePolicy()));
+  router.put('/workspace', respond((req) => service.updateWorkspacePolicy(req.body ?? {})));
   router.get('/api-keys', respond((req) => service.listApiKeys(userId(req))));
   router.post('/api-keys', respond((req) => service.createApiKey(userId(req), req.body?.keyName)));
   router.delete('/api-keys/:keyId', respond((req) => service.deleteApiKey(userId(req), Number(req.params.keyId))));

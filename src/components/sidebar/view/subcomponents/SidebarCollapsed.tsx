@@ -8,7 +8,6 @@ import {
 import type { TFunction } from "i18next";
 
 const DISCORD_INVITE_URL = "https://discord.com/invite/b5CuAU6nEs";
-const FEEDBACK_EMAIL = "ningkun@icewhale.org";
 const FEEDBACK_HREF = "mailto:ningkun@icewhale.org?subject=CodexUI%20Issue";
 
 function DiscordIcon({ className }: { className?: string }) {
@@ -69,8 +68,8 @@ export default function SidebarCollapsed({
       <a
         href={FEEDBACK_HREF}
         className="group flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-accent/80"
-        aria-label={FEEDBACK_EMAIL}
-        title={FEEDBACK_EMAIL}
+        aria-label={t("actions.reportIssue")}
+        title={t("actions.reportIssue")}
       >
         <Bug className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-foreground" />
       </a>

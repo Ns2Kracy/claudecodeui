@@ -30,6 +30,13 @@ function createDependencies(
 		apiKeys: { validateApiKey: () => undefined },
 		githubTokens: { getActiveGithubToken: () => null },
 		projects: { createProjectPath: () => ({ outcome: "created" }) },
+		workspacePolicy: {
+			validatePath: async (candidatePath: string) => ({
+				valid: true,
+				resolvedPath: candidatePath,
+			}),
+			getWorkspaceRoot: async () => "/workspace",
+		},
 		models: {} as AgentDependencies["models"],
 		queryCodex: unexpectedProviderCall as AgentDependencies["queryCodex"],
 		GithubClient: class {} as unknown as AgentDependencies["GithubClient"],
@@ -116,6 +123,43 @@ test("Agent route rejects removed providers", async () => {
 		assert.equal(response.status, 400);
 		assert.equal(body.error, 'provider must be "codex"');
 	});
+});
+
+test("Agent route rejects project paths outside the configured workspace before filesystem or Git access", async () => {
+	let fileSystemAccessed = false;
+	let spawned = false;
+	await withAgentServer(
+		createDependencies({
+			fileSystem: {
+				access: async () => {
+					fileSystemAccessed = true;
+				},
+			} as unknown as AgentDependencies["fileSystem"],
+			spawnProcess: (() => {
+				spawned = true;
+				throw new Error("spawn should not run");
+			}) as unknown as AgentDependencies["spawnProcess"],
+			workspacePolicy: {
+				validatePath: async () => ({ valid: false, error: "outside workspace" }),
+				getWorkspaceRoot: async () => "/media/projects",
+			},
+		}),
+		async (baseUrl) => {
+			const response = await fetch(`${baseUrl}/api/agent`, {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({
+					projectPath: "/media/private",
+					message: "Run",
+					stream: false,
+				}),
+			});
+			assert.equal(response.status, 500);
+		},
+	);
+
+	assert.equal(fileSystemAccessed, false);
+	assert.equal(spawned, false);
 });
 
 test("Agent route rejects GitHub lookalike hosts before cloning", async () => {

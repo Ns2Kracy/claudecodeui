@@ -376,3 +376,92 @@ test("agent-backed shell does not spawn an unauthenticated Codex process when ro
 	assert.equal(spawned, false);
 	assert.match(socket.frames.join("\n"), /Router is unavailable/);
 });
+
+
+test('strict workspace launch wraps the agent-backed Codex shell', async () => {
+	const pty = createFakePty();
+	const socket = createFakeSocket();
+	let shellArguments: readonly string[] = [];
+	let shellEnvironment: Record<string, string | undefined> = {};
+	const dependencies = {
+		resolveProviderSessionId: () => null,
+		resolveWorkspaceLaunch: async (projectPath: string) => ({
+			workingDirectory: projectPath,
+			codexPathOverride: '/app/scripts/codex-bwrap-wrapper.sh',
+			replaceEnvironment: true,
+			environment: {
+				PATH: '/usr/bin', HOME: '/root', CLOUDCLI_WORKSPACE_ROOT: projectPath,
+				CLOUDCLI_CODEX_BINARY: '/usr/local/libexec/cloudcli/codex-real',
+			},
+		}),
+		resolveCodexShellRouting: async () => ({
+			source: '9router' as const, baseUrl: 'https://router.example/api',
+			openAiBaseUrl: 'https://router.example/v1', apiKey: 'temporary-router-key',
+			routeName: 'openai/gpt-5.4', model: 'openai/gpt-5.4',
+		}),
+		spawnPty: (_file: string, args: readonly string[], options: { env?: Record<string, string | undefined> }) => {
+			shellArguments = args;
+			shellEnvironment = options.env ?? {};
+			return pty as never;
+		},
+	};
+
+	handleShellConnection(socket as never, dependencies as never);
+	socket.emit('message', JSON.stringify({ type: 'init', projectPath: process.cwd(), provider: 'codex' }));
+	await new Promise((resolve) => setImmediate(resolve));
+
+	assert.match(shellArguments.join(' '), /CLOUDCLI_CODEX_WRAPPER/);
+	assert.equal(shellEnvironment.CLOUDCLI_CODEX_WRAPPER, '/app/scripts/codex-bwrap-wrapper.sh');
+	assert.equal(shellEnvironment.CLOUDCLI_WORKSPACE_ROOT, process.cwd());
+	assert.equal(shellEnvironment.DATABASE_PATH, undefined);
+	pty.emitExit();
+});
+
+test('retained Codex PTYs are not reused after strict isolation changes', async () => {
+	const sessionId = `policy-change-${Date.now()}`;
+	const firstPty = createFakePty();
+	const secondPty = createFakePty();
+	let spawnCount = 0;
+	let strictMode = false;
+	const dependencies = {
+		resolveProviderSessionId: () => null,
+		resolveWorkspaceLaunch: async (projectPath: string) => ({
+			workingDirectory: projectPath,
+			codexPathOverride: strictMode ? '/app/scripts/codex-bwrap-wrapper.sh' : undefined,
+			replaceEnvironment: strictMode,
+			environment: strictMode ? {
+				PATH: '/usr/bin', HOME: '/root', CLOUDCLI_WORKSPACE_ROOT: projectPath,
+				CLOUDCLI_CODEX_BINARY: '/usr/local/libexec/cloudcli/codex-real',
+			} : {},
+		}),
+		resolveCodexShellRouting: async () => ({
+			source: '9router' as const, baseUrl: 'https://router.example/api',
+			openAiBaseUrl: 'https://router.example/v1', apiKey: 'temporary-router-key',
+			routeName: 'openai/gpt-5.4', model: 'openai/gpt-5.4',
+		}),
+		spawnPty: () => {
+			spawnCount += 1;
+			return (spawnCount === 1 ? firstPty : secondPty) as never;
+		},
+	};
+	const initMessage = JSON.stringify({
+		type: 'init', projectPath: process.cwd(), sessionId, provider: 'codex',
+	});
+
+	const firstSocket = createFakeSocket();
+	handleShellConnection(firstSocket as never, dependencies as never);
+	firstSocket.emit('message', initMessage);
+	await new Promise((resolve) => setImmediate(resolve));
+	firstSocket.emit('close');
+
+	strictMode = true;
+	const secondSocket = createFakeSocket();
+	handleShellConnection(secondSocket as never, dependencies as never);
+	secondSocket.emit('message', initMessage);
+	await new Promise((resolve) => setImmediate(resolve));
+
+	assert.equal(spawnCount, 2);
+	assert.equal(secondSocket.frames.some((frame) => frame.includes('Reconnected')), false);
+	firstPty.emitExit();
+	secondPty.emitExit();
+});

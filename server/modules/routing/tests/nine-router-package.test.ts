@@ -56,6 +56,9 @@ test("compose runs the official Router as an internal persisted sidecar", () => 
 	assert.match(compose, /cloudcli-private:/);
 	assert.doesNotMatch(compose, /internal:\s+true/);
 	assert.match(compose, /9router-data:/);
+	assert.match(compose, /security_opt:\s*\n(?:\s*#.*\n)*\s*-\s+seccomp=unconfined\s*\n\s*-\s+apparmor=unconfined/);
+	assert.doesNotMatch(compose, /privileged:\s*true/);
+	assert.doesNotMatch(compose, /cap_add:/);
 	assert.match(compose, /dockerfile:\s+docker\/cloudcli\/Dockerfile/);
 	const cloudcliDockerfile = readProjectFile("docker/cloudcli/Dockerfile");
 	assert.match(cloudcliDockerfile, /npm ci --ignore-scripts --include=dev/);

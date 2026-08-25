@@ -105,6 +105,7 @@
     "label": "Settings",
     "agents": "Agents",
     "appearance": "Appearance",
+    "workspace": "Project permissions",
     "git": "Git",
     "apiTokens": "API & Tokens",
     "voice": "Voice",
@@ -112,6 +113,30 @@
     "browser": "Browser",
     "notifications": "Notifications",
     "plugins": "Plugins"
+  },
+  "workspace": {
+    "title": "Project permissions",
+    "description": "Choose how the Agent can access this Chat's project.",
+    "loading": "Loading project permissions…",
+    "protection": {
+      "modes": {
+        "protected": {
+          "title": "Only this project (recommended)",
+          "description": "Even with full access, the Agent can read and write only this Chat's project."
+        },
+        "unprotected": {
+          "title": "Turn off project protection",
+          "description": "The Agent can access other files visible to CodexUI."
+        }
+      },
+      "unavailable": "Project protection is unavailable on this host. Turn it off or check the deployment."
+    },
+    "save": "Save",
+    "saved": "Saved",
+    "errors": {
+      "load": "Failed to load project permissions",
+      "save": "Failed to save project permissions"
+    }
   },
   "notifications": {
     "title": "Notifications",

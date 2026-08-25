@@ -18,10 +18,8 @@ function feedbackAnchors(source: string): string[] {
 	return source.match(/<a\s+href=\{FEEDBACK_HREF\}[\s\S]*?<\/a>/g) ?? [];
 }
 
-test("desktop, mobile, and collapsed feedback anchors open the CodexUI email", () => {
-	assert.ok(footerSource.includes(feedbackEmail));
+test("feedback links say Report Issue while opening the CodexUI email", () => {
 	assert.ok(footerSource.includes(feedbackHref));
-	assert.ok(collapsedSource.includes(feedbackEmail));
 	assert.ok(collapsedSource.includes(feedbackHref));
 	assert.doesNotMatch(footerSource, /community\.zimaspace\.com/);
 	assert.doesNotMatch(collapsedSource, /community\.zimaspace\.com/);
@@ -29,11 +27,13 @@ test("desktop, mobile, and collapsed feedback anchors open the CodexUI email", (
 	const expandedLinks = feedbackAnchors(footerSource);
 	assert.equal(expandedLinks.length, 2);
 	for (const link of expandedLinks) {
-		assert.match(link, /\{FEEDBACK_EMAIL\}/);
+		assert.match(link, /t\("actions\.reportIssue"\)/);
+		assert.doesNotMatch(link, new RegExp(feedbackEmail));
 	}
 
 	const collapsedLinks = feedbackAnchors(collapsedSource);
 	assert.equal(collapsedLinks.length, 1);
-	assert.match(collapsedLinks[0], /aria-label=\{FEEDBACK_EMAIL\}/);
-	assert.match(collapsedLinks[0], /title=\{FEEDBACK_EMAIL\}/);
+	assert.match(collapsedLinks[0], /aria-label=\{t\("actions\.reportIssue"\)\}/);
+	assert.match(collapsedLinks[0], /title=\{t\("actions\.reportIssue"\)\}/);
+	assert.doesNotMatch(collapsedLinks[0], new RegExp(feedbackEmail));
 });

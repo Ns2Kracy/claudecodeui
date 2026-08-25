@@ -19,6 +19,10 @@ type AgentRouterDependencies = {
 	projects: {
 		createProjectPath(projectPath: string, customName: string | null): unknown;
 	};
+	workspacePolicy: {
+		validatePath(candidatePath: string): Promise<{ valid: boolean; error?: string; resolvedPath?: string }>;
+		getWorkspaceRoot(): Promise<string>;
+	};
 	models: typeof import("../providers/index.js").providerModelsService;
 	queryCodex: ProviderRunFunction;
 	GithubClient: typeof import("@octokit/rest").Octokit;
@@ -40,6 +44,7 @@ export function createAgentRouter(
 	const apiKeysDb = dependencies.apiKeys;
 	const githubTokensDb = dependencies.githubTokens;
 	const projectsDb = dependencies.projects;
+	const workspacePolicy = dependencies.workspacePolicy;
 	const providerModelsService = dependencies.models;
 	const queryCodex = dependencies.queryCodex;
 	const Octokit = dependencies.GithubClient;
@@ -966,29 +971,37 @@ export function createAgentRouter(
 				if (projectPath) {
 					targetPath = projectPath;
 				} else {
-					// Generate a unique path for cloning
+					// Keep temporary external checkouts inside the active workspace boundary.
 					const repoHash = crypto
 						.createHash("md5")
 						.update(githubUrl + Date.now())
 						.digest("hex");
 					targetPath = path.join(
-						os.homedir(),
-						".cloudcli",
+						await workspacePolicy.getWorkspaceRoot(),
+						".codexui",
 						"external-projects",
 						repoHash,
 					);
+				}
+				const targetValidation = await workspacePolicy.validatePath(targetPath);
+				if (!targetValidation.valid || !targetValidation.resolvedPath) {
+					throw new Error(targetValidation.error || "Invalid workspace path");
 				}
 
 				const clonedProject = await cloneGitHubRepo(
 					githubUrl.trim(),
 					tokenToUse,
-					targetPath,
+					targetValidation.resolvedPath,
 				);
 				finalProjectPath = clonedProject.path;
 				clonedProjectCreated = clonedProject.created;
 			} else {
 				// Use existing project path
-				finalProjectPath = normalizeProjectPath(path.resolve(projectPath));
+				const projectValidation = await workspacePolicy.validatePath(projectPath);
+				if (!projectValidation.valid || !projectValidation.resolvedPath) {
+					throw new Error(projectValidation.error || "Invalid workspace path");
+				}
+				finalProjectPath = normalizeProjectPath(projectValidation.resolvedPath);
 
 				// Verify the path exists
 				try {

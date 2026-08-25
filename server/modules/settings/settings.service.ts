@@ -34,6 +34,14 @@ type SettingsDependencies = {
     save(userId: number, endpoint: string, p256dh: string, auth: string): void;
     remove(endpoint: string): void;
   };
+  workspace: {
+    getPolicy(): Promise<{
+      strictIsolation: boolean; isolationAvailable: boolean; isolationReason: string | null;
+    }>;
+    updatePolicy(input: { strictIsolation: unknown }): Promise<{
+      strictIsolation: boolean; isolationAvailable: boolean; isolationReason: string | null;
+    }>;
+  };
   getVapidPublicKey(): string | null;
 };
 
@@ -54,6 +62,14 @@ function assertFound(found: boolean, resourceName: string, code: string): void {
 /** Creates settings workflows with repositories and notification effects injected. */
 export function createSettingsService(dependencies: SettingsDependencies) {
   return {
+    getWorkspacePolicy() {
+      return dependencies.workspace.getPolicy();
+    },
+    updateWorkspacePolicy(input: Record<string, unknown>) {
+      return dependencies.workspace.updatePolicy({
+        strictIsolation: input.strictIsolation,
+      });
+    },
     listApiKeys(userId: number) {
       const apiKeys = dependencies.apiKeys.list(userId).map((key) => ({
         ...key,

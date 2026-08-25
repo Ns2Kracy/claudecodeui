@@ -5,9 +5,10 @@ import path from 'node:path';
 import spawn from 'cross-spawn';
 
 import { githubTokensDb } from '@/modules/database/index.js';
+import { workspacePolicyService } from '@/modules/workspace/index.js';
 import { createProject } from '@/modules/projects/services/project-management.service.js';
 import type { WorkspacePathValidationResult } from '@/shared/types.js';
-import { AppError, validateWorkspacePath } from '@/shared/utils.js';
+import { AppError } from '@/shared/utils.js';
 
 type CloneProjectInput = {
   workspacePath: string;
@@ -109,7 +110,7 @@ function resolveErrorMessage(error: unknown): string {
 }
 
 const defaultDependencies: CloneProjectDependencies = {
-  validatePath: validateWorkspacePath,
+  validatePath: (requestedPath) => workspacePolicyService.validatePath(requestedPath),
   ensureDirectory: async (directoryPath: string): Promise<void> => {
     await mkdir(directoryPath, { recursive: true });
   },
@@ -237,8 +238,17 @@ export async function startCloneProject(
     }
   }
 
+  const preCloneValidation = await dependencies.validatePath(clonePath);
+  if (!preCloneValidation.valid || !preCloneValidation.resolvedPath
+    || path.resolve(preCloneValidation.resolvedPath) !== path.resolve(clonePath)) {
+    throw new AppError('Clone target changed outside the configured workspace', {
+      code: 'CLONE_TARGET_CHANGED',
+      statusCode: 409,
+    });
+  }
+
   handlers.onProgress(`Cloning into '${repoName}'...`);
-  const gitProcess = dependencies.spawnGitClone(cloneUrl, clonePath);
+  const gitProcess = dependencies.spawnGitClone(cloneUrl, preCloneValidation.resolvedPath);
   let lastError = '';
 
   gitProcess.stdout?.on('data', (data: Buffer | string) => {

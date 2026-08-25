@@ -31,6 +31,7 @@ import {
 	routingRuntimeService,
 } from "@/modules/routing/index.js";
 import { createWebSocketServer } from "@/modules/websocket/index.js";
+import { workspacePolicyService } from "@/modules/workspace/index.js";
 
 import { getConnectableHost } from "../shared/networkHosts.js";
 
@@ -118,6 +119,8 @@ const wss = createWebSocketServer(server, {
 
 			return null;
 		},
+		resolveWorkspaceLaunch: (projectPath) =>
+			workspacePolicyService.resolveCodexLaunch(projectPath),
 		resolveCodexShellRouting: async (sessionId) => {
 			const sessionModel = await providerModelsService.resolveSessionModel(
 				"codex",

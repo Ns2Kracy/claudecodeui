@@ -16,6 +16,7 @@ type GitRouterDependencies = {
 	fileSystem: typeof import("node:fs/promises");
 	spawnProcess: typeof import("cross-spawn").default;
 	resolveProjectPathById(projectId: string): string | null;
+	validateWorkspacePath(projectPath: string): Promise<{ valid: boolean; resolvedPath?: string; error?: string }>;
 	queryCodex: ProviderRunFunction;
 };
 
@@ -141,7 +142,15 @@ export function createGitRouter(
 		if (!projectPath) {
 			throw new Error(`Unable to resolve project path for "${projectId}"`);
 		}
-		return validateProjectPath(projectPath);
+		const normalizedPath = validateProjectPath(projectPath);
+		const validation = await dependencies.validateWorkspacePath(normalizedPath);
+		if (!validation.valid || !validation.resolvedPath) {
+			throw new AppError(validation.error || 'Project is outside the configured workspace', {
+				code: 'INVALID_WORKSPACE_PATH',
+				statusCode: 403,
+			});
+		}
+		return validation.resolvedPath;
 	}
 
 	// Helper function to strip git diff headers

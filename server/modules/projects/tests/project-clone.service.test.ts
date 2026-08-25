@@ -11,7 +11,7 @@ type TestDependencies = Parameters<typeof startCloneProject>[2];
 
 function buildDependencies(overrides: Partial<NonNullable<TestDependencies>> = {}): NonNullable<TestDependencies> {
   return {
-    validatePath: async () => ({ valid: true, resolvedPath: '/workspace/root' }),
+    validatePath: async (candidatePath) => ({ valid: true, resolvedPath: candidatePath }),
     ensureDirectory: async () => undefined,
     pathExists: async () => false,
     removePath: async () => undefined,
@@ -180,4 +180,33 @@ test('startCloneProject completes and emits complete payload when git exits succ
   };
   assert.equal(resolvedCompletePayload.message, 'Repository cloned successfully');
   assert.equal((resolvedCompletePayload.project.projectId as string) || '', 'project-1');
+});
+
+test('startCloneProject refuses to spawn git when the clone target changes after validation', async () => {
+  let validationCount = 0;
+  let spawned = false;
+  await assert.rejects(
+    startCloneProject(
+      {
+        workspacePath: '/workspace/root',
+        githubUrl: 'https://github.com/example/repo.git',
+        userId: 1,
+      },
+      { onProgress: () => undefined, onComplete: () => undefined },
+      buildDependencies({
+        validatePath: async (candidatePath) => {
+          validationCount += 1;
+          return validationCount === 1
+            ? { valid: true, resolvedPath: candidatePath }
+            : { valid: true, resolvedPath: '/media/private/repo' };
+        },
+        spawnGitClone: () => {
+          spawned = true;
+          return createMockGitProcess();
+        },
+      }),
+    ),
+    (error: unknown) => error instanceof AppError && error.code === 'CLONE_TARGET_CHANGED',
+  );
+  assert.equal(spawned, false);
 });

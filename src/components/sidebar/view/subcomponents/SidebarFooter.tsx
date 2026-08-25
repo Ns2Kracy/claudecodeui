@@ -4,7 +4,6 @@ import type { TFunction } from "i18next";
 import { IS_PLATFORM } from "../../../../constants/config";
 import type { ReleaseInfo } from "../../../../types/sharedTypes";
 
-const FEEDBACK_EMAIL = "ningkun@icewhale.org";
 const FEEDBACK_HREF = "mailto:ningkun@icewhale.org?subject=CodexUI%20Issue";
 const GITHUB_REPO_URL = "https://github.com/Ns2Kracy/claudecodeui";
 
@@ -123,7 +122,7 @@ export default function SidebarFooter({
 					className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
 				>
 					<Bug className="h-3.5 w-3.5" />
-					<span className="text-sm">{FEEDBACK_EMAIL}</span>
+					<span className="text-sm">{t("actions.reportIssue")}</span>
 				</a>
 			</div>
 
@@ -175,7 +174,7 @@ export default function SidebarFooter({
 						<Bug className="h-4 w-4 text-muted-foreground" />
 					</div>
 					<span className="text-sm font-normal text-foreground">
-						{FEEDBACK_EMAIL}
+						{t("actions.reportIssue")}
 					</span>
 				</a>
 			</div>

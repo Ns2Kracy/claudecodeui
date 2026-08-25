@@ -1032,7 +1032,7 @@ export type FileTreeProjectGateway = {
  * symlinks before the File Tree service exposes or mutates paths.
  */
 export type FileTreeWorkspaceGateway = {
-	rootPath: string;
+	getRootPath(): Promise<string>;
 	validatePath(candidatePath: string): Promise<WorkspacePathValidationResult>;
 };
 

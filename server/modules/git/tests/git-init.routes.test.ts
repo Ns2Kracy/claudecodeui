@@ -71,6 +71,7 @@ test("git init does not run when repository validation fails for an execution er
 		} as unknown as GitDependencies["fileSystem"],
 		spawnProcess,
 		resolveProjectPathById: () => "/workspace/repo",
+		validateWorkspacePath: async (projectPath) => ({ valid: true, resolvedPath: projectPath }),
 		queryCodex: async () => {
 			throw new Error("unexpected Codex call");
 		},
@@ -121,6 +122,7 @@ test("commit-message generation always invokes Codex and collects normalized tex
 				return "";
 			}),
 			resolveProjectPathById: () => process.cwd(),
+			validateWorkspacePath: async (projectPath) => ({ valid: true, resolvedPath: projectPath }),
 			queryCodex: async (_prompt, options, writer) => {
 				invoked = true;
 				assert.equal(options.permissionMode, "bypassPermissions");
@@ -156,4 +158,25 @@ test("commit-message generation always invokes Codex and collects normalized tex
 	);
 
 	assert.equal(invoked, true);
+});
+
+
+test('git rejects a registered project outside the configured workspace before spawning', async () => {
+	let spawned = false;
+	await withGitServer(
+		{
+			fileSystem: {} as GitDependencies['fileSystem'],
+			spawnProcess: (() => { spawned = true; throw new Error('must not spawn'); }) as GitDependencies['spawnProcess'],
+			resolveProjectPathById: () => '/media/private/repo',
+			validateWorkspacePath: async () => ({ valid: false, error: 'Project is outside the configured workspace' }),
+			queryCodex: async () => undefined,
+		},
+		async (baseUrl) => {
+			const response = await fetch(`${baseUrl}/api/git/status?project=project-1`);
+			const body = await response.json() as { error?: string; details?: string };
+			assert.equal(body.error, 'Git operation failed');
+			assert.match(body.details ?? '', /outside the configured workspace/);
+		},
+	);
+	assert.equal(spawned, false);
 });

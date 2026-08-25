@@ -7,6 +7,7 @@ import {
 	Mic,
 	MonitorPlay,
 	Palette,
+	FolderLock,
 	Puzzle,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -29,6 +30,7 @@ type NavItem = {
 const NAV_ITEMS: NavItem[] = [
 	{ id: "agents", labelKey: "mainTabs.agents", icon: Bot },
 	{ id: "appearance", labelKey: "mainTabs.appearance", icon: Palette },
+	{ id: "workspace", labelKey: "mainTabs.workspace", icon: FolderLock },
 	{ id: "git", labelKey: "mainTabs.git", icon: GitBranch },
 	{ id: "api", labelKey: "mainTabs.apiTokens", icon: Key },
 	{ id: "voice", labelKey: "mainTabs.voice", icon: Mic },

@@ -2,12 +2,13 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 import { projectsDb } from '@/modules/database/index.js';
+import { workspacePolicyService } from '@/modules/workspace/index.js';
 import type {
   CreateProjectPathResult,
   ProjectRepositoryRow,
   WorkspacePathValidationResult,
 } from '@/shared/types.js';
-import { AppError, normalizeProjectPath, validateWorkspacePath } from '@/shared/utils.js';
+import { AppError, normalizeProjectPath } from '@/shared/utils.js';
 
 type CreateProjectInput = {
   projectPath: string;
@@ -42,7 +43,7 @@ type CreateProjectServiceResult = {
 };
 
 const defaultDependencies: CreateProjectDependencies = {
-  validatePath: validateWorkspacePath,
+  validatePath: (projectPath) => workspacePolicyService.validatePath(projectPath),
   ensureWorkspaceDirectory: async (projectPath: string): Promise<void> => {
     await fs.mkdir(projectPath, { recursive: true });
     const directoryStats = await fs.stat(projectPath);
@@ -108,6 +109,14 @@ export async function createProject(
 
   const resolvedProjectPath = normalizeProjectPath(pathValidation.resolvedPath);
   await dependencies.ensureWorkspaceDirectory(resolvedProjectPath);
+  const postCreateValidation = await dependencies.validatePath(resolvedProjectPath);
+  if (!postCreateValidation.valid || !postCreateValidation.resolvedPath
+    || normalizeProjectPath(postCreateValidation.resolvedPath) !== resolvedProjectPath) {
+    throw new AppError('Project path changed outside the configured workspace during creation', {
+      code: 'PROJECT_PATH_CHANGED',
+      statusCode: 409,
+    });
+  }
 
   const normalizedCustomName = resolveDisplayName(input.customName ?? null, resolvedProjectPath);
   const persistedProject = dependencies.persistProjectPath(resolvedProjectPath, normalizedCustomName);

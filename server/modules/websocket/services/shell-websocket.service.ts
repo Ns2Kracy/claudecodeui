@@ -29,10 +29,21 @@ type PtySessionEntry = {
 	timeoutId: NodeJS.Timeout | null;
 	projectPath: string;
 	sessionId: string | null;
+	isPlainShell: boolean;
 };
 
 const ptySessionsMap = new Map<string, PtySessionEntry>();
 const PTY_SESSION_TIMEOUT = 30 * 60 * 1000;
+
+/** Settings uses this after a workspace-policy update so retained Codex PTYs cannot keep older access. */
+export function terminateRetainedAgentShellSessions(): void {
+	for (const [sessionKey, session] of ptySessionsMap) {
+		if (session.isPlainShell) continue;
+		if (session.timeoutId) clearTimeout(session.timeoutId);
+		session.pty.kill();
+		ptySessionsMap.delete(sessionKey);
+	}
+}
 const SHELL_URL_PARSE_BUFFER_LIMIT = 32768;
 const ANSI_ESCAPE_SEQUENCE_REGEX =
 	/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~]|\][^\x07]*(?:\x07|\x1B\\))/g;
@@ -107,6 +118,13 @@ type CodexShellRouting = Extract<
 	{ source: "9router" }
 >;
 
+type WorkspaceLaunch = {
+	workingDirectory: string;
+	codexPathOverride?: string;
+	replaceEnvironment?: boolean;
+	environment: Record<string, string>;
+};
+
 type ShellWebSocketDependencies = {
 	resolveProviderSessionId: (
 		sessionId: string,
@@ -115,6 +133,7 @@ type ShellWebSocketDependencies = {
 	resolveCodexShellRouting: (
 		sessionId: string | null,
 	) => Promise<CodexShellRouting>;
+	resolveWorkspaceLaunch?: (projectPath: string) => Promise<WorkspaceLaunch>;
 	spawnPty?: typeof pty.spawn;
 };
 
@@ -188,7 +207,10 @@ function resolveResumeSessionId(
  * process-local environment variables. The shell wrapper preserves npm/PATHEXT
  * command resolution on Windows without exposing credentials in arguments.
  */
-function buildCodexShellCommand(resumeSessionId: string): string {
+function buildCodexShellCommand(
+	resumeSessionId: string,
+	useWorkspaceWrapper = false,
+): string {
 	if (os.platform() === "win32") {
 		const command =
 			'codex --config "openai_base_url=$env:CLOUDCLI_CODEX_BASE_URL" --model "$env:CLOUDCLI_CODEX_MODEL"';
@@ -197,8 +219,11 @@ function buildCodexShellCommand(resumeSessionId: string): string {
 			: command;
 	}
 
+	const executable = useWorkspaceWrapper
+		? '"$CLOUDCLI_CODEX_WRAPPER"'
+		: 'codex';
 	const command =
-		'codex --config "openai_base_url=$CLOUDCLI_CODEX_BASE_URL" --model "$CLOUDCLI_CODEX_MODEL"';
+		`${executable} --config "openai_base_url=$CLOUDCLI_CODEX_BASE_URL" --model "$CLOUDCLI_CODEX_MODEL"`;
 	return resumeSessionId
 		? `${command} resume "$CLOUDCLI_CODEX_RESUME_ID" || ${command}`
 		: command;
@@ -315,11 +340,38 @@ export function handleShellConnection(
 				const isLoginCommand =
 					!!initialCommand && initialCommand.includes("auth login");
 
+				let resolvedProjectPath = path.resolve(projectPath);
+				let workspaceLaunch: WorkspaceLaunch | null = null;
+				try {
+					const stats = fs.statSync(resolvedProjectPath);
+					if (!stats.isDirectory()) {
+						throw new Error("Not a directory");
+					}
+					if (dependencies.resolveWorkspaceLaunch) {
+						workspaceLaunch = await dependencies.resolveWorkspaceLaunch(
+							resolvedProjectPath,
+						);
+						resolvedProjectPath = workspaceLaunch.workingDirectory;
+					}
+				} catch {
+					ws.send(
+						JSON.stringify({ type: "error", message: "Invalid project path" }),
+					);
+					initializationPending = false;
+					return;
+				}
+
 				const commandSuffix =
 					isPlainShell && initialCommand
 						? `_cmd_${Buffer.from(initialCommand).toString("base64").slice(0, 16)}`
 						: "";
-				const currentPtySessionKey = `${projectPath}_${sessionId ?? "default"}${commandSuffix}`;
+				const workspacePolicyKey = workspaceLaunch
+					? JSON.stringify({
+						root: workspaceLaunch.environment.CLOUDCLI_WORKSPACE_ROOT || "",
+						wrapper: workspaceLaunch.codexPathOverride || "",
+					})
+					: "plain-shell";
+				const currentPtySessionKey = `${resolvedProjectPath}_${sessionId ?? "default"}${commandSuffix}_${workspacePolicyKey}`;
 
 				if (isLoginCommand || forceRestart) {
 					const oldSession = ptySessionsMap.get(currentPtySessionKey);
@@ -367,20 +419,6 @@ export function handleShellConnection(
 					return;
 				}
 
-				const resolvedProjectPath = path.resolve(projectPath);
-				try {
-					const stats = fs.statSync(resolvedProjectPath);
-					if (!stats.isDirectory()) {
-						throw new Error("Not a directory");
-					}
-				} catch {
-					ws.send(
-						JSON.stringify({ type: "error", message: "Invalid project path" }),
-					);
-					initializationPending = false;
-					return;
-				}
-
 				const safeSessionIdPattern = /^[a-zA-Z0-9_.\-:]+$/;
 				if (sessionId && !safeSessionIdPattern.test(sessionId)) {
 					ws.send(JSON.stringify({ type: "error", message: "Invalid session ID" }));
@@ -417,7 +455,10 @@ export function handleShellConnection(
 						throw new Error("Codex routing credentials are unavailable");
 					}
 					executable = os.platform() === "win32" ? "powershell.exe" : "bash";
-					const codexCommand = buildCodexShellCommand(resumeSessionId);
+					const codexCommand = buildCodexShellCommand(
+						resumeSessionId,
+						Boolean(workspaceLaunch?.codexPathOverride),
+					);
 					executableArgs =
 						os.platform() === "win32"
 							? ["-Command", codexCommand]
@@ -426,13 +467,18 @@ export function handleShellConnection(
 				}
 
 				const shellEnvironment: NodeJS.ProcessEnv = {
-					...process.env,
+					...(workspaceLaunch?.replaceEnvironment ? {} : process.env),
+					...workspaceLaunch?.environment,
 					[prioritizedPath.key]: prioritizedPath.value,
 					TERM: "xterm-256color",
 					COLORTERM: "truecolor",
 					FORCE_COLOR: "3",
 				};
 				if (codexRouting) {
+					if (workspaceLaunch?.codexPathOverride) {
+						shellEnvironment.CLOUDCLI_CODEX_WRAPPER =
+							workspaceLaunch.codexPathOverride;
+					}
 					shellEnvironment.CODEX_API_KEY = codexRouting.apiKey;
 					shellEnvironment.CLOUDCLI_CODEX_BASE_URL = codexRouting.openAiBaseUrl;
 					shellEnvironment.CLOUDCLI_CODEX_MODEL = codexRouting.routeName;
@@ -460,8 +506,9 @@ export function handleShellConnection(
 					ws,
 					buffer: [],
 					timeoutId: null,
-					projectPath,
+					projectPath: resolvedProjectPath,
 					sessionId,
+					isPlainShell,
 				});
 				initializationPending = false;
 

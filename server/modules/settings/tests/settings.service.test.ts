@@ -26,10 +26,48 @@ function dependencies(overrides: Partial<Dependencies> = {}): Dependencies {
 			notifyUser: () => undefined,
 		},
 		pushSubscriptions: { save: () => undefined, remove: () => undefined },
+		workspace: {
+			getPolicy: async () => ({
+				strictIsolation: false,
+				isolationAvailable: true,
+				isolationReason: null,
+			}),
+			updatePolicy: async () => ({
+				strictIsolation: false,
+				isolationAvailable: true,
+				isolationReason: null,
+			}),
+		},
 		getVapidPublicKey: () => null,
 		...overrides,
 	};
 }
+
+test('workspace settings are read through the workspace policy boundary', async () => {
+	const service = createSettingsService(dependencies());
+	const result = await service.getWorkspacePolicy();
+	assert.equal(result.strictIsolation, false);
+});
+
+test('workspace settings updates pass only the protection choice', async () => {
+	let captured: unknown = null;
+	const service = createSettingsService(dependencies({
+		workspace: {
+			getPolicy: async () => { throw new Error('unused'); },
+			updatePolicy: async (input) => {
+				captured = input;
+				return {
+					strictIsolation: true, isolationAvailable: true, isolationReason: null,
+				};
+			},
+		},
+	}));
+	const result = await service.updateWorkspacePolicy({
+		workspaceRoot: '/media/projects', strictIsolation: true, ignored: 'value',
+	});
+	assert.deepEqual(captured, { strictIsolation: true });
+	assert.equal(result.strictIsolation, true);
+});
 
 test("listApiKeys redacts secret values through the service boundary", () => {
 	const fixtureKey = ["redaction", "fixture", "value"].join("-");

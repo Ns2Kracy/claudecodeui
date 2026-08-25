@@ -64,7 +64,7 @@ function createDependencies(
       getProjectPathById: async () => projectRoot,
     },
     workspace: {
-      rootPath: projectRoot,
+      getRootPath: async () => projectRoot,
       validatePath: async (candidatePath) => ({ valid: true, resolvedPath: candidatePath }),
     },
     resolveMimeType: () => 'text/plain',
@@ -217,4 +217,54 @@ test('createEntry performs filesystem mutation only through the injected adapter
 
   assert.equal(result.path, targetPath);
   assert.deepEqual(writtenFiles, [{ filePath: targetPath, content: '' }]);
+});
+
+test('project file operations reject registrations outside the current workspace policy', async () => {
+  const projectRoot = path.resolve('outside-project');
+  const readPaths: string[] = [];
+  const dependencies = createDependencies(createFakeFileSystem({
+    readTextFile: async (filePath) => {
+      readPaths.push(filePath);
+      return 'secret';
+    },
+  }), projectRoot);
+  dependencies.workspace.validatePath = async () => ({
+    valid: false,
+    error: 'outside configured workspace',
+  });
+  const service = createFileTreeService(dependencies);
+
+  await assert.rejects(
+    service.readTextFile('project-1', 'secret.txt'),
+    (error: unknown) => error instanceof AppError
+      && error.code === 'PROJECT_OUTSIDE_WORKSPACE'
+      && error.statusCode === 403,
+  );
+  assert.deepEqual(readPaths, []);
+});
+
+test('project file operations reject a symlink target outside the canonical project root', async () => {
+  const projectRoot = path.resolve('file-tree-test-project');
+  const lexicalPath = path.join(projectRoot, 'link', 'secret.txt');
+  const outsidePath = path.resolve('private', 'secret.txt');
+  const readPaths: string[] = [];
+  const dependencies = createDependencies(createFakeFileSystem({
+    readTextFile: async (filePath) => {
+      readPaths.push(filePath);
+      return 'secret';
+    },
+  }), projectRoot);
+  dependencies.workspace.validatePath = async (candidatePath) => ({
+    valid: true,
+    resolvedPath: candidatePath === lexicalPath ? outsidePath : candidatePath,
+  });
+  const service = createFileTreeService(dependencies);
+
+  await assert.rejects(
+    service.readTextFile('project-1', 'link/secret.txt'),
+    (error: unknown) => error instanceof AppError
+      && error.code === 'PATH_OUTSIDE_PROJECT'
+      && error.statusCode === 403,
+  );
+  assert.deepEqual(readPaths, []);
 });

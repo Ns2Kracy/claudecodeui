@@ -105,6 +105,7 @@
     "label": "设置",
     "agents": "智能体",
     "appearance": "外观",
+    "workspace": "项目权限",
     "git": "Git",
     "apiTokens": "API 和令牌",
     "voice": "语音",
@@ -112,6 +113,30 @@
     "browser": "浏览器",
     "notifications": "通知",
     "plugins": "插件"
+  },
+  "workspace": {
+    "title": "项目权限",
+    "description": "选择 Agent 如何访问当前 Chat 的项目。",
+    "loading": "正在加载项目权限…",
+    "protection": {
+      "modes": {
+        "protected": {
+          "title": "只允许当前项目（推荐）",
+          "description": "即使 Agent 获得完全权限，也只能读写当前 Chat 的项目。"
+        },
+        "unprotected": {
+          "title": "关闭项目保护",
+          "description": "Agent 可以访问 CodexUI 可见的其他文件。"
+        }
+      },
+      "unavailable": "此主机无法启用项目保护。请选择“关闭项目保护”，或检查部署。"
+    },
+    "save": "保存",
+    "saved": "已保存",
+    "errors": {
+      "load": "加载项目权限失败",
+      "save": "保存项目权限失败"
+    }
   },
   "notifications": {
     "title": "通知",

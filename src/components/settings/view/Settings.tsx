@@ -5,6 +5,7 @@ import { Button } from "../../../shared/view/ui";
 import SettingsSidebar from "../view/SettingsSidebar";
 import AgentsSettingsTab from "../view/tabs/agents-settings/AgentsSettingsTab";
 import AppearanceSettingsTab from "../view/tabs/AppearanceSettingsTab";
+import WorkspaceSettingsTab from "../view/tabs/workspace-settings/WorkspaceSettingsTab";
 import CredentialsSettingsTab from "../view/tabs/api-settings/CredentialsSettingsTab";
 import VoiceSettingsTab from "../view/tabs/VoiceSettingsTab";
 import GitSettingsTab from "../view/tabs/git-settings/GitSettingsTab";
@@ -124,6 +125,8 @@ function Settings({
 									}
 								/>
 							)}
+
+							{activeTab === "workspace" && <WorkspaceSettingsTab />}
 
 							{activeTab === "git" && <GitSettingsTab />}
 

@@ -52,6 +52,7 @@ type NotificationPreferencesResponse = {
 const KNOWN_MAIN_TABS: SettingsMainTab[] = [
 	"agents",
 	"appearance",
+	"workspace",
 	"git",
 	"api",
 	"voice",

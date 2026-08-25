@@ -25,6 +25,7 @@ import {
 	notifyRunStopped,
 } from "@/modules/notifications/index.js";
 import { buildCodexRouteOptions } from "@/modules/providers/shared/routing/runtime-routing-options.js";
+import { workspacePolicyService } from "@/modules/workspace/index.js";
 import { createCodexVisibleEventBuffer } from "@/modules/providers/list/codex/codex-visible-event-buffer.provider.js";
 import {
 	createCompleteMessage,
@@ -235,7 +236,11 @@ function mapPermissionModeToCodexOptions(permissionMode) {
  * Constructs the SDK client for one resolved model source. Runtime tests inject
  * a fake constructor to assert native calls stay argument-free.
  */
-export function createCodexClientForRouting(routing, CodexConstructor = Codex) {
+export function createCodexClientForRouting(
+	routing,
+	CodexConstructor = Codex,
+	launchOptions = {},
+) {
 	if (!routing || routing.source !== "9router") {
 		throw new Error();
 	}
@@ -248,8 +253,18 @@ export function createCodexClientForRouting(routing, CodexConstructor = Codex) {
 	}
 
 	const routeOptions = buildCodexRouteOptions(routing);
+	const inheritedEnvironment = launchOptions.replaceEnvironment
+		? {}
+		: routeOptions.client.env;
+	const clientOptions = {
+		...routeOptions.client,
+		env: { ...inheritedEnvironment, ...launchOptions.environment },
+	};
+	if (launchOptions.codexPathOverride) {
+		clientOptions.codexPathOverride = launchOptions.codexPathOverride;
+	}
 	return {
-		client: new CodexConstructor(routeOptions.client),
+		client: new CodexConstructor(clientOptions),
 		model: routeOptions.model,
 	};
 }
@@ -279,7 +294,11 @@ export async function queryCodex(command, options = {}, ws, context) {
 
 	const resolvedModel = await context.resolveResumeModel(sessionId, model);
 
-	const workingDirectory = cwd || projectPath || process.cwd();
+	const requestedWorkingDirectory = cwd || projectPath || process.cwd();
+	const launchOptions = await workspacePolicyService.resolveCodexLaunch(
+		requestedWorkingDirectory,
+	);
+	const workingDirectory = launchOptions.workingDirectory;
 	const { sandboxMode, approvalPolicy } =
 		mapPermissionModeToCodexOptions(permissionMode);
 
@@ -296,7 +315,11 @@ export async function queryCodex(command, options = {}, ws, context) {
 	const sessionKey = () => sessionId || capturedSessionId || null;
 
 	try {
-		const routedClient = createCodexClientForRouting(context.routing);
+		const routedClient = createCodexClientForRouting(
+			context.routing,
+			Codex,
+			launchOptions,
+		);
 		codex = routedClient.client;
 		const effectiveModel = routedClient.model || resolvedModel;
 		const catalog = await context.getProviderModels();
@@ -550,6 +573,16 @@ export function abortCodexSession(sessionId) {
  * @param {string} sessionId - Session ID to check
  * @returns {boolean} - Whether session is active
  */
+/** Workspace policy updates use this to revoke every SDK Codex process with older filesystem access. */
+export function abortAllActiveCodexSessions() {
+	for (const [sessionId, session] of activeCodexSessions) {
+		if (session.status !== "running") continue;
+		session.status = "aborted";
+		session.abortController?.abort();
+		activeCodexSessions.set(sessionId, session);
+	}
+}
+
 export function isCodexSessionActive(sessionId) {
 	const session = activeCodexSessions.get(sessionId);
 	return session?.status === "running";
