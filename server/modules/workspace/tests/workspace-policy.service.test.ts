@@ -106,6 +106,36 @@ test('workspace policy rejects enabled protection when Bubblewrap is unavailable
   );
 });
 
+test('an unconfigured installation runs normally when Bubblewrap is unavailable', async () => {
+  const { service, writes } = createFixture({ isolationAvailable: false });
+
+  assert.deepEqual(await service.getPolicy(), {
+    strictIsolation: false,
+    isolationAvailable: false,
+    isolationReason: 'bubblewrap unavailable',
+  });
+  assert.deepEqual(await service.resolveCodexLaunch('/media/projects/team-a'), {
+    workingDirectory: '/media/projects/team-a',
+    codexPathOverride: undefined,
+    replaceEnvironment: false,
+    environment: {},
+  });
+  assert.deepEqual(writes, []);
+});
+
+test('an explicit protection choice remains fail-closed when Bubblewrap becomes unavailable', async () => {
+  const { service } = createFixture({
+    isolationAvailable: false,
+    stored: JSON.stringify({ strictIsolation: true, isolationConfigured: true }),
+  });
+
+  assert.equal((await service.getPolicy()).strictIsolation, true);
+  await assert.rejects(
+    service.resolveCodexLaunch('/media/projects/team-a'),
+    (error: unknown) => error instanceof AppError && error.code === 'WORKSPACE_ISOLATION_UNAVAILABLE',
+  );
+});
+
 test('legacy unavailable workspace roots do not restrict the deployment default', async () => {
   const { service } = createFixture({
     stored: JSON.stringify({

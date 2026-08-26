@@ -14,7 +14,7 @@ Docker `privileged` is not an Agent permission tier and is never configurable th
 
 ## Backend
 
-A workspace feature module owns the persisted protection choice, path validation, Bubblewrap capability probe, and Codex launch configuration. The deployment root comes from `WORKSPACES_ROOT`, falling back to the user home, and is always the application root. Protection defaults to enabled. Legacy records from the original default-off release are treated as unconfigured and migrate to enabled; later explicit user choices remain persisted.
+A workspace feature module owns the persisted protection choice, path validation, Bubblewrap capability probe, and Codex launch configuration. The deployment root comes from `WORKSPACES_ROOT`, falling back to the user home, and is always the application root. Protection defaults to enabled when Bubblewrap is available. An unconfigured installation whose host cannot create the required user namespace runs normally without protection so it remains usable; later explicit user choices remain persisted.
 
 `PUT /api/settings/workspace` accepts `{ strictIsolation }` and refuses enabled protection when Bubblewrap cannot complete a probe. `GET /api/settings/workspace` returns only the protection choice and capability status.
 
@@ -24,7 +24,7 @@ Project, clone, file-tree, and Codex paths use the fixed deployment default thro
 
 The TypeScript SDK remains unchanged. In strict mode its `codexPathOverride` points to a project-owned wrapper. The wrapper invokes the real native Codex binary through Bubblewrap. The SDK receives a sandbox-visible working directory under `/workspace`; normal mode continues to use the real path.
 
-Strict mode is fail-closed. Missing Bubblewrap, failed capability probes, invalid paths, or wrapper setup errors reject the Codex run and never fall back to an unwrapped process.
+An explicit strict-mode choice is fail-closed. Missing Bubblewrap, failed capability probes, invalid paths, or wrapper setup errors reject the Codex run and never fall back to an unwrapped process. The only exception is an unconfigured first installation: an unavailable capability probe selects normal mode until the administrator makes an explicit choice.
 
 ## Frontend
 

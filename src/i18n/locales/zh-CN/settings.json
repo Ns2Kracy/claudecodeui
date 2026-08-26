@@ -129,7 +129,7 @@
           "description": "Agent 可以访问 CodexUI 可见的其他文件。"
         }
       },
-      "unavailable": "此主机无法启用项目保护。请选择“关闭项目保护”，或检查部署。"
+      "unavailable": "此主机无法启用项目保护。首次安装会在未保护模式下运行；如需保护，请调整部署以支持 Bubblewrap。"
     },
     "save": "保存",
     "saved": "已保存",

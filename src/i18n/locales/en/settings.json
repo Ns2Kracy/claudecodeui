@@ -129,7 +129,7 @@
           "description": "The Agent can access other files visible to CodexUI."
         }
       },
-      "unavailable": "Project protection is unavailable on this host. Turn it off or check the deployment."
+      "unavailable": "Project protection is unavailable on this host. New installations run unprotected until Bubblewrap is available."
     },
     "save": "Save",
     "saved": "Saved",

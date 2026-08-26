@@ -153,7 +153,7 @@ export function createWorkspacePolicyService(
       return {
         workspaceRoot: resolvedDeploymentRoot,
         strictIsolation: true,
-        isolationConfigured: true,
+        isolationConfigured: false,
       };
     }
     const stored = parseStoredPolicy(rawPolicy);
@@ -168,7 +168,7 @@ export function createWorkspacePolicyService(
     return {
       workspaceRoot: resolvedDeploymentRoot,
       strictIsolation: stored.isolationConfigured ? stored.strictIsolation : true,
-      isolationConfigured: true,
+      isolationConfigured: stored.isolationConfigured,
     };
   }
 
@@ -219,7 +219,9 @@ export function createWorkspacePolicyService(
         dependencies.probeIsolation(),
       ]);
       return {
-        strictIsolation: policy.strictIsolation,
+        // A first-run default should not make hosts that cannot create user
+        // namespaces unusable. Explicit protection choices remain fail-closed.
+        strictIsolation: policy.strictIsolation && (policy.isolationConfigured || isolation.available),
         isolationAvailable: isolation.available,
         isolationReason: isolation.reason,
       };
@@ -269,16 +271,17 @@ export function createWorkspacePolicyService(
         });
       }
       const policy = await loadConfiguredPolicy();
-      if (!policy.strictIsolation) {
-        return {
-          workingDirectory: validation.resolvedPath,
-          codexPathOverride: undefined,
-          replaceEnvironment: false,
-          environment: {},
-        };
-      }
+      const normalLaunch = {
+        workingDirectory: validation.resolvedPath,
+        codexPathOverride: undefined,
+        replaceEnvironment: false,
+        environment: {},
+      };
+      if (!policy.strictIsolation) return normalLaunch;
+
       const isolation = await dependencies.probeIsolation();
       if (!isolation.available) {
+        if (!policy.isolationConfigured) return normalLaunch;
         throw new AppError(isolation.reason || 'Strict workspace isolation is unavailable', {
           code: 'WORKSPACE_ISOLATION_UNAVAILABLE',
           statusCode: 503,
