@@ -1,6 +1,6 @@
 {
   "name": "@cloudcli-ai/cloudcli",
-  "version": "1.37.11",
+  "version": "1.37.12",
   "productName": "CloudCLI",
   "description": "A web-based UI for Codex with 9Router-backed authentication and models",
   "type": "module",
