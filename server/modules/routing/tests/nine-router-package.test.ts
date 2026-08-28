@@ -19,10 +19,10 @@ function composeServiceBlock(compose: string, serviceName: string): string {
 	return match?.[0] ?? "";
 }
 
-test("production compose pins the reproducible 1.37.12 release and official Router", () => {
+test("production compose pins the reproducible 1.37.13 release and official Router", () => {
 	const compose = readProjectFile("compose.prod.yaml");
 
-	assert.match(compose, /image:\s+ns2kracy\/cloudcli:1\.37\.12/);
+	assert.match(compose, /image:\s+ns2kracy\/cloudcli:1\.37\.13/);
 	assert.match(compose, /image:\s+decolua\/9router:0\.5\.50/);
 	assert.match(compose, /NINE_ROUTER_BASE_URL:\s+http:\/\/9router:20128/);
 	assert.match(compose, /HOST:\s+0\.0\.0\.0/);
@@ -31,10 +31,10 @@ test("production compose pins the reproducible 1.37.12 release and official Rout
 	assert.match(compose, /(?:\$\{CODEX_CALLBACK_PORT:-1455\}|1445):1455/);
 	assert.match(compose, /\/DATA\/AppData:\/workspaces/);
 	assert.match(compose, /\/DATA\/AppData\/\$\{AppID\}\/9router:\/app\/data/);
-	assert.equal(JSON.parse(readProjectFile("package.json")).version, "1.37.12");
+	assert.equal(JSON.parse(readProjectFile("package.json")).version, "1.37.13");
 	assert.equal(
 		JSON.parse(readProjectFile("package-lock.json")).version,
-		"1.37.12",
+		"1.37.13",
 	);
 });
 
@@ -56,7 +56,10 @@ test("compose runs the official Router as an internal persisted sidecar", () => 
 	assert.match(compose, /cloudcli-private:/);
 	assert.doesNotMatch(compose, /internal:\s+true/);
 	assert.match(compose, /9router-data:/);
-	assert.match(compose, /security_opt:\s*\n(?:\s*#.*\n)*\s*-\s+seccomp=unconfined\s*\n\s*-\s+apparmor=unconfined/);
+	assert.match(
+		compose,
+		/security_opt:\s*\n(?:\s*#.*\n)*\s*-\s+seccomp=unconfined\s*\n\s*-\s+apparmor=unconfined/,
+	);
 	assert.doesNotMatch(compose, /privileged:\s*true/);
 	assert.doesNotMatch(compose, /cap_add:/);
 	assert.match(compose, /dockerfile:\s+docker\/cloudcli\/Dockerfile/);
