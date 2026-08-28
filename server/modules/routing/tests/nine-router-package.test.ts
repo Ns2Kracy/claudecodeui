@@ -66,6 +66,13 @@ test("compose runs the official Router as an internal persisted sidecar", () => 
 	assert.match(cloudcliDockerfile, /RUN npm run build/);
 });
 
+test("CloudCLI Docker image bundles the Codex Code Mode host", () => {
+	const dockerfile = readProjectFile("docker/cloudcli/Dockerfile");
+
+	assert.match(dockerfile, /vendor\/\*\/bin\/codex-code-mode-host/);
+	assert.match(dockerfile, /cloudcli\/codex-code-mode-host/);
+});
+
 test("Docker build context ignores local dependencies, builds, and secrets", () => {
 	const dockerignore = readProjectFile(".dockerignore");
 	for (const ignored of [

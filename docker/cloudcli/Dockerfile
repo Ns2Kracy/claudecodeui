@@ -17,7 +17,8 @@ RUN --mount=type=cache,target=/root/.npm,sharing=locked \
     && npm rebuild better-sqlite3 bcrypt node-pty \
     && mkdir -p /usr/local/libexec/cloudcli \
     && find /app/node_modules/@openai -type f -path "*/vendor/*/bin/codex" -exec cp {} /usr/local/libexec/cloudcli/codex-real \; \
-    && chmod 0755 /usr/local/libexec/cloudcli/codex-real \
+    && find /app/node_modules/@openai -type f -path "*/vendor/*/bin/codex-code-mode-host" -exec cp {} /usr/local/libexec/cloudcli/codex-code-mode-host \; \
+    && chmod 0755 /usr/local/libexec/cloudcli/codex-real /usr/local/libexec/cloudcli/codex-code-mode-host \
     && ln -s /app/node_modules/.bin/codex /usr/local/bin/codex \
     && codex --version
 
