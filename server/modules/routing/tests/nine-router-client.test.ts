@@ -821,6 +821,59 @@ test("qualifies leading-slash upstream model ids with the configured node prefix
 	});
 });
 
+test("qualifies leading-slash fullModel and routedModel values with the node prefix", async () => {
+	await withFakeRouter({}, async ({ baseUrl, request }) => {
+		const prefix = "openai-compatible-chat-9c542835-e157-4310-8477-3cb38f5fe907";
+		const client = new NineRouterClient({
+			baseUrl,
+			adminPassword: "admin-password",
+			dataPlaneKey: "data-plane-key",
+			request: async (input, dependencies) => {
+				if (input.operation === "providerGet") {
+					return {
+						statusCode: 200,
+						headers: {},
+						data: {
+							connection: { providerSpecificData: { prefix } },
+						},
+					};
+				}
+				if (input.operation === "providerModels") {
+					return {
+						statusCode: 200,
+						headers: {},
+						data: {
+							provider: prefix,
+							connectionId: "account-1",
+							models: [
+								{
+									id: "qwen",
+									fullModel: "/DATA/llm/models/Qwen3.6-35B-A3B-UD-IQ3_XXS.gguf",
+								},
+								{
+									id: "mistral",
+									routedModel: "/DATA/llm/models/Mistral.gguf",
+								},
+							],
+						},
+					};
+				}
+				return request(input, dependencies);
+			},
+		});
+
+		assert.deepEqual(
+			(await client.listProviderModels("account-1")).models.map(
+				(model) => model.id,
+			),
+			[
+				`${prefix}//DATA/llm/models/Qwen3.6-35B-A3B-UD-IQ3_XXS.gguf`,
+				`${prefix}//DATA/llm/models/Mistral.gguf`,
+			],
+		);
+	});
+});
+
 test("rejects provider models without an authoritative upstream id", async () => {
 	await withFakeRouter({}, async ({ baseUrl, request }) => {
 		const client = new NineRouterClient({

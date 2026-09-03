@@ -286,10 +286,12 @@ function sanitizeModel(
 	} else if (modelId) {
 		fallbackId = `${provider}/${modelId}`;
 	}
+	const authoritativeId =
+		optionalString(value.fullModel) ?? optionalString(value.routedModel);
 	const id =
-		optionalString(value.fullModel) ??
-		optionalString(value.routedModel) ??
-		fallbackId;
+		authoritativeId?.startsWith("/") && routePrefix
+			? `${routePrefix}/${authoritativeId}`
+			: (authoritativeId ?? fallbackId);
 	if (!id) throw invalidResponse();
 	const name =
 		optionalString(value.name) ??
@@ -512,9 +514,14 @@ export class NineRouterClient implements IRoutingNineRouterClient {
 		const models = expectRecord(modelsResult.data).models;
 		const needsRoutePrefix =
 			Array.isArray(models) &&
-			models.some(
-				(model) => isRecord(model) && optionalString(model.id)?.startsWith("/"),
-			);
+			models.some((model) => {
+				if (!isRecord(model)) return false;
+				const authoritativeId =
+					optionalString(model.fullModel) ??
+					optionalString(model.routedModel) ??
+					optionalString(model.id);
+				return authoritativeId?.startsWith("/") ?? false;
+			});
 		if (!needsRoutePrefix) return sanitizeProviderModels(modelsResult.data);
 
 		const providerResult = await this.managementRequest(
